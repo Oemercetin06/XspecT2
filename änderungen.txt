@@ -1,0 +1,1 @@
+XspecT-trainer.py mode 2 meta bug gelöst. Kontrolle von meta file hinzugefügt.
