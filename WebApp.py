@@ -546,7 +546,7 @@ def assignspec():
     print("Runtime: ", needed)
     session["time"] = str(needed)
 
-    if prediction_claast == "baumannii":
+    if prediction_claast =="baumannii":
         IC_lookup = [True, True, True, True, True, True, True, True, False]
         score_claast, names_claast, hits_claast = read_search(IC_lookup, reads, quick=1)
         # making prediction
