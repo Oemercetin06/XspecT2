@@ -6,6 +6,7 @@ from time import asctime, localtime
 
 from loguru import logger
 
+
 def get_current_time():
     """Returns the current time in the form hh:mm:ss."""
     return asctime(localtime()).split()[3]
@@ -97,7 +98,9 @@ def backup_old_bf(old_dir_name):
         os.mkdir(backup_path_names)
         os.mkdir(backup_path_transl_dict)
     except FileExistsError:
-        logger.info("The backup for the filters of {dir} already exists", dir=old_dir_name)
+        logger.info(
+            "The backup for the filters of {dir} already exists", dir=old_dir_name
+        )
         logger.info("Stopping backup")
         return None
 
@@ -123,13 +126,21 @@ def backup_old_bf(old_dir_name):
     copy2(from_path_meta, backup_path_meta)
 
     # Species names.
-    from_path_species_names = from_path / "species_names" / ("Filter" + str(genus) + ".txt")
-    from_path_meta_names = from_path / "species_names" / ("Filter" + str(genus) + "Complete.txt")
+    from_path_species_names = (
+        from_path / "species_names" / ("Filter" + str(genus) + ".txt")
+    )
+    from_path_meta_names = (
+        from_path / "species_names" / ("Filter" + str(genus) + "Complete.txt")
+    )
     copy2(from_path_species_names, backup_path_names)
     copy2(from_path_meta_names, backup_path_names)
 
     # Support vector machine.
-    from_path_svm = Path(__file__).parent.parent / "Training_data" / (genus + "_Training_data_spec.csv")
+    from_path_svm = (
+        Path(__file__).parent.parent
+        / "Training_data"
+        / (genus + "_Training_data_spec.csv")
+    )
     copy2(from_path_svm, backup_path)
 
     # Translation dict

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from loguru import logger
 
+
 class TaxonomyCheck:
     _main_url = "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/ANI_report_prokaryotes.txt"
     _test_url = "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/"
@@ -63,7 +64,9 @@ class TaxonomyCheck:
             if "ANI_report_prokaryotes.txt" in line:
                 line_parts = line.split()
                 date_parts = line_parts[-3].split("-")
-                date = datetime.date(int(date_parts[0]), int(date_parts[1]), int(date_parts[2]))
+                date = datetime.date(
+                    int(date_parts[0]), int(date_parts[1]), int(date_parts[2])
+                )
                 time_parts = line_parts[-2].split(":")
                 time = datetime.time(int(time_parts[0]), int(time_parts[1]))
                 new_time = [date, time]

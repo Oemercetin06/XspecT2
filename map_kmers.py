@@ -27,7 +27,7 @@ def create_genome_kmer_list(genome_dir, k, genus):
         for contig in genome:
             # loop over all kmers in the contig
             for i in range(len(contig) - k + 1):
-                kmer = contig[i:i+k]
+                kmer = contig[i : i + k]
                 kmer_list.append(kmer)
 
         # filename for the pickle file
@@ -39,7 +39,7 @@ def create_genome_kmer_list(genome_dir, k, genus):
 
 
 def identify_split_reads(score, kmer_hits_single):
-    """ This method identifies if the read is split because of HGT """
+    """This method identifies if the read is split because of HGT"""
 
     # notes
     """ 
@@ -79,7 +79,10 @@ def identify_split_reads(score, kmer_hits_single):
         clusters = cluster_zeros_ones(kmer_profile)
         # 0.3 and 0.6 are arbitrary values, they should be tested etc.
         # Find the complemantary species of the split read --> HGT Donor
-        if sum(clusters[og_species])/len(clusters[og_species]) < 0.3 and sum(clusters[novel_species])/len(clusters[novel_species]) >= 0.6:
+        if (
+            sum(clusters[og_species]) / len(clusters[og_species]) < 0.3
+            and sum(clusters[novel_species]) / len(clusters[novel_species]) >= 0.6
+        ):
             split_regions.append((clusters, i))
             break
 
@@ -88,13 +91,13 @@ def identify_split_reads(score, kmer_hits_single):
 
 
 def cluster_zeros_ones(input_list, threshold=None):
-    """ This method divides a list of zeros and ones into two lists, 
+    """This method divides a list of zeros and ones into two lists,
     maximizing occurences of zeros and ones in each list"""
 
     # min. length of a cluster
     if threshold == None:
         threshold = len(input_list) * 0.1
-    
+
     # copy the input list
     input_list_copy = input_list[:]
 
@@ -108,7 +111,7 @@ def cluster_zeros_ones(input_list, threshold=None):
         if score > cluster_score:
             cluster_score = score
             split_index = i
-    
+
     # split the input list into two clusters
     cluster_0 = input_list_copy[:split_index]
     cluster_1 = input_list_copy[split_index:]
@@ -116,18 +119,19 @@ def cluster_zeros_ones(input_list, threshold=None):
     return [cluster_0, cluster_1]
 
 
-
 def map_kmers(kmers, predictions, genus):
-    """ Map kmers to their respective genome """
+    """Map kmers to their respective genome"""
 
-    # check for pure- or split-read 
+    # check for pure- or split-read
     if len(predictions) == 1:
         prediction = predictions[0]
 
         # get the kmer list for the genome
         # TODO: decide filename
         filename = "Test"
-        with open("kmer_positions/" + genus + "/" + filename + "_kmer_list.txt", 'rb') as fp:
+        with open(
+            "kmer_positions/" + genus + "/" + filename + "_kmer_list.txt", "rb"
+        ) as fp:
             kmer_list = pickle.load(fp)
 
         # map kmers to the genome
@@ -136,7 +140,6 @@ def map_kmers(kmers, predictions, genus):
             # get all indices of the kmer in the kmer list
             indices = [i for i, x in enumerate(kmer_list) if x == kmer]
             kmer_positions += indices
-
 
         # sort the list of kmer positions in ascending order
         # is this biologically correct? Its neccecary for not unqiue kmers but the true position of the kmer is lost
@@ -151,13 +154,13 @@ def map_kmers(kmers, predictions, genus):
             cluster = []
             cluster.append(position)
             # add all kmers that lie directly next to each other to the cluster
-            for j in range(i+1, len(kmer_positions)):
-                if kmer_positions[j] == kmer_positions[j-1] + 1:
+            for j in range(i + 1, len(kmer_positions)):
+                if kmer_positions[j] == kmer_positions[j - 1] + 1:
                     cluster.append(kmer_positions[j])
                 else:
                     clusters.append(cluster)
                     break
-        
+
         # 2. Cluster iteration: cluster clusters that are at max 10 kmers apart
         final_clusters = []
         # threshold for the distance between two clusters
@@ -165,15 +168,14 @@ def map_kmers(kmers, predictions, genus):
         for i, cluster in enumerate(clusters):
             if cluster[i] != final_clusters[-1]:
                 final_clusters += cluster[i]
-            if (clusters[i+1][0] - clusters[i][-1]) < distance_threshold:
-                final_clusters += clusters[i+1]
+            if (clusters[i + 1][0] - clusters[i][-1]) < distance_threshold:
+                final_clusters += clusters[i + 1]
 
-            
 
 # TODO:
 # rename function to map_kmers and split into two functions -> second one to cluster kmers
 def cluster_kmers(kmer_list, kmer_dict):
-    """ Map kmers to their respective genome """
+    """Map kmers to their respective genome"""
     clusters = {}
     contig_median_list = []
     # Schleife über alle kmere in kmer_list
@@ -196,7 +198,7 @@ def cluster_kmers(kmer_list, kmer_dict):
         contig_list = clusters[contig]
         contig_len = len(contig_list)
         if contig_len < 2:
-            #print("Zu wenig kmere im Contig!")
+            # print("Zu wenig kmere im Contig!")
             continue
         # Sortieren der kmere in der Liste nach der Position
         sorted_contig_list = sorted(contig_list, key=lambda x: x[1])
@@ -204,14 +206,14 @@ def cluster_kmers(kmer_list, kmer_dict):
         # Schleife über die sortierte Liste von kmere im Contig
         for i in range(1, len(sorted_contig_list)):
             kmer_pos = sorted_contig_list[i][1]
-            prev_kmer_pos = sorted_contig_list[i-1][1]
+            prev_kmer_pos = sorted_contig_list[i - 1][1]
             # Berechnung der Distanz zum vorherigen kmer
             distance = kmer_pos - prev_kmer_pos
             distances.append(distance)
         # Berechnung der Median-Entfernung für das aktuelle Contig
-        #print(distances)
+        # print(distances)
         median_distance = statistics.median(distances)
-        #print(median_distance)
+        # print(median_distance)
         contig_median_list.append((contig, median_distance, contig_len))
     # Summe der Contigs in contig_median_list
     num_contigs = len(contig_median_list)
@@ -229,12 +231,11 @@ def cluster_kmers(kmer_list, kmer_dict):
     return result
 
 
-
 def main():
     # Verzeichnis mit den Genomen
     genome_dir = "path/to/genomes"
-    #create_genome_kmer_list(genome_dir, 21, "Acinetobacter")
+    # create_genome_kmer_list(genome_dir, 21, "Acinetobacter")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

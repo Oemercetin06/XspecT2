@@ -9,7 +9,7 @@ while True:
     if user == user2:
         break
     else:
-        print('Please make sure that the usernames match!')
+        print("Please make sure that the usernames match!")
 
 pw = input("Please Enter the new password: ")
 while True:
@@ -17,8 +17,8 @@ while True:
     if pw == pw2:
         break
     else:
-        print('Please make sure that the passwords match!')
+        print("Please make sure that the passwords match!")
 
 ls = [bcrypt.generate_password_hash(user), bcrypt.generate_password_hash(pw)]
-with open(r'config/login.txt', 'wb') as fp:
+with open(r"config/login.txt", "wb") as fp:
     pickle.dump(ls, fp)

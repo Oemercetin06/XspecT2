@@ -29,8 +29,10 @@ class NCBIAssemblyMetadata:
         tmp_metadata = dict()
         for tax_id, curr_metadata in self._all_metadata.items():
             sleep(1)
-            print(f"{get_current_time()}| Started collecting metadata for "
-                  f"{' '.join(curr_metadata['sci_name'].split(' ')[1:])}")
+            print(
+                f"{get_current_time()}| Started collecting metadata for "
+                f"{' '.join(curr_metadata['sci_name'].split(' ')[1:])}"
+            )
             accessions = self._make_request(taxon=tax_id)
             if len(accessions) != 0:
                 curr_metadata["accessions"] = accessions
@@ -44,7 +46,7 @@ class NCBIAssemblyMetadata:
             "filters.assembly_source": "refseq",
             "filters.exclude_atypical": "true",
             "page_size": self._count,
-            "page_token": ""
+            "page_token": "",
         }
         params_ref = params.copy()
         params_ref["filters.reference_only"] = "true"
@@ -66,7 +68,7 @@ class NCBIAssemblyMetadata:
             "params_comp_genome": params_comp_genome,
             "params_chrom": params_chrom,
             "params_scaffold": params_scaffold,
-            "params_contig": params_contig
+            "params_contig": params_contig,
         }
 
     def _make_request(self, taxon: str):
@@ -84,7 +86,10 @@ class NCBIAssemblyMetadata:
                         curr_accession = curr_assembly["assembly_accession"]
                         curr_contig_n50 = curr_assembly["contig_n50"]
                         if count < self._count:
-                            if curr_accession in self._ani_gcf and curr_contig_n50 > self._contig_n50:
+                            if (
+                                curr_accession in self._ani_gcf
+                                and curr_contig_n50 > self._contig_n50
+                            ):
                                 accessions.append(curr_accession)
                                 count += 1
                         else:

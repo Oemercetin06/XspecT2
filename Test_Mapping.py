@@ -2,10 +2,12 @@ import random
 import string
 import pickle
 
+
 # Funktion, um zufällige Zeichenketten zu generieren
 def generate_random_string(length):
     letters = string.ascii_letters
-    return ''.join(random.choice(letters) for _ in range(length))
+    return "".join(random.choice(letters) for _ in range(length))
+
 
 # Anzahl der Strings und Länge jedes Strings
 num_strings = 1

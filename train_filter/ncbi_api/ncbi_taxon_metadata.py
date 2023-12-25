@@ -33,11 +33,7 @@ class NCBITaxonMetadata:
             tax_id = str(taxonomy["tax_id"])
             if "Candidatus" not in name:
                 if " sp. " not in name:
-                    metadata = {
-                        "sci_name": name,
-                        "tax_id": tax_id,
-                        "rank": rank
-                    }
+                    metadata = {"sci_name": name, "tax_id": tax_id, "rank": rank}
                     self._all_metadata[tax_id] = metadata
                 else:
                     logger.debug("{name} was not used for training", name=name)
@@ -57,4 +53,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

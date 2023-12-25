@@ -12,6 +12,7 @@ from time import asctime, localtime
 
 from loguru import logger
 
+
 class ExtractConcatenate:
     _path = Path(__file__).parent.parent / "genus_metadata"
     _fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
@@ -67,7 +68,7 @@ class ExtractConcatenate:
     def _copy_assemblies(self, unzipped_path, assemblies_path):
         os.mkdir(assemblies_path)
         for folder in os.listdir(unzipped_path):
-            for (root, dirs, files) in os.walk(unzipped_path / str(folder)):
+            for root, dirs, files in os.walk(unzipped_path / str(folder)):
                 for file in files:
                     file_ending = file.split(".")[-1]
                     if file_ending in self._fasta_endings:
@@ -112,7 +113,7 @@ class ExtractConcatenate:
             for folder in os.listdir(unzipped_path):
                 species_files = list()
                 # Walk through dirs to get all fasta files.
-                for (root, dirs, files) in os.walk(unzipped_path / folder):
+                for root, dirs, files in os.walk(unzipped_path / folder):
                     for file in files:
                         file_ending = file.split(".")[-1]
                         if file_ending in self._fasta_endings:

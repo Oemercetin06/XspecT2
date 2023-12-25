@@ -14,12 +14,10 @@ from wtforms.validators import DataRequired, Length
 
 
 class Login(FlaskForm):
-    """ Login form"""
+    """Login form"""
 
     # for fastq files: min and max length of reads
     # file upload
-    name = StringField('Username', validators=[DataRequired(), Length(min=3, max=15)])
-    password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Login')
-
-
+    name = StringField("Username", validators=[DataRequired(), Length(min=3, max=15)])
+    password = PasswordField("Password", validators=[DataRequired()])
+    submit = SubmitField("Login")

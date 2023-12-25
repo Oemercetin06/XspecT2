@@ -23,12 +23,15 @@ def download_assemblies(accessions, dir_name, target_folder, zip_file_name):
     :param zip_file_name: Name of the zip file. E.g. Klebsiella aerogenes.zip.
     :type zip_file_name: str
     """
-    path = Path(__file__).parent.parent.parent / 'genus_metadata' / dir_name / target_folder / zip_file_name
+    path = (
+        Path(__file__).parent.parent.parent
+        / "genus_metadata"
+        / dir_name
+        / target_folder
+        / zip_file_name
+    )
     api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/genome/accession/{','.join(accessions)}/download"
-    parameters = {
-        "include_annotation_type": "GENOME_FASTA",
-        "filename": zip_file_name
-    }
+    parameters = {"include_annotation_type": "GENOME_FASTA", "filename": zip_file_name}
     os.makedirs(os.path.dirname(path), exist_ok=True)
     genome_download = requests.get(api_url, params=parameters)
     with open(path, "wb") as f:

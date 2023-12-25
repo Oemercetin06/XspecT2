@@ -42,9 +42,8 @@ def cut_csv(csv_file, lst, table=False):
             else:
                 del X_train[i][j]
 
-
     # Deleting Rows
-    valid = ['None']
+    valid = ["None"]
     for i in range(len(selected)):
         if selected[i]:
             valid.append(labels[i])
@@ -65,8 +64,8 @@ def cut_csv(csv_file, lst, table=False):
             if header[i] not in valid:
                 del header[i]
 
-        header.insert(0, 'File')
-        header.append('Label')
+        header.insert(0, "File")
+        header.append("Label")
 
         X_train.insert(0, header)
 
@@ -95,18 +94,18 @@ def cut_csv_spec(csv_file):
 
 
 def classify(csv_file, result, lst):
-    """ Classifys Result-vector and calculates needed vectors"""
+    """Classifys Result-vector and calculates needed vectors"""
     r = csv.reader(open(csv_file))
     m = list(r)
     # deciding which kernel-function will be used
     if m[0][1] == "IC1":
         mode = "ClAssT"
         X_train, y_train = cut_csv(csv_file, lst)
-        svm = SVC(kernel='poly', C=1.0).fit(X_train, y_train)
+        svm = SVC(kernel="poly", C=1.0).fit(X_train, y_train)
     else:
         mode = "XspecT"
         X_train, y_train = cut_csv_spec(csv_file)
-        svm = SVC(kernel='rbf', C=1.5).fit(X_train, y_train)
+        svm = SVC(kernel="rbf", C=1.5).fit(X_train, y_train)
     # perform a prediction using the svm
     prediction = svm.predict([result])
     if mode == "XspecT":
@@ -120,11 +119,13 @@ def classify(csv_file, result, lst):
 
 
 def IC3_classify(result_2):
-    ic = 'International Clonetype 3 (ST32 or ST250)'
-    m_3 = [['GCF_000278625.1', 1.0, ic],
-           ['GCF_001674185.1', 0.86, ic],
-           ['fictional', 0.85, 'NONE of the selected Clonetypes or Genomes'],
-           ['fictional', 0.01, 'NONE of the selected Clonetypes or Genomes']]
+    ic = "International Clonetype 3 (ST32 or ST250)"
+    m_3 = [
+        ["GCF_000278625.1", 1.0, ic],
+        ["GCF_001674185.1", 0.86, ic],
+        ["fictional", 0.85, "NONE of the selected Clonetypes or Genomes"],
+        ["fictional", 0.01, "NONE of the selected Clonetypes or Genomes"],
+    ]
 
     X = []
     y = []
@@ -134,8 +135,9 @@ def IC3_classify(result_2):
 
     for i in range(len(X)):
         X[i] = [X[i]]
-    svm_IC3 = SVC(kernel='poly', C=1).fit(X, y)
+    svm_IC3 = SVC(kernel="poly", C=1).fit(X, y)
 
     return svm_IC3.predict([result_2]), result_2[0]
 
-#https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html
+
+# https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html

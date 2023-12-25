@@ -17,11 +17,13 @@ def get_seq_paths(dir_name: str):
     :param dir_name: Name of the directory.
     :return: Dictionary with species names and sequences.
     """
-    dir_path = Path(__file__).parent.parent / 'genus_metadata' / dir_name / 'concatenate'
+    dir_path = (
+        Path(__file__).parent.parent / "genus_metadata" / dir_name / "concatenate"
+    )
     sequence_dict = dict()
     files = listdir(dir_path)
     # Go through all files backwards to delete all non fasta files.
-    for i in range(len(files) -1, -1, -1):
+    for i in range(len(files) - 1, -1, -1):
         curr_file = str(files[i])
         file_parts = curr_file.split(".")
         if file_parts[-1] != "fasta":
@@ -67,7 +69,11 @@ def count_k_meres(sequence_dict, k=21):
     # Iterate through all species.
     for species_name, file_path in sequence_dict.items():
         num_files_to_count = len(sequence_dict) - count
-        logger.info("{num} files left to count. Counting {name}", num=num_files_to_count, name=species_name)
+        logger.info(
+            "{num} files left to count. Counting {name}",
+            num=num_files_to_count,
+            name=species_name,
+        )
         count += 1
 
         # Set parameters for jellyfish commands.
@@ -77,8 +83,18 @@ def count_k_meres(sequence_dict, k=21):
         output_name = str(Path(__file__).parent.parent / "output")
 
         # Command for jellyfish count.
-        count_command = "jellyfish count -m " + k + " -o " + output_name + " -C -s " + hash_size + " -t " + \
-                        num_threads + " " + file_path
+        count_command = (
+            "jellyfish count -m "
+            + k
+            + " -o "
+            + output_name
+            + " -C -s "
+            + hash_size
+            + " -t "
+            + num_threads
+            + " "
+            + file_path
+        )
         # Command for jellyfish stats.
         stats_command = "jellyfish stats " + output_name
         jellyfish_count(count_command)
@@ -115,8 +131,13 @@ def save_count(k_mer_counts, dir_name):
     :param dir_name: Name of the parent directory.
     :type dir_name: str
     """
-    file_name = Path(__file__).parent.parent / 'genus_metadata' / dir_name / 'distinct_k_meres.txt'
-    with open(file_name, "w", encoding='utf-8') as f:
+    file_name = (
+        Path(__file__).parent.parent
+        / "genus_metadata"
+        / dir_name
+        / "distinct_k_meres.txt"
+    )
+    with open(file_name, "w", encoding="utf-8") as f:
         f.write(f"Species\tdistinct k-meres\n")
         for species in k_mer_counts:
             f.write(f"{species[0].decode('utf-8')}\t{species[1]:,}\n")
@@ -141,7 +162,9 @@ def get_highest_k_mer_count(dir_name, k=21):
     # Count distinct k-mers of genus.
     genus = dir_name.split("_")[0]
     file_name = genus + ".fasta"
-    file_path = str(Path(__file__).parent.parent / 'genus_metadata' / dir_name / file_name)
+    file_path = str(
+        Path(__file__).parent.parent / "genus_metadata" / dir_name / file_name
+    )
     seq_dict = {genus: file_path}
     k_mer_count = count_k_meres(seq_dict, k=k)
 

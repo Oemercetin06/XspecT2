@@ -60,7 +60,7 @@ def get_svm_assemblies(all_accessions, dir_name):
             accessions=accessions,
             dir_name=dir_name,
             target_folder="training_data_zipped",
-            zip_file_name=file_name
+            zip_file_name=file_name,
         )
     logger.info("Downloads finished")
 
@@ -130,8 +130,10 @@ def get_species_names(file_paths):
         header = getline(path, 1)
         name = header.replace("\n", "").replace(">", "")
         if not name.isdigit():
-            logger.error("The header of file: {path} does not contain a correct ID: {name}. The ID needs to be "
-                         "just numbers")
+            logger.error(
+                "The header of file: {path} does not contain a correct ID: {name}. The ID needs to be "
+                "just numbers"
+            )
             logger.error("Aborting")
             exit()
         names.append(name)
@@ -201,7 +203,7 @@ def perform_lookup(bloomfilter, files, file_paths, accessions, names, spacing):
             # Dominik: changed sample size to var
             for j in range(0, len(sequence.seq) - BF.k, spacing):
                 BF.number_of_kmeres += 1
-                BF.lookup(str(sequence.seq[j: j + BF.k]))
+                BF.lookup(str(sequence.seq[j : j + BF.k]))
 
         score = BF.get_score()
         score = [str(x) for x in score]
@@ -242,8 +244,12 @@ def save_csv(genus, scores):
     :param scores: The scores gathered by a lookup of a bloomfilter.
     :type scores: list
     """
-    path = Path(__file__).parent.parent / "Training_data" / (genus + "_Training_data_spec.csv")
-    with open(path, "w", newline='') as file:
+    path = (
+        Path(__file__).parent.parent
+        / "Training_data"
+        / (genus + "_Training_data_spec.csv")
+    )
+    with open(path, "w", newline="") as file:
         writer = csv.writer(file)
         writer.writerows(scores)
 
@@ -293,9 +299,17 @@ def new_helper(spacing, genus, dir_name, array_size, k=21):
 
 
 def main():
-    taxons = ['54736', '28901']
-    used_accessions = ['GCF_000439255.1', 'GCF_006051015.1', 'GCF_006113225.1', 'GCF_016653555.1', 'GCF_000006945.2',
-                       'GCF_000783815.2', 'GCF_001558355.2', 'GCF_001647755.1']
+    taxons = ["54736", "28901"]
+    used_accessions = [
+        "GCF_000439255.1",
+        "GCF_006051015.1",
+        "GCF_006113225.1",
+        "GCF_016653555.1",
+        "GCF_000006945.2",
+        "GCF_000783815.2",
+        "GCF_001558355.2",
+        "GCF_001647755.1",
+    ]
     array_size = 67000000
     dir_name = "Salmonella_15_9_2023_10-59-31"
     genus = "Salmonella"

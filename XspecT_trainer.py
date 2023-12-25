@@ -12,10 +12,23 @@ from loguru import logger
 from numpy import mean
 
 
-from train_filter.ncbi_api import ncbi_assembly_metadata, ncbi_taxon_metadata, ncbi_children_tree, download_assemblies
+from train_filter.ncbi_api import (
+    ncbi_assembly_metadata,
+    ncbi_taxon_metadata,
+    ncbi_children_tree,
+    download_assemblies,
+)
 
-from train_filter import create_svm, html_scrap, extract_and_concatenate, get_paths, \
-    interface_XspecT, k_mer_count, backup_filter, check_folders
+from train_filter import (
+    create_svm,
+    html_scrap,
+    extract_and_concatenate,
+    get_paths,
+    interface_XspecT,
+    k_mer_count,
+    backup_filter,
+    check_folders,
+)
 
 
 def check_user_input(user_input: str):
@@ -30,8 +43,10 @@ def check_user_input(user_input: str):
         tax_id = metadata["tax_id"]
         rank = metadata["rank"]
         if not sci_name == user_input and not tax_id == user_input:
-            print(f"{get_current_time()}| The given genus: {user_input} was found as genus: {sci_name} "
-                  f"ID: {tax_id}")
+            print(
+                f"{get_current_time()}| The given genus: {user_input} was found as genus: {sci_name} "
+                f"ID: {tax_id}"
+            )
             print(f"{get_current_time()}| Using {sci_name} as genus name.")
         if rank == "GENUS":
             return str(sci_name)
@@ -73,7 +88,7 @@ def copy_custom_data(bf_path: str, svm_path: str, dir_name: str):
 
 
 def concatenate_meta(dir_name: str):
-    """ Concatenates all concatenated fasta files that are used to train bloomfilters to one fasta file.
+    """Concatenates all concatenated fasta files that are used to train bloomfilters to one fasta file.
 
     :param dir_name:
     :return:
@@ -122,7 +137,7 @@ def count_avg_seq_len(dir_name):
 
 
 def check_meta_file_size(dir_name) -> bool:
-    """ Checks the metagenome fasta file if every concatenated species file was used for
+    """Checks the metagenome fasta file if every concatenated species file was used for
     its creation by comparing the file sizes.
 
     :param dir_name: Directory name for current genus.
@@ -142,8 +157,8 @@ def check_meta_file_size(dir_name) -> bool:
 
     meta_file_size = os.path.getsize(meta_path)
 
-    all_files_size = round(all_files_size / (1024 ** 2))
-    meta_file_size = round(meta_file_size / (1024 ** 2))
+    all_files_size = round(all_files_size / (1024**2))
+    meta_file_size = round(meta_file_size / (1024**2))
 
     # Compare both sizes.
     same = False
@@ -188,24 +203,47 @@ def init_argparse() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="XspecT-trainer",
         description="Automatically trains bloomfilter, of a given genus, so they can later be used by XspecT to "
-                    "assign species to assemblies."
+        "assign species to assemblies.",
     )
-    parser.add_argument("genus", type=str,
-                        help="The name of the genus for which the filters will be trained. Can also be a NCBI Taxon ID")
-    parser.add_argument("mode", metavar="mode", choices=["1", "2", "3"], type=str,
-                        help="Declares which mode should be used. 1: Train bloomfilters with assemblies from the ncbi"
-                             "RefSeq database. 2: Train bloomfilters with custom assembles. The paths to the assemblies"
-                             "need to be given. 3: Check if metagenome file was correctly created.")
-    parser.add_argument("-bf", "--bf_path", type=str,
-                        help="The path to the assemblies that will be used to train the bloomfilters if mode 2 is used."
-                        )
-    parser.add_argument("-svm", "--svm_path", type=str,
-                        help="The path to the assemblies that will be used to train the support-vector-machine if "
-                             "mode 2 is used.")
-    parser.add_argument("-c", "--complete", action="store_true",
-                        help="Declares if all of every 500th k-mere should be used to train the bloomfilters.")
-    parser.add_argument("-d", "--dir_name", type=str,
-                        help="Write the directory name from genus_metadata to check metagenome file.")
+    parser.add_argument(
+        "genus",
+        type=str,
+        help="The name of the genus for which the filters will be trained. Can also be a NCBI Taxon ID",
+    )
+    parser.add_argument(
+        "mode",
+        metavar="mode",
+        choices=["1", "2", "3"],
+        type=str,
+        help="Declares which mode should be used. 1: Train bloomfilters with assemblies from the ncbi"
+        "RefSeq database. 2: Train bloomfilters with custom assembles. The paths to the assemblies"
+        "need to be given. 3: Check if metagenome file was correctly created.",
+    )
+    parser.add_argument(
+        "-bf",
+        "--bf_path",
+        type=str,
+        help="The path to the assemblies that will be used to train the bloomfilters if mode 2 is used.",
+    )
+    parser.add_argument(
+        "-svm",
+        "--svm_path",
+        type=str,
+        help="The path to the assemblies that will be used to train the support-vector-machine if "
+        "mode 2 is used.",
+    )
+    parser.add_argument(
+        "-c",
+        "--complete",
+        action="store_true",
+        help="Declares if all of every 500th k-mere should be used to train the bloomfilters.",
+    )
+    parser.add_argument(
+        "-d",
+        "--dir_name",
+        type=str,
+        help="Write the directory name from genus_metadata to check metagenome file.",
+    )
 
     return parser
 
@@ -220,7 +258,7 @@ def set_logger(dir_name: str):
     # Starting logger.
     logger.remove()
     logger.add(sys.stderr, format="{time:HH:mm:ss} | {level} | {message}", level="INFO")
-    log_path = (Path(__file__).parent / "genus_metadata" / dir_name / (genus + ".log"))
+    log_path = Path(__file__).parent / "genus_metadata" / dir_name / (genus + ".log")
     logger.add(log_path, format="{time:HH:mm:ss} | {level} | {message}", level="DEBUG")
 
 
@@ -268,7 +306,7 @@ def save_translation_dict(dir_name: str, translation_dict: dict[str, str]):
 
 
 def change_bf_assembly_file_names(dir_name: str):
-    """ Change all concatenated assembly names to only the taxon ID.
+    """Change all concatenated assembly names to only the taxon ID.
 
     :param dir_name: Directory name for current genus.
     """
@@ -318,7 +356,9 @@ def main():
         start_tax = perf_counter()
         logger.info("Getting all species of the genus")
         children_ids = ncbi_children_tree.NCBIChildrenTree(genus).children_ids()
-        species_dict = ncbi_taxon_metadata.NCBITaxonMetadata(children_ids).get_metadata()
+        species_dict = ncbi_taxon_metadata.NCBITaxonMetadata(
+            children_ids
+        ).get_metadata()
         end_tax = perf_counter()
 
         # Get all gcf accessions that have Taxonomy check result OK.
@@ -330,10 +370,7 @@ def main():
         start_meta = perf_counter()
         logger.info("Getting assembly metadata")
         all_metadata = ncbi_assembly_metadata.NCBIAssemblyMetadata(
-            all_metadata=species_dict,
-            ani_gcf=ani_gcf,
-            count=8,
-            contig_n50=10000
+            all_metadata=species_dict, ani_gcf=ani_gcf, count=8, contig_n50=10000
         )
         all_metadata = all_metadata.get_all_metadata()
         logger.info("Finished metadata collecting\n")
@@ -352,7 +389,7 @@ def main():
             if len(metadata["accessions"]) >= 1:
                 sleep(5)
                 species_name = metadata["sci_name"]
-                tax_id = metadata['tax_id']
+                tax_id = metadata["tax_id"]
                 logger.info("Downloading {id}_{name}", id=tax_id, name=species_name)
                 file_name = f"{tax_id}_{species_name}.zip"
 
@@ -367,7 +404,7 @@ def main():
                     accessions=accessions,
                     dir_name=dir_name,
                     target_folder="zip_files",
-                    zip_file_name=file_name
+                    zip_file_name=file_name,
                 )
         logger.info("Downloads finished\n")
         end_download = perf_counter()
@@ -375,8 +412,7 @@ def main():
         # Concatenate all assemblies of each species.
         start_concatenate = perf_counter()
         extract_bf = extract_and_concatenate.ExtractConcatenate(
-            dir_name=dir_name,
-            delete=True
+            dir_name=dir_name, delete=True
         )
         extract_bf.bf()
         logger.info("Finished extracting and concatenating\n")
@@ -395,16 +431,12 @@ def main():
                 accessions[metadata["tax_id"]] = metadata["accessions"]
 
         # Downloading assemblies.
-        create_svm.get_svm_assemblies(
-            all_accessions=accessions,
-            dir_name=dir_name
-        )
+        create_svm.get_svm_assemblies(all_accessions=accessions, dir_name=dir_name)
         logger.info("Finished downloading\n")
 
         # Extracting assemblies.
         extract_svm = extract_and_concatenate.ExtractConcatenate(
-            dir_name=dir_name,
-            delete=True
+            dir_name=dir_name, delete=True
         )
         extract_svm.svm(species_accessions=accessions)
 
@@ -426,7 +458,9 @@ def main():
         # Check if paths were given.
         if bf_path:
             if not os.path.exists(bf_path):
-                logger.error("The given path to the bloomfilter assemblies doesn't exist")
+                logger.error(
+                    "The given path to the bloomfilter assemblies doesn't exist"
+                )
                 logger.error("Aborting")
                 exit()
         else:
@@ -435,19 +469,21 @@ def main():
             exit()
         if svm_path:
             if not os.path.exists(svm_path):
-                logger.error("The given path to the support-vector-machine assemblies doesn't exist")
+                logger.error(
+                    "The given path to the support-vector-machine assemblies doesn't exist"
+                )
                 logger.error("Aborting")
                 exit()
         else:
-            logger.error("There was no path to the support-vector-machine assemblies given")
+            logger.error(
+                "There was no path to the support-vector-machine assemblies given"
+            )
             logger.error("Aborting")
             exit()
 
         # Move the given files to genus_metadata.
         logger.info("Copying data given into genus_metadata")
-        copy_custom_data(bf_path=bf_path,
-                         svm_path=svm_path,
-                         dir_name=dir_name)
+        copy_custom_data(bf_path=bf_path, svm_path=svm_path, dir_name=dir_name)
 
         # Create Metagenome fasta file of all concatenated fasta files.
         logger.info("Creating meta fasta file")
@@ -504,12 +540,18 @@ def main():
     # Train new Bloomfilters with concatenated files of each species.
     start_bf = perf_counter()
     # Compute the array size with the highest count of distinct k-mers.
-    array_size_species = int(round(interface_XspecT.compute_array_size(highest_counts[0]) + 1000000, -6))
-    array_size_complete = int(round(interface_XspecT.compute_array_size(highest_counts[1]) + 1000000, -6))
+    array_size_species = int(
+        round(interface_XspecT.compute_array_size(highest_counts[0]) + 1000000, -6)
+    )
+    array_size_complete = int(
+        round(interface_XspecT.compute_array_size(highest_counts[1]) + 1000000, -6)
+    )
 
     # Save array sizes for XspecT.
     logger.info("Saving bloomfilter sizes\n")
-    interface_XspecT.save_array_sizes(genus, [str(array_size_species), str(array_size_complete)])
+    interface_XspecT.save_array_sizes(
+        genus, [str(array_size_species), str(array_size_complete)]
+    )
 
     # Train Bloomfilters of species.
     logger.info("Training bloomfilters")
@@ -523,7 +565,9 @@ def main():
 
     result_path = get_paths.get_metagenome_filter_path()
 
-    interface_XspecT.new_train_core(str(files_path), str(result_path), array_size_complete)
+    interface_XspecT.new_train_core(
+        str(files_path), str(result_path), array_size_complete
+    )
     interface_XspecT.new_write_file_dyn(str(result_path), genus, meta_mode=True)
 
     end_bf = perf_counter()
@@ -533,30 +577,30 @@ def main():
     logger.info("Training support-vector-machine")
     # Create svm.
     create_svm.new_helper(
-        spacing,
-        genus=genus,
-        dir_name=dir_name,
-        array_size=array_size_species,
-        k=21
+        spacing, genus=genus, dir_name=dir_name, array_size=array_size_species, k=21
     )
     end_svm = perf_counter()
     end_all = perf_counter()
 
-    logger.info("Program runtime: {time} m", time=(round((end_all-start_all)/60, 2)))
+    logger.info(
+        "Program runtime: {time} m", time=(round((end_all - start_all) / 60, 2))
+    )
 
     if mode == "1":
         # Print and save collected statistics.
         logger.info("Saving collected runtime statistics")
-        time_print = f"Python version: {python_version()} \n" \
-                     f"Average sequence length: {avg_len:,} \n" \
-                     f"All time: {(end_all-start_all)/60:.2f} m\n" \
-                     f"Tax time: {(end_tax-start_tax):.2f} s\n" \
-                     f"Meta time: {(end_meta-start_meta)/60:.2f} m\n" \
-                     f"Download time: {(end_download-start_download)/60:.2f} m\n" \
-                     f"Concatenate time: {(end_concatenate-start_concatenate):.2f} s\n" \
-                     f"Count time: {(end_count-start_count)/60:.2f} m\n" \
-                     f"Training time: {(end_bf-start_bf)/60:.2f} m\n" \
-                     f"Support vector machine time: {((end_svm+end_svm_dl)-(start_svm+start_svm_dl))/60:.2f} m\n"
+        time_print = (
+            f"Python version: {python_version()} \n"
+            f"Average sequence length: {avg_len:,} \n"
+            f"All time: {(end_all-start_all)/60:.2f} m\n"
+            f"Tax time: {(end_tax-start_tax):.2f} s\n"
+            f"Meta time: {(end_meta-start_meta)/60:.2f} m\n"
+            f"Download time: {(end_download-start_download)/60:.2f} m\n"
+            f"Concatenate time: {(end_concatenate-start_concatenate):.2f} s\n"
+            f"Count time: {(end_count-start_count)/60:.2f} m\n"
+            f"Training time: {(end_bf-start_bf)/60:.2f} m\n"
+            f"Support vector machine time: {((end_svm+end_svm_dl)-(start_svm+start_svm_dl))/60:.2f} m\n"
+        )
 
         # Save time measurements.
         interface_XspecT.save_time_stats(time_print, dir_name)

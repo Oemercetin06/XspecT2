@@ -16,11 +16,11 @@ class NCBIChildrenTree:
     _response: dict
     _parent_taxon_id: str
     _children_taxon_ids = list()
-    
+
     def __init__(self, taxon: str):
         self._taxon = taxon
         self._request_tree()
-        
+
     def _request_tree(self):
         """Make the request for the children tree at the NCBI Datasets API."""
         api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/taxonomy/taxon/{self._taxon}/filtered_subtree"
@@ -36,7 +36,7 @@ class NCBIChildrenTree:
             exit()
         for child_id in tmp_children_ids:
             self._children_taxon_ids.append(str(child_id))
-    
+
     def parent_id(self):
         """The NCBI taxon ID of the given Taxon at the initialisation.
 
@@ -50,7 +50,7 @@ class NCBIChildrenTree:
         :return: The taxon IDs as a list.
         """
         return self._children_taxon_ids
-        
+
 
 def main():
     taxon = "286"

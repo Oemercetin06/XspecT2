@@ -11,8 +11,8 @@ from train_filter.interface_XspecT import load_translation_dict
 
 
 def get_added_genomes():
-    """ Reads in pickled list, returns none if no new genomes have been added"""
-    with open(r'filter/FilterClonetypes.txt', 'rb') as fp:
+    """Reads in pickled list, returns none if no new genomes have been added"""
+    with open(r"filter/FilterClonetypes.txt", "rb") as fp:
         clonetypes = pickle.load(fp)
 
     # IC1 to IC8 are not deletable. That means if the IC-list is not longer than 8, than
@@ -27,7 +27,7 @@ def get_added_genomes():
 
 
 def read_search(IC_lookup, reads, quick, pipe=None):
-    with open(r'filter/FilterClonetypes.txt', 'rb') as fp:
+    with open(r"filter/FilterClonetypes.txt", "rb") as fp:
         clonetypes = pickle.load(fp)
     # initialising filter with database parameters
     BF = BF_v2.AbaumanniiBloomfilter(123000000)
@@ -36,14 +36,16 @@ def read_search(IC_lookup, reads, quick, pipe=None):
     BF.set_k(20)
 
     # Array Size 22.000.000
-    paths = [r'filter/IC1.txt',
-             r'filter/IC2.txt',
-             r'filter/IC3.txt',
-             r'filter/IC4.txt',
-             r'filter/IC5.txt',
-             r'filter/IC6.txt',
-             r'filter/IC7.txt',
-             r'filter/IC8.txt']
+    paths = [
+        r"filter/IC1.txt",
+        r"filter/IC2.txt",
+        r"filter/IC3.txt",
+        r"filter/IC4.txt",
+        r"filter/IC5.txt",
+        r"filter/IC6.txt",
+        r"filter/IC7.txt",
+        r"filter/IC8.txt",
+    ]
 
     if IC_lookup[8]:
         # added Genomes
@@ -57,7 +59,7 @@ def read_search(IC_lookup, reads, quick, pipe=None):
                 del paths[i]
 
         # getting all added files
-        temp = glob.glob('filter/added/*.txt')
+        temp = glob.glob("filter/added/*.txt")
         added = []
         if len(temp) == 0:
             pass
@@ -96,13 +98,12 @@ def read_search(IC_lookup, reads, quick, pipe=None):
         pipe.send([score, names, hits])
         pipe.close()
     else:
-
         return score, names, hits
 
 
 def pre_processing_ClAssT():
     "Preprocesses the Bloomfilter-Matrix when the program is launched"
-    with open(r'filter/FilterClonetypes.txt', 'rb') as fp:
+    with open(r"filter/FilterClonetypes.txt", "rb") as fp:
         clonetypes = pickle.load(fp)
     # initialising filter with database parameters
     # kmer20 = 115000000
@@ -111,15 +112,17 @@ def pre_processing_ClAssT():
     BF.set_arraysize(123000000)
     BF.set_hashes(7)
     BF.set_k(20)
-    #paths = sorted(os.listdir(r"filter/species/"))
-    paths = [r'filter/IC1.txt',
-             r'filter/IC2.txt',
-             r'filter/IC3.txt',
-             r'filter/IC4.txt',
-             r'filter/IC5.txt',
-             r'filter/IC6.txt',
-             r'filter/IC7.txt',
-             r'filter/IC8.txt']
+    # paths = sorted(os.listdir(r"filter/species/"))
+    paths = [
+        r"filter/IC1.txt",
+        r"filter/IC2.txt",
+        r"filter/IC3.txt",
+        r"filter/IC4.txt",
+        r"filter/IC5.txt",
+        r"filter/IC6.txt",
+        r"filter/IC7.txt",
+        r"filter/IC8.txt",
+    ]
     BF.read_clonetypes(paths, clonetypes)
     return BF
 
@@ -129,7 +132,7 @@ def get_genera_array_sizes():
 
     :return: A dictionary with the genus name as key and a list of array sizes as value.
     """
-    array_size_path = Path(__file__).parent.absolute() / 'filter' / 'array_sizes'
+    array_size_path = Path(__file__).parent.absolute() / "filter" / "array_sizes"
 
     # Get a list of all genera with bloomfilters.
     genera = os.listdir(array_size_path)
@@ -165,11 +168,13 @@ def pre_process_genus(genus, array_size, k=21, meta_mode=False):
     """
     # Get the correct path to bloomfilter names.
     if meta_mode:
-        file_name = 'Filter' + genus + 'Complete.txt'
+        file_name = "Filter" + genus + "Complete.txt"
     else:
-        file_name = 'Filter' + genus + '.txt'
-    names_path = Path(__file__).parent.absolute() / 'filter' / 'species_names' / file_name
-    with open(names_path, 'rb') as fp:
+        file_name = "Filter" + genus + ".txt"
+    names_path = (
+        Path(__file__).parent.absolute() / "filter" / "species_names" / file_name
+    )
+    with open(names_path, "rb") as fp:
         names = pickle.load(fp)
     # Set bloomfilter variables.
     BF = BF_v2.AbaumanniiBloomfilter(array_size)
@@ -179,9 +184,14 @@ def pre_process_genus(genus, array_size, k=21, meta_mode=False):
 
     # Get paths to the bloomfilters.
     if meta_mode:
-        paths = [Path(__file__).parent.absolute() / 'filter' / 'Metagenomes' / (genus + '.txt')]
+        paths = [
+            Path(__file__).parent.absolute()
+            / "filter"
+            / "Metagenomes"
+            / (genus + ".txt")
+        ]
     else:
-        genus_path = Path(__file__).parent.absolute() / 'filter' / genus
+        genus_path = Path(__file__).parent.absolute() / "filter" / genus
         paths = sorted(os.listdir(genus_path))
         for i in range(len(paths)):
             paths[i] = genus_path / paths[i]
@@ -211,9 +221,13 @@ def pre_process_all(genera, k=21, meta_mode=False, genus=None):
                 del genera[current_genus]
     for genus in genera.keys():
         if meta_mode:
-            BF = pre_process_genus(genus, int(genera[genus][1]), k=k, meta_mode=meta_mode)
+            BF = pre_process_genus(
+                genus, int(genera[genus][1]), k=k, meta_mode=meta_mode
+            )
         else:
-            BF = pre_process_genus(genus, int(genera[genus][0]), k=k, meta_mode=meta_mode)
+            BF = pre_process_genus(
+                genus, int(genera[genus][0]), k=k, meta_mode=meta_mode
+            )
         bloomfilters[genus] = BF
     return bloomfilters
 
@@ -221,11 +235,11 @@ def pre_process_all(genera, k=21, meta_mode=False, genus=None):
 def pre_processing(genus):
     "Preprocesses the Bloomfilter-Matrix when the program is launched"
     filename = "Filter" + genus + ".txt"
-    with open(r'filter/species_names/' + filename, 'rb') as fp:
+    with open(r"filter/species_names/" + filename, "rb") as fp:
         clonetypes = pickle.load(fp)
     # initialising filter with database parameters
     # get BF parameters from file
-    with open(r'filter/array_sizes/' + genus + '.txt', 'r') as fp:
+    with open(r"filter/array_sizes/" + genus + ".txt", "r") as fp:
         array_size = fp.readline()
     array_size = int(array_size.split(" ")[0])
     # 115000000 old
@@ -233,7 +247,7 @@ def pre_processing(genus):
     BF.set_arraysize(array_size)
     BF.set_hashes(7)
     BF.set_k(21)
-    #paths = sorted(os.listdir(r"filter/species_reversed/"))
+    # paths = sorted(os.listdir(r"filter/species_reversed/"))
     # change to dynamic path
     paths = sorted(os.listdir(r"filter/" + genus + "/"))
     for i in range(len(paths)):
@@ -246,10 +260,10 @@ def pre_processing(genus):
 def pre_processing_prefilter2(genus):
     "Preprocesses Acinetobacter Prefilter, collapse with other prefilter after testing"
     filename = "Filter" + genus + "Complete.txt"
-    with open(r'filter/species_names/' + filename, 'rb') as fp:
+    with open(r"filter/species_names/" + filename, "rb") as fp:
         clonetypes = pickle.load(fp)
     # get array size from file
-    with open(r'filter/array_sizes/' + genus + '.txt', 'r') as fp:
+    with open(r"filter/array_sizes/" + genus + ".txt", "r") as fp:
         array_size = fp.readline()
     array_size = int(array_size.split(" ")[1])
     # initialising filter with database parameters
@@ -265,7 +279,7 @@ def pre_processing_prefilter2(genus):
 
 def pre_processing_prefilter_Culicidae():
     "Preprocesses the mosquito prefilter"
-    with open(r'filter/FilterCulicidae.txt', 'rb') as fp:
+    with open(r"filter/FilterCulicidae.txt", "rb") as fp:
         clonetypes = pickle.load(fp)
     # initialising filter with database parameters
     # must be the same values used when trained!!
@@ -282,7 +296,7 @@ def pre_processing_prefilter_Culicidae():
 
 def pre_processing_Culicidae_species():
     "Preprocesses the mosquito species filter"
-    with open(r'filter/FilterCulicidaeSpecies.txt', 'rb') as fp:
+    with open(r"filter/FilterCulicidaeSpecies.txt", "rb") as fp:
         clonetypes = pickle.load(fp)
     # initialising filter with database parameters
     # must be the same values used when trained!!
@@ -314,19 +328,19 @@ def read_search_pre(reads, BF_pre, ext):
             sample_size = int(len(single_read) ** 0.5)
             threshold_read = sample_size * 0.7
             for i in range(0, len(single_read) - BF_pre.k, sample_size):
-                if "N" not in single_read[i: i + BF_pre.k]:
-                    BF_pre.lookup(single_read[i: i + BF_pre.k])
+                if "N" not in single_read[i : i + BF_pre.k]:
+                    BF_pre.lookup(single_read[i : i + BF_pre.k])
         # for reads use a static sample of 5
         # Taking sum of list as reference, if sum has not increased after testing those 3 kmeres,
         # then the read won't be tested further
         else:
             # TO-DO implement dynamic sample size
-            k1 = single_read[0:BF_pre.k]  # first k-mer
-            k2 = single_read[len(single_read) - BF_pre.k:]  # last k-mer
+            k1 = single_read[0 : BF_pre.k]  # first k-mer
+            k2 = single_read[len(single_read) - BF_pre.k :]  # last k-mer
             mid = len(single_read) // 2
-            k3 = single_read[mid:mid + BF_pre.k]  # k-mer in middle
-            k4 = single_read[BF_pre.k:BF_pre.k * 2]
-            k5 = single_read[mid + BF_pre.k:mid + BF_pre.k * 2]
+            k3 = single_read[mid : mid + BF_pre.k]  # k-mer in middle
+            k4 = single_read[BF_pre.k : BF_pre.k * 2]
+            k5 = single_read[mid + BF_pre.k : mid + BF_pre.k * 2]
             if "N" not in single_read:
                 BF_pre.lookup(k1)
                 BF_pre.lookup(k2)
@@ -339,8 +353,8 @@ def read_search_pre(reads, BF_pre, ext):
         if (sum(BF_pre.hits_per_filter) - hit_sum) > threshold_read:
             read_amount += 1
             for j in range(len(single_read) - BF_pre.k):
-                if "N" not in single_read[j: j + BF_pre.k]:
-                    read_kmers.append(single_read[j: j + BF_pre.k])
+                if "N" not in single_read[j : j + BF_pre.k]:
+                    read_kmers.append(single_read[j : j + BF_pre.k])
                     if ext == "fasta" or ext == "fna" or ext == "fa":
                         counter += 1
                         # extract up to 5000 kmeres per read/contig
@@ -371,13 +385,13 @@ def read_search_pre(reads, BF_pre, ext):
             reads_filtered.append(reads_new[i])
             reads_oxa_filtered.append(reads_oxa_prefilter[i])
             counter += len(reads_new[i])
-       # if ext == "fasta" or ext == "fna" or ext == "fa":
-         #   if counter >= 50000:
-           #     break
+    # if ext == "fasta" or ext == "fna" or ext == "fa":
+    #   if counter >= 50000:
+    #     break
     return reads_filtered, reads_oxa_filtered
 
 
-def read_search_spec(reads, quick, BF, ext, genus):    
+def read_search_spec(reads, quick, BF, ext, genus):
     "Searches sequence-data in Bloomfilter and gets kmer-hits"
     if quick < 4:
         BF.lookup_txt(reads, genus, ext, quick)
@@ -465,7 +479,6 @@ def single_oxa(reads, ext, pipe=None):
     for i in range(len(paths)):
         paths[i] = r"filter/OXAs/families/" + paths[i]
 
-
     # initialising filter with database parameters
     BF = BF_v2.AbaumanniiBloomfilter(80000)
     BF.set_arraysize(80000)
@@ -492,7 +505,7 @@ def single_oxa(reads, ext, pipe=None):
 
 
 def oxa_and_IC_multiprocessing(IC_lookup, reads, ext, quick):
-    """ Uses Multiprocessing to lookup OXA genes and Clonetypes at the same time """
+    """Uses Multiprocessing to lookup OXA genes and Clonetypes at the same time"""
     # Sources:
     # https://docs.python.org/3/library/multiprocessing.html#sharing-state-between-processes
     # https://stackoverflow.com/questions/7207309/python-how-can-i-run-python-functions-in-parallel
@@ -500,7 +513,7 @@ def oxa_and_IC_multiprocessing(IC_lookup, reads, ext, quick):
     parent_ic, child_ic = Pipe()
     parent_oxa, child_oxa = Pipe()
 
-    if ext == 'fq' or ext == 'fastq':
+    if ext == "fq" or ext == "fastq":
         reads_ct = reads[:2000]
     else:
         reads_ct = reads

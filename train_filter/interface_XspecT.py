@@ -22,7 +22,7 @@ def compute_array_size(n, p=0.01):
 
 
 def make_paths(dir_name, genus):
-    """ Create paths to the concatenated sequences and to where the new bloomfilters will be saved.
+    """Create paths to the concatenated sequences and to where the new bloomfilters will be saved.
 
     :param dir_name: Name of the parent directory.
     :type dir_name: str
@@ -31,10 +31,12 @@ def make_paths(dir_name, genus):
     :return: The path to the sequence files and the bloomfilter directory.
     """
     # Path to concatenated sequences
-    files_path = Path(__file__).parent.parent / 'genus_metadata' / dir_name / 'concatenate'
+    files_path = (
+        Path(__file__).parent.parent / "genus_metadata" / dir_name / "concatenate"
+    )
 
     # Path for results.
-    result_path = Path(__file__).parent.parent / 'filter' / genus
+    result_path = Path(__file__).parent.parent / "filter" / genus
     # Try to create the directory for the bloomfilters.
     try:
         os.mkdir(result_path)
@@ -82,7 +84,7 @@ def new_train_core(files_path, result_path, array_size, k=21):
     files = os.listdir(files_path)
     # Iterate the files backwards to delete all non fasta files from the list.
     for i in range(len(files) - 1, -1, -1):
-        if 'fna' in files[i] or 'fasta' in files[i]:
+        if "fna" in files[i] or "fasta" in files[i]:
             continue
         else:
             del files[i]
@@ -91,8 +93,8 @@ def new_train_core(files_path, result_path, array_size, k=21):
     for i in range(len(files)):
         BF = init_bf(array_size=array_size, clonetypes=1, hashes=7, k=k)
         path = Path(files_path) / files[i]
-        species_name = files[i].split('.')[0]
-        file_name = species_name + '.txt'
+        species_name = files[i].split(".")[0]
+        file_name = species_name + ".txt"
         logger.info("Training {name}", name=species_name)
         result = Path(result_path) / file_name
         BF.train_sequence(path, 0)
@@ -113,25 +115,25 @@ def new_write_file_dyn(bf_path, genus, meta_mode=False):
     files = os.listdir(bf_path)
     # If the Bloomfilter path leads to Bloomfilter for the metagenome mode.
     if meta_mode:
-        for i in range(len(files) -1, -1, -1):
+        for i in range(len(files) - 1, -1, -1):
             if genus not in files[i]:
                 del files[i]
             else:
                 files[i] = files[i][:-4]
-        file_name = 'Filter' + genus + 'Complete.txt'
+        file_name = "Filter" + genus + "Complete.txt"
 
     # If the path leads to bloomfilters for the species.
     else:
-        for i in range(len(files) -1, -1, -1):
-            if 'txt' not in files[i]:
+        for i in range(len(files) - 1, -1, -1):
+            if "txt" not in files[i]:
                 del files[i]
             else:
                 files[i] = files[i][:-4]
-        file_name = 'Filter' + genus + '.txt'
+        file_name = "Filter" + genus + ".txt"
 
     # Make path for the txt file.
-    file_path = Path(__file__).parent.parent / 'filter' / 'species_names' / file_name
-    with open(file_path, 'wb') as fp:
+    file_path = Path(__file__).parent.parent / "filter" / "species_names" / file_name
+    with open(file_path, "wb") as fp:
         pickle.dump(sorted(files), fp)
 
 
@@ -144,7 +146,7 @@ def save_array_sizes(genus, array_sizes):
     :type array_sizes: list[str]
     """
     file_name = genus + ".txt"
-    path = Path(__file__).parent.parent / 'filter' / 'array_sizes' / file_name
+    path = Path(__file__).parent.parent / "filter" / "array_sizes" / file_name
 
     # Save both array sizes as a string in the format: 'size1 size2' as a txt file.
     # The first size is of the species level filters and the second of the meta-mode filter.
@@ -162,7 +164,6 @@ def save_name_dict(genus, name_dict: dict):
     """
 
 
-
 def save_time_stats(time_stats, dir_name):
     """Saves the collected time measurements as a txt file.
 
@@ -171,7 +172,7 @@ def save_time_stats(time_stats, dir_name):
     :param dir_name: Name of the parent directory.
     :type dir_name: str
     """
-    time_file = Path(__file__).parent.parent / 'genus_metadata' / dir_name / "time.txt"
+    time_file = Path(__file__).parent.parent / "genus_metadata" / dir_name / "time.txt"
     with open(str(time_file), "w+", encoding="utf-8") as f:
         f.write(time_stats)
 
@@ -193,7 +194,7 @@ def load_translation_dict(genus: str) -> dict[str, str]:
 def main():
     a = 28858023
     b = compute_array_size(a)
-    print(int(round(b+1000000, -6)))
+    print(int(round(b + 1000000, -6)))
     # genera = get_genera_array_sizes()
     # print(f"Species: ")
     # print(pre_process_all(genera, meta_mode=False))

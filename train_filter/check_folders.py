@@ -32,7 +32,12 @@ def check_folder_structure():
     filter_path = path / "filter"
     meta_path = path / "genus_metadata"
     old_filter_path = path / "old_filter"
-    filter_folders = ["array_sizes", "Metagenomes", "species_names", "translation_dicts"]
+    filter_folders = [
+        "array_sizes",
+        "Metagenomes",
+        "species_names",
+        "translation_dicts",
+    ]
     folder_paths = [filter_path, meta_path, old_filter_path]
     for folder_name in filter_folders:
         filter_folder_path = filter_path / folder_name
