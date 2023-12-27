@@ -1527,9 +1527,6 @@ def resultsspecbaumannii():
     )
 
 
-webbrowser.open("http://127.0.0.1:8000/")
-
-
 def get_python_executable():
     try:
         # Versuche, "python3" zu verwenden
