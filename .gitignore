@@ -165,4 +165,5 @@ cython_debug/
 genus_metadata/
 output
 filter/
+files/
 Training_data/
