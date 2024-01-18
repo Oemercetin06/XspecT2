@@ -14,15 +14,13 @@ from loguru import logger
 
 
 class ExtractConcatenate:
-    _path = Path(__file__).parent.parent / "genus_metadata"
     _fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
-    _dir_name: str
-    _delete: bool
 
     def __init__(self, dir_name: str, delete: bool):
-        self._path = self._path / dir_name
+        self._path = Path(__file__).parent.parent / "genus_metadata" / dir_name
         self._dir_name = dir_name
         self._delete = delete
+        self._all_assemblies: list[str] = list()
 
     def bf(self):
         zip_path = self._path / "zip_files"
@@ -32,8 +30,11 @@ class ExtractConcatenate:
         self._extract_zip(zip_path, unzipped_path)
         logger.info("Concatenating assemblies")
         self._concatenate_bf(unzipped_path, concatenate_path)
+        self._save_all_assemblies()
         if self._delete:
             logger.info("Deleting copies")
+            self._delete_zip_files(zip_path)
+            self._delete_dir(zip_path)
             self._delete_dir(unzipped_path)
 
     def svm(self, species_accessions: dict):
@@ -118,6 +119,9 @@ class ExtractConcatenate:
                         file_ending = file.split(".")[-1]
                         if file_ending in self._fasta_endings:
                             species_files.append(Path(root) / file)
+                            self._all_assemblies.append(
+                                ".".join(str(file).split(".")[:-1])
+                            )
 
                 # Gather all sequences and headers.
                 sequences = list()
@@ -154,6 +158,12 @@ class ExtractConcatenate:
                 sequences.append(line)
         sequence = "".join(sequences)
         return header, sequence
+
+    def _save_all_assemblies(self):
+        path = self._path / "all_bf_assemblies.txt"
+        with open(path, "w") as file:
+            for assembly in self._all_assemblies:
+                file.write(f"{assembly}\n")
 
     @staticmethod
     def _delete_dir(dir_path):

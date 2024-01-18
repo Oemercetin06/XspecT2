@@ -26,7 +26,6 @@ from train_filter import (
     get_paths,
     interface_XspecT,
     k_mer_count,
-    backup_filter,
     check_folders,
 )
 
@@ -42,6 +41,8 @@ def check_user_input(user_input: str):
         sci_name = metadata["sci_name"]
         tax_id = metadata["tax_id"]
         rank = metadata["rank"]
+        lineage = metadata["lineage"]
+        bacteria_id = 2
         if not sci_name == user_input and not tax_id == user_input:
             print(
                 f"{get_current_time()}| The given genus: {user_input} was found as genus: {sci_name} "
@@ -49,7 +50,17 @@ def check_user_input(user_input: str):
             )
             print(f"{get_current_time()}| Using {sci_name} as genus name.")
         if rank == "GENUS":
-            return str(sci_name)
+            if bacteria_id not in lineage:
+                print(f"{get_current_time()}| The given genus is not a bacteria.")
+                print(f"{get_current_time()}| Do you want to continue: [y/n]")
+                choice = input("-> ").lower()
+                if choice == "y":
+                    return str(sci_name)
+                else:
+                    print(f"{get_current_time()}| Exiting...")
+                    exit()
+            else:
+                return str(sci_name)
         else:
             print(f"{get_current_time()}| {user_input} is rank {rank} and not genus.")
             exit()
@@ -324,6 +335,14 @@ def get_current_time():
     return asctime(localtime()).split()[3]
 
 
+def delete_dir(dir_path: Path):
+    """
+
+    :param dir_path:
+    """
+    shutil.rmtree(dir_path, ignore_errors=False, onerror=None)
+
+
 def main():
     # command line should look like this: python XspecT_trainer.py genus mode path_to_bf_files path_to_svm_files
     parser = init_argparse()
@@ -526,16 +545,9 @@ def main():
     start_count = perf_counter()
     logger.info("Counting all distinct k-meres")
     highest_counts = k_mer_count.get_highest_k_mer_count(dir_name)
+    output_file_path = Path(__file__).parent / "output"
+    os.remove(output_file_path)
     end_count = perf_counter()
-
-    # Backup of old bloomfilters if genus already has them.
-    old_dir_name = backup_filter.load_dir_name(genus)
-    # Only backup if old bloomfilters exist.
-    logger.info("Doing old filter backup")
-    if old_dir_name:
-        backup_filter.backup_old_bf(old_dir_name)
-    else:
-        logger.info("No backup was needed")
 
     # Train new Bloomfilters with concatenated files of each species.
     start_bf = perf_counter()
@@ -555,20 +567,28 @@ def main():
 
     # Train Bloomfilters of species.
     logger.info("Training bloomfilters")
-    files_path, result_path = interface_XspecT.make_paths(dir_name, genus)
-    interface_XspecT.new_train_core(files_path, result_path, array_size_species)
-    interface_XspecT.new_write_file_dyn(result_path, genus, meta_mode=False)
+    species_files_path, species_result_path = interface_XspecT.make_paths(
+        dir_name, genus
+    )
+    interface_XspecT.new_train_core(
+        species_files_path, species_result_path, array_size_species
+    )
+    interface_XspecT.new_write_file_dyn(species_result_path, genus, meta_mode=False)
 
     # Train Bloomfilter for complete genus.
     logger.info("Training metagenome bloomfilter")
-    files_path = get_paths.get_current_dir_file_path(dir_name)
-
-    result_path = get_paths.get_metagenome_filter_path()
-
+    mg_files_path = get_paths.get_current_dir_file_path(dir_name)
+    mg_result_path = get_paths.get_metagenome_filter_path()
     interface_XspecT.new_train_core(
-        str(files_path), str(result_path), array_size_complete
+        str(mg_files_path), str(mg_result_path), array_size_complete
     )
-    interface_XspecT.new_write_file_dyn(str(result_path), genus, meta_mode=True)
+    interface_XspecT.new_write_file_dyn(str(mg_result_path), genus, meta_mode=True)
+
+    # Delete concatenated assemblies.
+    # Delete species files.
+    delete_dir(species_files_path)
+    # Delete metagenome file.
+    os.remove(mg_files_path / f"{genus}.fasta")
 
     end_bf = perf_counter()
 
@@ -579,6 +599,11 @@ def main():
     create_svm.new_helper(
         spacing, genus=genus, dir_name=dir_name, array_size=array_size_species, k=21
     )
+
+    # Delete used assemblies.
+    assemblies_path = get_paths.get_current_dir_file_path(dir_name) / "training_data"
+    delete_dir(assemblies_path)
+
     end_svm = perf_counter()
     end_all = perf_counter()
 
@@ -607,9 +632,6 @@ def main():
 
     # Save translation dict
     save_translation_dict(dir_name, translation_dict)
-
-    # Save directory name for later filter backup.
-    backup_filter.save_dir_name(dir_name)
 
     logger.info("XspecT-trainer is finished.")
 

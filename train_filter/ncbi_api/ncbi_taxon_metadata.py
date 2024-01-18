@@ -31,9 +31,15 @@ class NCBITaxonMetadata:
             rank = taxonomy["rank"]
             name = taxonomy["organism_name"]
             tax_id = str(taxonomy["tax_id"])
+            lineage = taxonomy["lineage"]
             if "Candidatus" not in name:
                 if " sp. " not in name:
-                    metadata = {"sci_name": name, "tax_id": tax_id, "rank": rank}
+                    metadata = {
+                        "sci_name": name,
+                        "tax_id": tax_id,
+                        "rank": rank,
+                        "lineage": lineage,
+                    }
                     self._all_metadata[tax_id] = metadata
                 else:
                     logger.debug("{name} was not used for training", name=name)
