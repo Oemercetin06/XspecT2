@@ -167,3 +167,5 @@ output
 filter/
 files/
 Training_data/
+
+tests/test_assemblies/
