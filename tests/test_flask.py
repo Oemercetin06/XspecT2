@@ -1,7 +1,8 @@
-"""Test the WebApp."""
+"""Test Flask web app."""
 
 # pylint: disable=redefined-outer-name
 
+import time
 import pytest
 from flask import session
 import WebApp
@@ -17,6 +18,14 @@ def app():
 def client(app):
     """Create test client for the app."""
     return app.test_client()
+
+
+@pytest.fixture(scope="module")
+def genus_client(client, request):
+    """Create test client with genus-specific filters already set up."""
+    with client:
+        client.post("/change_genus", data={"genus": request.param})
+        return client
 
 
 def test_home(client):
@@ -72,70 +81,42 @@ def test_post_species(client):
                 False,  # OXA
             ],
         )
-        assert session["quick"] == True
-        assert session["metagenome"] == False
-        assert session["OXA"] == False
+        assert session["quick"]
+        assert not session["metagenome"]
+        assert not session["OXA"]
         assert "GCF_000240185.1_ASM24018v2_genomic.fna.txt" in session["filename"]
         assert "success" in response.text
 
 
-def test_post_ic(client):
-    """Test the clonetype assignment (ClassT) session config."""
-    with client:
-        response = client.post(
-            "/ic",
-            json=[
-                "TTGATCGGTGCGTTGGCAACAAAAAAAT",
-                "GCF_000240185.1_ASM24018v2_genomic.fna",
-                True,  # quick
-                True,  # IC 1
-                True,  # IC 2
-                True,  # IC 3
-                True,  # IC 4
-                True,  # IC 5
-                True,  # IC 6
-                True,  # IC 7
-                True,  # IC 8
-                False,  # Added
-                False,  # OXA
-            ],
-        )
-        assert session["quick"] == True
-        # this includes mystery "added" checkbox
-        assert session["IC_lookup"] == [True] * 8 + [False]
-        assert session["OXA"] == False
-        assert "GCF_000240185.1_ASM24018v2_genomic.fna.txt" in session["filename"]
-        assert "success" in response.text
-
-
-def test_species_results(client):
+@pytest.mark.parametrize(
+    ["genus_client", "assembly_file_path", "species", "oxa"],
+    [
+        (
+            "Acinetobacter",
+            "GCF_000069245.1_ASM6924v1_genomic.fna",
+            "A 470",
+            "[0.0, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]",
+        ),
+        (
+            "Acinetobacter",
+            "GCF_000018445.1_ASM1844v1_genomic.fna",
+            "A 470",
+            "[0.0, 0.0, 0.0, 0.03, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1, 0.0, 0.0, 0.0, 0.0]",
+        ),
+        ("Salmonella", "GCF_000006945.2_ASM694v2_genomic.fna", "S 28901", ""),
+    ],
+    indirect=["genus_client", "assembly_file_path"],
+)
+def test_results(genus_client, assembly_file_path, species, oxa):
     """Test the species (Xspect) assignment & result page."""
-    # get file
-    with client.session_transaction() as session:
-        session[
-            "filename"
-        ] = "files/f2f522083ec7c705GCF_000240185.1_ASM24018v2_genomic.fna.txt"
+    with genus_client.session_transaction() as session:
+        session["filename"] = assembly_file_path
         session["quick"] = True
         session["metagenome"] = False
-        session["OXA"] = False
-        session["genus"] = "Acinetobacter"
+        session["OXA"] = bool(oxa)
 
-    response = client.get("/assignspec", follow_redirects=True)
+    response = genus_client.get("/assignspec", follow_redirects=True)
     assert len(response.history) == 1
     assert response.request.path == "/resultsspec"
-
-
-def test_ic_results(client):
-    """Test the clonetype assignment (ClassT) result page."""
-    # get file
-    with client.session_transaction() as session:
-        session[
-            "filename"
-        ] = "files/f2f522083ec7c705GCF_000240185.1_ASM24018v2_genomic.fna.txt"
-        session["quick"] = True
-        session["IC_lookup"] = [True] * 8 + [False]
-        session["OXA"] = False
-
-    response = client.get("/assign", follow_redirects=True)
-    assert len(response.history) == 1
-    assert response.request.path == "/results"
+    assert species in response.text
+    assert oxa in response.text
