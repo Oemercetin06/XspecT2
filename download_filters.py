@@ -19,6 +19,14 @@ def download_test_filters(url):
     )
 
     shutil.copytree(
+        "filter/temp/test_filters/Training_data",
+        "Training_data",
+        dirs_exist_ok=True,
+    )
+
+    shutil.rmtree("filter/temp/test_filters/Training_data")
+
+    shutil.copytree(
         "filter/temp/test_filters",
         "filter",
         dirs_exist_ok=True,
