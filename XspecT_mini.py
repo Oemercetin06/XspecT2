@@ -1191,7 +1191,8 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
             # predictions.append(prediction_name)
             index_result = max(range(len(score)), key=score.__getitem__)
             prediction = names[index_result]
-        predictions.append(genus[0] + ". " + prediction)
+        translation_dict = load_translation_dict(genus)
+        predictions.append(translation_dict[prediction])
         scores.append(str(max(score)))
     print("Taxonomic assignment done...")
     return predictions, scores
