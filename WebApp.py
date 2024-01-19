@@ -39,6 +39,8 @@ import re
 import webbrowser
 import warnings
 import subprocess
+from train_filter.interface_XspecT import load_translation_dict
+
 
 warnings.filterwarnings("ignore")
 
@@ -532,7 +534,8 @@ def assignspec():
         if prediction == "sp.":
             prediction = "NONE of the known " + genus + " species"
         else:
-            prediction = genus[0] + " " + prediction
+            translation_dict = load_translation_dict(genus)
+            prediction = translation_dict[prediction]
     else:
         prediction_claast = None
         prediction = []
@@ -546,7 +549,7 @@ def assignspec():
     print("Runtime: ", needed)
     session["time"] = str(needed)
 
-    if prediction_claast == "baumannii":
+    if prediction_claast == "470":
         IC_lookup = [True, True, True, True, True, True, True, True, False]
         score_claast, names_claast, hits_claast = read_search(IC_lookup, reads, quick=1)
         # making prediction

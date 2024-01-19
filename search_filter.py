@@ -399,7 +399,6 @@ def read_search_spec(reads, quick, BF, ext, genus):
         hits = BF.get_hits_per_filter()
         names_id = BF.get_names()
         # convert ids to names
-        # TODO: Generate Acinetobacter translation dict, currently doestn work for Aci
         translation_dict = load_translation_dict(genus)
         names = [translation_dict[name] for name in names_id]
         return score, names, hits, None
