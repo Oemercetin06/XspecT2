@@ -23,7 +23,8 @@ def pytest_sessionstart():
             print("Downloading " + assembly)
 
             r = requests.get(url, allow_redirects=True, timeout=10)
-            open("tests/test_assemblies/" + assembly + ".zip", "wb").write(r.content)
+            with open("tests/test_assemblies/" + assembly + ".zip", "wb") as f:
+                f.write(r.content)
 
             # Unzip and move
             shutil.unpack_archive(
