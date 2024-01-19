@@ -89,30 +89,33 @@ def test_post_species(client):
 
 
 @pytest.mark.parametrize(
-    ["genus_client", "assembly_file_path", "species", "oxa"],
+    ["genus_client", "assembly_file_path", "species", "oxa", "ic"],
     [
         (
             "Acinetobacter",
             "GCF_000069245.1_ASM6924v1_genomic.fna",
             "Acinetobacter baumannii",
             "[0.0, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]",
+            "[0.96, 0.68, 0.81, 0.65, 0.67, 0.66, 0.7, 0.66]",
         ),
         (
             "Acinetobacter",
             "GCF_000018445.1_ASM1844v1_genomic.fna",
             "Acinetobacter baumannii",
             "[0.0, 0.0, 0.0, 0.03, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1, 0.0, 0.0, 0.0, 0.0]",
+            "[0.73, 0.96, 0.79, 0.68, 0.72, 0.68, 0.73, 0.69]",
         ),
         (
             "Salmonella",
             "GCF_000006945.2_ASM694v2_genomic.fna",
             "Salmonella enterica",
             "",
+            "",
         ),
     ],
     indirect=["genus_client", "assembly_file_path"],
 )
-def test_results(genus_client, assembly_file_path, species, oxa):
+def test_results(genus_client, assembly_file_path, species, oxa, ic):
     """Test the species (Xspect) assignment & result page."""
     with genus_client.session_transaction() as session:
         session["filename"] = assembly_file_path
@@ -125,3 +128,4 @@ def test_results(genus_client, assembly_file_path, species, oxa):
     assert response.request.path == "/resultsspec"
     assert species in response.text
     assert oxa in response.text
+    assert ic in response.text
