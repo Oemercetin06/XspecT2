@@ -94,16 +94,21 @@ def test_post_species(client):
         (
             "Acinetobacter",
             "GCF_000069245.1_ASM6924v1_genomic.fna",
-            "A 470",
+            "Acinetobacter baumannii",
             "[0.0, 0.0, 0.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]",
         ),
         (
             "Acinetobacter",
             "GCF_000018445.1_ASM1844v1_genomic.fna",
-            "A 470",
+            "Acinetobacter baumannii",
             "[0.0, 0.0, 0.0, 0.03, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1, 0.0, 0.0, 0.0, 0.0]",
         ),
-        ("Salmonella", "GCF_000006945.2_ASM694v2_genomic.fna", "S 28901", ""),
+        (
+            "Salmonella",
+            "GCF_000006945.2_ASM694v2_genomic.fna",
+            "Salmonella enterica",
+            "",
+        ),
     ],
     indirect=["genus_client", "assembly_file_path"],
 )

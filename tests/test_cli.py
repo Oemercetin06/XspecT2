@@ -6,18 +6,29 @@ import pytest
 
 
 @pytest.mark.parametrize(
-    ["assembly_dir_path", "species"],
+    ["assembly_dir_path", "genus", "species"],
     [
-        ("GCF_000069245.1_ASM6924v1_genomic.fna", "470"),
-        ("GCF_000018445.1_ASM1844v1_genomic.fna", "470"),
+        (
+            "GCF_000069245.1_ASM6924v1_genomic.fna",
+            "Acinetobacter",
+            "Acinetobacter baumannii",
+        ),
+        (
+            "GCF_000018445.1_ASM1844v1_genomic.fna",
+            "Acinetobacter",
+            "Acinetobacter baumannii",
+        ),
+        ("GCF_000006945.2_ASM694v2_genomic.fna", "Salmonella", "Salmonella enterica"),
     ],
     indirect=["assembly_dir_path"],
 )
-def test_species_assignment(assembly_dir_path, species):
+def test_species_assignment(assembly_dir_path, genus, species):
     """Test the species assignment"""
     result = subprocess.run(
         sys.executable
-        + " XspecT_mini.py Acinetobacter xspect fna "
+        + " XspecT_mini.py "
+        + genus
+        + " xspect fna "
         + assembly_dir_path,
         shell=True,
         capture_output=True,
