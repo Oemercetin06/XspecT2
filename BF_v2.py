@@ -1,24 +1,26 @@
+"""Bloomfilter implementation"""
+
+import os
+import csv
+from copy import deepcopy
+import pickle
+import statistics
+from pathlib import Path
+
+
 try:
     # try with a fast c-implementation ...
     import mmh3 as mmh3
 except ImportError:
     # ... otherwise fallback to this module!
     import pymmh3 as mmh3
+
 from bitarray import bitarray
 from Bio import SeqIO
-from copy import deepcopy
-from OXA_Table import OXATable
 from Bio.Seq import Seq
-import os
-import csv
-import time
 import h5py
-import pickle
 import Bootstrap as bs
-import statistics
-import psutil
-from pympler.tracker import SummaryTracker
-from pathlib import Path
+from OXA_Table import OXATable
 
 
 class AbaumanniiBloomfilter:
@@ -49,7 +51,6 @@ class AbaumanniiBloomfilter:
 
     def __init__(self, arraysize):
         """creates empty matrix"""
-        pass
         self.matrix = bitarray(arraysize)
         self.matrix.setall(False)
         self.array_size = arraysize

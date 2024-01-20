@@ -1,25 +1,20 @@
-import search_filter
 import os
-from Bio import SeqIO, SeqRecord, Seq
-from Bio.Seq import Seq
-import Classifier
-from OXA_Table import OXATable
 import warnings
-from copy import deepcopy
 import time
 import csv
 import pickle
-import matplotlib.pyplot as plt
 import statistics
-import random
-from numpy import array
-from numpy import sum
-from collections import Counter
-import psutil
-import Bootstrap as bs
 import sys
 from pathlib import Path
-import map_kmers as map
+from Bio import SeqIO, Seq
+from Bio.Seq import Seq
+from numpy import sum
+import psutil
+import Classifier
+import search_filter
+from OXA_Table import OXATable
+import Bootstrap as bs
+import map_kmers as map_k
 from train_filter.interface_XspecT import load_translation_dict
 
 
@@ -196,35 +191,6 @@ def xspecT_mini(
     start = time.time()
     for i in range(len(files)):
         paths[i] = file_path2 + "/" + paths[i]
-    # Testing purpose delete later
-    # extracts the GCF-Number
-    # files_split = []
-    # for i in range(len(files)):
-    #    files_split.append(files[i].split("_"))
-    # try:
-    #        files_split[i] = files_split[i][0] + "_" + files_split[i][1]
-    #    except:
-    #        files_split[i] = files[i].split('.')[-2]
-    # GCF_taxon = []
-    #    for i in range(len(files)):
-    #        with open(paths[i]) as file:
-    #        head = file.readline()
-    #        head = head.split()
-    #        if head[2] == "sp.":
-    #            GCF_taxon.append("none")
-    #        else:
-    #        GCF_taxon.append(head[2])
-    # if head[2] != "baumannii":
-    # del files[i]
-    # del paths[i]
-    #    excelv3 = []
-    #    for i in range(len(files)):
-    #    excelv3.append(files_split[i] + "," + GCF_taxon[i])
-    # for i in range(0, len(excelv3)):
-    #    excelv3[i] = [excelv3[i]]
-    #    with open(r'Results/XspecT_mini_csv/Test.csv', 'w', newline='') as file:
-    #    writer = csv.writer(file)
-    #    writer.writerows(excelv3)
     if XspecT:
         predictions, scores = xspecT(
             BF[genus],
@@ -245,9 +211,6 @@ def xspecT_mini(
         scores_oxa, scores_oxa_ind = blaOXA(
             BF_3, files, paths, file_format, read_amount
         )
-    # if BioMonitoring:
-    # predictions, scores = xspecT(
-    # BF, BF_1_1, files, paths, file_format, read_amount, metagenome, BioMonitoring)
     print("Preparing results...")
     print("")
     end = time.time()
@@ -605,7 +568,6 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
     print("Starting taxonomic assignment on species-level...")
     predictions = []
     scores = []
-    counterx = 0
     contig_header = []
     contig_seq = []
     # Phillip
@@ -802,56 +764,8 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
             # print("Scores: ", score)
             if metagenome:
                 # map kmers to genome for HGT detection
-                # change later to new functions this is OLD
-                if False:
-                    for prediction in contigs_classified:
-                        kmers = contigs_classified[prediction][5]
-                        # Strip "A."
-                        prediction = prediction[2:]
-                        # kmer mapping to genome, start by loading the kmer_dict in
-                        path_pos = (
-                            "filter\kmer_positions\Acinetobacter\\"
-                            + prediction
-                            + "_positions.txt"
-                        )
-                        # delete later
-                        path_posv2 = (
-                            "filter\kmer_positions\Acinetobacter\\"
-                            + prediction
-                            + "_complete_positions.txt"
-                        )
-                        # cluster kmers to contigs
-                        # delete try later
-                        try:
-                            with open(path_pos, "rb") as fp:
-                                kmer_dict = pickle.load(fp)
-                        except:
-                            with open(path_posv2, "rb") as fp:
-                                kmer_dict = pickle.load(fp)
-                        contig_amounts_distances = bs.cluster_kmers(kmers, kmer_dict)
-                        contigs_classified[genus[0] + ". " + prediction][
-                            6
-                        ] = contig_amounts_distances
-                        # del kmer_dict
                 for key, value in contigs_classified.items():
                     number_of_contigs = value[1]
-                    # save results
-                    results_clustering = [
-                        [
-                            key
-                            + ","
-                            + str(statistics.median(value[0]))
-                            + ","
-                            + str(number_of_contigs),
-                            str(statistics.median(value[2]))
-                            + ","
-                            + str(round(value[3] / number_of_contigs, 2))
-                            + ","
-                            + str(statistics.median(value[4]))
-                            + ","
-                            + str(value[6]),
-                        ]
-                    ]
                     # with open(r'Results/XspecT_mini_csv/Results_Clustering.csv', 'a', newline='') as file:
                     # writer = csv.writer(file)
                     # writer.writerows(results_clustering)
@@ -892,7 +806,6 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                 counter = 0
                 reads = []
                 reads_classified = {}
-                reads_passed = 0
                 ambiguous_reads = 0
 
                 # ---------------------------------------------------------------------------------------------
@@ -1031,7 +944,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     # skip species clear reads
                     if max(score) <= 0.9:
                         # identify split reads from HGT
-                        split_regions = map.identify_split_reads(
+                        split_regions = map_k.identify_split_reads(
                             score, BF.kmer_hits_single
                         )
 
@@ -1108,47 +1021,6 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
             if metagenome:
                 # ---------------------------------------------------------------------------------------------
                 # map kmers to genome for HGT detection
-                if False:
-                    # map and cluster single reads to genome
-                    read_clusters = []
-                    for prediction in reads_classified:
-                        # load list of kmers from read
-                        kmers = reads_classified[prediction][5]
-                        # Strip genus name
-                        prediction = prediction[2:]
-
-                        # kmer mapping to genome, start by loading the kmer_dict in
-                        path_pos = (
-                            "filter\kmer_positions\Acinetobacter\\"
-                            + prediction
-                            + "_positions.txt"
-                        )
-                        # delete later
-                        path_posv2 = (
-                            "filter\kmer_positions\Acinetobacter\\"
-                            + prediction
-                            + "_complete_positions.txt"
-                        )
-                        # cluster kmers to reads
-                        # delete try later
-                        try:
-                            with open(path_pos, "rb") as fp:
-                                kmer_dict = pickle.load(fp)
-                        except:
-                            with open(path_posv2, "rb") as fp:
-                                kmer_dict = pickle.load(fp)
-                        test = map.map_kmers(kmers, kmer_dict, genus)
-                        clusters = map.cluster_kmers(kmers, kmer_dict)
-                        read_clusters.append(clusters)
-                        reads_classified[genus[0] + ". " + prediction][
-                            6
-                        ] = reads_amounts_distances
-                        # del kmer_dict
-
-                    # now cluster mappings of multiple reads to genome
-                    for cluster in read_clusters:
-                        # TODO
-                        continue
 
                 # ---------------------------------------------------------------------------------------------
                 # Collect results from classification
@@ -1345,8 +1217,8 @@ def blaOXA(BF_3, files, paths, file_format, read_amount):
     return scores_oxa, scores_oxa_ind
 
 
-# Funktion zur Bestimmung der DNA-Zusammensetzung
 def calculate_dna_composition(sequence):
+    """calculates the DNA composition of a sequence"""
     composition = {"A": 0, "C": 0, "G": 0, "T": 0}
 
     total = 0
@@ -1361,48 +1233,26 @@ def calculate_dna_composition(sequence):
 
 
 def main():
+    """Parse CLI arguments and call respective functions"""
     arg_list = sys.argv
     # Phillip
     genus = arg_list[1]
     genera = search_filter.get_genera_array_sizes()
     genera = list(genera.keys())
 
-    # check for args that the tool doesnt know
-    # list of all known args
-    known_args = [
-        "XspecT",
-        "xspect",
-        "ClAssT",
-        "classt",
-        "Oxa",
-        "oxa",
-        "Metagenome",
-        "metagenome",
-        "fasta",
-        "fna",
-        "fa",
-        "fastq",
-        "fq",
-        "save",
-        "Save",
-        "complete",
-        "Complete",
-    ]
-    # TODO
-
     if genus not in genera:
         print(f"{genus} is unknown.")
         quit()
     if "XspecT" in arg_list or "xspect" in arg_list:
-        XspecT = True
+        xspect = True
     else:
-        XspecT = False
+        xspect = False
     if "ClAssT" in arg_list or "classt" in arg_list and genus == "Acinetobacter":
-        ClAssT = True
+        classt = True
     elif "ClAssT" in arg_list or "classt" in arg_list and genus != "Acinetobacter":
         print(f"ClAssT unavailable for {genus}")
     else:
-        ClAssT = False
+        classt = False
     if "Oxa" in arg_list or "oxa" in arg_list and genus == "Acinetobacter":
         oxa = True
     elif "Oxa" in arg_list or "oxa" in arg_list and genus != "Acinetobacter":
@@ -1440,8 +1290,8 @@ def main():
 
     xspecT_mini(
         file_path,
-        XspecT,
-        ClAssT,
+        xspect,
+        classt,
         oxa,
         file_format,
         read_amount,

@@ -5,9 +5,9 @@ from numpy import sum
 
 def bootstrap(data, sample_amount, size):
     samples = []
-    for iteration in range(size):
+    for i in range(size):
         sample = []
-        for i in range(sample_amount):
+        for j in range(sample_amount):
             sample.append(random.choice(data))
         sample = array(sample)
         temp = sum(sample, 0)

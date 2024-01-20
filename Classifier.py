@@ -1,7 +1,6 @@
 from sklearn.svm import SVC
 import csv
 from copy import deepcopy
-import pickle
 
 
 def cut_csv(csv_file, lst, table=False):
