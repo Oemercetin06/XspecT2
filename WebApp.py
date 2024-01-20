@@ -1,44 +1,38 @@
+"""XspecT Flask web app"""
+
+import re
+import sys
+import warnings
+import subprocess
+import os
+import csv
+import json
+import time
+import logging
+import pickle
+import secrets
+import pandas as pd
+from Bio import Entrez, Medline
 from flask import (
     Flask,
     render_template,
     session,
     request,
     redirect,
-    url_for,
     abort,
     make_response,
     jsonify,
 )
-from Option_field_WebApp import Login
-import os
-import csv
-import json
+from Classifier import classify
 from search_filter import (
     single_oxa,
     get_added_genomes,
-    oxa_and_IC_multiprocessing,
     read_search,
     read_search_spec,
     pre_processing,
     pre_processing_prefilter2,
     read_search_pre,
 )
-from flask_bcrypt import Bcrypt
-from flask_login import login_user, login_required, LoginManager
-from flask_login import UserMixin
-import secrets
-import pandas as pd
-from Classifier import classify, cut_csv, IC3_classify
-import time
-from Filter_Editor import add_filter, remove_filter, edit_svm, remove_oxa, add_oxa
-import logging
-import pickle
-import Add_Species
-from Bio import Entrez, Medline
-import re
-import webbrowser
-import warnings
-import subprocess
 from train_filter.interface_XspecT import load_translation_dict
 
 
@@ -55,8 +49,6 @@ app = Flask(__name__)
 
 # reading config file settings
 app.config.from_pyfile(r"config/settings.cfg")
-bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
 
 
 # Initialisiere eine leere Liste für die Optionen
@@ -71,11 +63,6 @@ def load_saved_options():
 
 saved_options = load_saved_options()
 
-
-# Login System is needed, otherwise the login can be skipped and
-# the add/remove filter function is for everyone
-with open(r"config/login.txt", "rb") as fp:
-    allowed_user = pickle.load(fp)
 
 # Error Handling:
 # https://pythonise.com/series/learning-flask/flask-error-handling
@@ -119,49 +106,6 @@ def not_found(e):
     return render_template("401.html")
 
 
-@login_manager.user_loader
-def load_user(userid):
-    """validates User"""
-    # Source: https://gist.github.com/danielfennelly/9a7e9b71c0c38cd124d0862fd93ce217
-
-    if bcrypt.check_password_hash(allowed_user[0], userid):
-        user = User()
-        user.is_authenticated = True
-        user.id = "User"
-        return user
-    else:
-        return None
-
-
-class User(UserMixin):
-    # Flask-login user class
-    # Sources:
-    # https://stackoverflow.com/questions/10695093/how-to-implement-user-loader-callback-in-flask-login
-    # http://gouthamanbalaraman.com/blog/minimal-flask-login-example.html
-
-    def __init__(self):
-        self.id = None
-        self._is_authenticated = False
-
-    @property
-    def is_authenticated(self):
-        return self._is_authenticated
-
-    @is_authenticated.setter
-    def is_authenticated(self, val):
-        self._is_authenticated = val
-
-    def check_pwd(self, pwd):
-        """
-        Check user request pwd and update authenticate status.
-        """
-
-        if bcrypt.check_password_hash(allowed_user[1], pwd):
-            self.is_authenticated = True
-        else:
-            self.is_authenticated = False
-
-
 # redirects to the homepage
 @app.route("/", methods=["GET", "POST"])
 def redirect_home():
@@ -173,27 +117,6 @@ def redirect_home():
 def home():
     """returns home page"""
     return render_template("home.html")
-
-    return render_template(
-        "ic.html",
-        added=added,
-        results_ct=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        hits_ct=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        clonetypes=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        results_oxa=[0, 0, 0, 0],
-        oxas="None",
-        maxi_oxa=0,
-        filename="filename",
-        maxi=1,
-        time=0,
-        prediction="n/a",
-        literature="",
-        literature_content="",
-        literature_abstract="",
-        literature_authors=[[""], [""], [""], [""], [""], [""], [""], [""], [""], [""]],
-        literature_journal="",
-        literature_all="",
-    )
 
 
 # Starts Assignment-Process for AspecT and leads to result-page
@@ -208,7 +131,6 @@ def assignspec():
     metagenome = session.get("metagenome")
     added = session.get("added", None)
     oxa = session.get("OXA", None)
-    amplicon = session.get("Amplicon")
     genus = session.get("genus")
     start = time.time()
 
@@ -417,7 +339,7 @@ def about():
     r = csv.reader(open(r"Training_data/Training_data_IC.csv"))
     df = pd.DataFrame(data=list(r))
     svm_table = df.to_html(index=False, header=False)
-    return render_template("About.html", svm_table=svm_table, oxa_ids=ids)
+    return render_template("about.html", svm_table=svm_table, oxa_ids=ids)
 
 
 # load new BF
@@ -444,14 +366,11 @@ def train_new_genus():
         # extract genus name from request
         genus_name = list(request.json.values())[0]
 
-        # Get python executable of the current environment
-        python_executable = get_python_executable()
-
         # Sys arguments for the Python program
         system_arguments = [genus_name, "1"]
 
         # Run XspecT_Trainer
-        subprocess.run([python_executable, "XspecT_trainer.py"] + system_arguments)
+        subprocess.run([sys.executable, "XspecT_trainer.py"] + system_arguments)
         print("")
         print("Training done!")
 
@@ -531,146 +450,6 @@ def species():
         oxa_labels="",
         oxa_data="",
     )
-
-
-# add and remove page page
-@app.route("/add_and_remove", methods=["GET", "POST"])
-@login_required
-def add_and_remove():
-    """returns about page"""
-    # Pre-OXA-data
-    counter = json.load(open(r"filter/OXAs_dict/counter.txt"))
-    ids = [*counter]
-    if len(ids) > 1:
-        allw_oxa_rmv = True
-    else:
-        allw_oxa_rmv = False
-
-    # SVM Pre-data
-    r = csv.reader(open(r"Training_data/Training_data_IC.csv", "r"))
-    svm = list(r)
-    header = svm[0]
-    svm = svm[1:]
-    row_min = len(header[1:-1])
-    svm_row = len(svm)
-    svm_col = len(svm[0])
-    for i in range(len(svm)):
-        svm[i] = ",".join(svm[i])
-    svm = "\n".join(svm)
-
-    # Remove filter data
-    added = get_added_genomes()
-
-    if added == [None]:
-        allow_remove = False
-        added = []
-    else:
-        allow_remove = True
-
-    # Adding lines and Cols for Textarea in 'Add Filter'
-    r = csv.reader(open(r"Training_data/Training_data_IC.csv", "r"))
-    svm_add = list(r)
-    svm_add = svm_add[1:]
-
-    for i in range(len(svm_add)):
-        svm_add[i].insert(-1, "Score_new")
-    names = ["IC1", "IC2", "IC3", "IC4", "IC5", "IC6", "IC7", "IC8"] + added + ["new"]
-
-    for i in range(len(names)):
-        names[i] = "Score_" + names[i]
-    new_line = ["Filename"] + names + ["Filtername"]
-
-    svm_add.append(new_line)
-    svm_add.append(new_line)
-
-    for i in range(len(svm_add)):
-        svm_add[i] = ",".join(svm_add[i])
-    svm_add = "\n".join(svm_add)
-
-    # Getting data and executing commands
-    if request.method == "POST":
-        data = request.json
-
-        if data[0] == "SVM":
-            # Changing existing filters
-            data[1].insert(0, header)
-            edit_svm(data[1])
-            app.logger.info("SVM data has been edited")
-
-        if data[0] == "REMOVE":
-            # Removing Filter
-            remove_filter(data[1])
-            app.logger.info("Removed Filter " + str(data[1]))
-
-        if data[0] == "ADD":
-            # Adding Filter
-            header.insert(-1, data[1])
-            data[2].insert(0, header)
-            add_filter(data[1], data[2], data[3])
-            app.logger.info("Added Filter " + str(data[1]))
-
-        if data[0] == "REMOVE_OXA":
-            # Adding Filter
-            app.logger.info("Removing OXA-gene: " + data[1])
-            remove_oxa(data[1])
-
-        if data[0] == "ADD_OXA":
-            app.logger.info("Adding OXA-gene: " + data[1])
-            add_oxa(data[1], data[2])
-
-        # Return JSON Signal to return back to homepage
-        return json.dumps({"success": True})
-
-    return render_template(
-        "add_and_remove.html",
-        added=added,
-        svm_old=svm,
-        svm_add=svm_add,
-        svm_col=svm_col,
-        svm_row=svm_row,
-        allow_remove=allow_remove,
-        header=header,
-        row_min=row_min,
-        oxa_ids=ids,
-        allow_oxa=allw_oxa_rmv,
-    )
-
-
-# login for add/remove filter
-@app.route("/expert_options", methods=["GET", "POST"])
-def expert_options():
-    """returns expert options page"""
-
-    error = None
-    login_form = Login()
-    if login_form.validate_on_submit():
-        # Login
-        # Source:
-        # https://stackoverflow.com/questions/10695093/how-to-implement-user-loader-callback-in-flask-login
-        user = User()
-        user.id = login_form.name.data
-        user.check_pwd(login_form.password.data)
-
-        if user.is_authenticated:
-            # Only if Valid Username and pw
-            login_user(user)
-            app.logger.info("logged in successfully")
-            return redirect(url_for("add_and_remove"))
-
-        # error message for invalid Login
-        error = (
-            "Invalid Login. This Login is only for a member of the Department for Applied "
-            "Bioinformatics in Frankfurt"
-        )
-        app.logger.info(
-            "invalid login: User: "
-            + str(login_form.name.data)
-            + ", PWD: "
-            + str(login_form.password.data)
-        )
-        abort(401)
-
-    return render_template("expert_login.html", login_form=login_form, error=error)
 
 
 @app.route("/resultsspec", methods=["GET", "POST"])
@@ -955,17 +734,3 @@ def resultsspec():
         oxa_labels=oxa_labels,
         oxa_data=oxa_data,
     )
-
-
-def get_python_executable():
-    try:
-        # Versuche, "python3" zu verwenden
-        subprocess.run(["python3", "--version"], check=True)
-        return "python3"
-    except FileNotFoundError:
-        pass
-    except subprocess.CalledProcessError:
-        pass
-
-    # Wenn weder "python3" noch "python" gefunden wurde, gehe davon aus, dass "python" funktioniert
-    return "python"

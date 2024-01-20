@@ -1,10 +1,7 @@
 Flask
-Flask-Bcrypt
-Flask-Login
 Flask-WTF
 WTForms
 Werkzeug
-bcrypt
 biopython
 bitarray
 mmh3
