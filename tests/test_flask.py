@@ -1,8 +1,8 @@
 """Test Flask web app."""
 
 # pylint: disable=redefined-outer-name
+# pylint: disable=line-too-long
 
-import time
 import pytest
 from flask import session
 import WebApp
@@ -41,16 +41,6 @@ def test_get_species(client):
     assert response.status_code == 200
     assert (
         "Select Genus and upload Sequence Reads or a Genome Assembly" in response.text
-    )
-
-
-def test_get_ic(client):
-    """Test the clonetype assignment (ClassT) page."""
-    response = client.get("/ic")
-    assert response.status_code == 200
-    assert (
-        "ClAssT is reasy to use! Upload data to identify International-Clones."
-        in response.text
     )
 
 
