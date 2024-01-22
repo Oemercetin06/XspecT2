@@ -513,7 +513,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                 for key, value in contigs_classified.items():
                     number_of_contigs = value[1]
                      # save results
-                    results_clustering = [[key + "," + str(statistics.median(value[0])) + "," + str(number_of_contigs), str(statistics.median(value[2])) + "," + str(round(value[3]/number_of_contigs, 2)) + "," + str(statistics.median(value[4])) + "," + str(value[6])]]
+                    results_clustering = [[key + "," + str(statistics.median(value[0])) + "," + str(number_of_contigs), str(statistics.median(value[2])) + "," + str(round(value[3]/number_of_contigs, 2)) + "," + str(statistics.median(value[4])))]]
                     #with open(r'Results/XspecT_mini_csv/Results_Clustering.csv', 'a', newline='') as file:
                         #writer = csv.writer(file)
                         #writer.writerows(results_clustering)
@@ -668,26 +668,26 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     # HGT identification pipeline start
 
                     # skip species clear reads
-                    if max(score) <= 0.9:
+                    #if max(score) <= 0.9:
                         # identify split reads from HGT
-                        split_regions = map.identify_split_reads(score, BF.kmer_hits_single)
+                    #    split_regions = map.identify_split_reads(score, BF.kmer_hits_single)
 
                         # split_read contains touples --> ([first part of list, second part of list], index of species)
                         
                         # check if it is in fact a split read , 0.6 is arbitrary value, it is the threshold for the difference between the two regions
-                        if abs(sum(split_regions[0][0]) - sum(split_regions[0][1])) > 0.6:
+                     #   if abs(sum(split_regions[0][0]) - sum(split_regions[0][1])) > 0.6:
                             # get the species names
-                            acceptor_species = names[split_regions[0][1]]
-                            donor_species = names[split_regions[1][1]]
-                            donor_acceptor = [donor_species, acceptor_species]
-                    else:
-                        donor_acceptor = [None]
+                      #      acceptor_species = names[split_regions[0][1]]
+                      #      donor_species = names[split_regions[1][1]]
+                      #      donor_acceptor = [donor_species, acceptor_species]
+                    #else:
+                    #    donor_acceptor = [None]
 
 
                     # ---------------------------------------------------------------------------------------------
                     # Collect results from classification
                     if (genus[0] + ". " + prediction) not in reads_classified:
-                        reads_classified[genus[0] + ". " + prediction] = [max(score), 1, sorted(score)[-2]/max(score),  BF.number_of_kmeres, [bootstrap_score], reads_filtered, None, [dna_composition], [donor_acceptor]]
+                        reads_classified[genus[0] + ". " + prediction] = [max(score), 1, sorted(score)[-2]/max(score),  BF.number_of_kmeres, [bootstrap_score], reads_filtered, None]
                     else:
                         reads_classified[genus[0] + ". " + prediction][1] += 1
                         reads_classified[genus[0] + ". " + prediction][0] += max(score)
@@ -695,8 +695,8 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                         reads_classified[genus[0] + ". " + prediction][3] += BF.number_of_kmeres
                         reads_classified[genus[0] + ". " + prediction][4] += [bootstrap_score]
                         reads_classified[genus[0] + ". " + prediction][5] += reads_filtered
-                        reads_classified[genus[0] + ". " + prediction][7] += [dna_composition]
-                        reads_classified[genus[0] + ". " + prediction][8] += [donor_acceptor]
+                        #reads_classified[genus[0] + ". " + prediction][7] += [dna_composition]
+                       # reads_classified[genus[0] + ". " + prediction][8] += [donor_acceptor]
 
             else:
                 # classification for sequence pure reads, check every 10th kmer (or everyone for "complete" mode)
@@ -762,7 +762,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     value.insert(2, value[0]/value[1])
                     value.pop(0)
                     reads_classified[key] = value
-                    print(key, value[0], round(value[1], 2), round(value[2]/value[0], 2), round(value[3]/value[0], 2), statistics.median(value[4]), value[6], value[7])
+                    print(key, value[0], round(value[1], 2), round(value[2]/value[0], 2), round(value[3]/value[0], 2), statistics.median(value[4]))
             score_edit = [str(x) for x in score]
             score_edit = ",".join(score_edit)
         # making prediction
