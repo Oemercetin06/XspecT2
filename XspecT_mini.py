@@ -513,7 +513,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                 for key, value in contigs_classified.items():
                     number_of_contigs = value[1]
                      # save results
-                    results_clustering = [[key + "," + str(statistics.median(value[0])) + "," + str(number_of_contigs), str(statistics.median(value[2])) + "," + str(round(value[3]/number_of_contigs, 2)) + "," + str(statistics.median(value[4])))]]
+                    results_clustering = [[key + "," + str(statistics.median(value[0])) + "," + str(number_of_contigs), str(statistics.median(value[2])) + "," + str(round(value[3]/number_of_contigs, 2)) + "," + str(statistics.median(value[4]))]]
                     #with open(r'Results/XspecT_mini_csv/Results_Clustering.csv', 'a', newline='') as file:
                         #writer = csv.writer(file)
                         #writer.writerows(results_clustering)
