@@ -25,11 +25,7 @@ import pytest
 def test_species_assignment(assembly_dir_path, genus, species):
     """Test the species assignment"""
     result = subprocess.run(
-        sys.executable
-        + " XspecT_mini.py "
-        + genus
-        + " xspect fna "
-        + assembly_dir_path,
+        f"{sys.executable} main.py classify {genus} {assembly_dir_path}",
         shell=True,
         capture_output=True,
         check=False,
@@ -47,11 +43,8 @@ def test_species_assignment(assembly_dir_path, genus, species):
 )
 def test_ic_assignment(assembly_dir_path, ic):
     """Test the international clonal (IC) type assignment"""
-    path = "tests/test_assemblies"
     result = subprocess.run(
-        sys.executable
-        + " XspecT_mini.py Acinetobacter classt fna "
-        + assembly_dir_path,
+        f"{sys.executable} main.py classify -i Acinetobacter {assembly_dir_path}",
         shell=True,
         capture_output=True,
         check=False,
@@ -74,7 +67,7 @@ def test_oxa_assignment(assembly_dir_path, oxa):
     """Test the OXA type assignment"""
     path = "tests/test_assemblies"
     result = subprocess.run(
-        sys.executable + " XspecT_mini.py Acinetobacter oxa fna " + assembly_dir_path,
+        f"{sys.executable} main.py classify -o Acinetobacter {assembly_dir_path}",
         shell=True,
         capture_output=True,
         check=False,

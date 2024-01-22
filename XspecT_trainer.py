@@ -350,6 +350,13 @@ def main():
     genus = args.genus
     mode = args.mode
     complete = args.complete
+    bf_path = args.bf_path
+    svm_path = args.svm_path
+    dir_name = args.dir_name
+    train(genus, mode, complete, bf_path, svm_path, dir_name)
+
+
+def train(genus, mode, complete, bf_path, svm_path, dir_name):
     if complete:
         spacing = 1
     else:
@@ -469,10 +476,6 @@ def main():
         # The second folder should have assembly fasta files for every species. These should have a code in the file
         # name to understand where the data came from. Its header should have > at the start and after the species
         # ID. E.g. >28901\n
-        # Path to concatenated fasta files for bloomfilter training.
-        bf_path = args.bf_path
-        # Path to fasta files for svm training.
-        svm_path = args.svm_path
 
         # Check if paths were given.
         if bf_path:
@@ -510,7 +513,7 @@ def main():
 
     elif mode == "3":
         logger.info("Checking metagenome file")
-        mg_check_dir_name = args.dir_name
+        mg_check_dir_name = dir_name
         if not mg_check_dir_name:
             logger.error("There was no directory name given")
             logger.error("Aborting")
