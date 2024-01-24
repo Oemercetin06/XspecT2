@@ -3,9 +3,10 @@
 # pylint: disable=redefined-outer-name
 # pylint: disable=line-too-long
 
+
 import pytest
 from flask import session
-import WebApp
+import src.xspect.WebApp as WebApp
 
 
 @pytest.fixture()

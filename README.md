@@ -14,15 +14,15 @@ The tool is available as a web-based application and a smaller command line inte
 
 
 ## Installation
-To install Xspect, please download the lastest 64 bit Python version and install all requirements:
+To install Xspect, please download the lastest 64 bit Python version install the package:
 ```
-pip install -r requirements.txt
+pip install .
 ```
 If you would like to train filters yourself, you need to install Jellyfish, which is used to count distinct k-meres in the assemblies. It can be installed using bioconda:
 ```
 conda install -c bioconda jellyfish
 ```
-If you're using Apple Silicon, it might be possible that this command install an incorrect Jellyfish package. Please refer to the official [Jellyfish project](https://github.com/gmarcais/Jellyfish) for installation guidance.
+If you're using Apple Silicon, it is possible that this command installs an incorrect Jellyfish package. Please refer to the official [Jellyfish project](https://github.com/gmarcais/Jellyfish) for installation guidance.
 
 ## Usage
 ### Get the Bloomfilters
@@ -47,7 +47,7 @@ python main.py web
 Open the file main.py with the configuration you want to run it with as arguments.
 
 ```
-python main.py classify -s -i -o path/to/your/input-set
+python main.py classify -s -i -o your-genus path/to/your/input-set
 ```
 
 For further instructions on how to use the command line interface, execute

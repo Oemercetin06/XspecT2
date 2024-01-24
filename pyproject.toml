@@ -1,0 +1,50 @@
+[project]
+name = "xspect"
+version = "0.1.0"
+description = "Tool to monitor and characterize pathogens using Bloom filters."
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+dependencies = [
+    "Flask",
+        "Flask-WTF",
+        "WTForms",
+        "Werkzeug",
+        "biopython",
+        "bitarray",
+        "mmh3",
+        "numpy",
+        "pandas",
+        "requests",
+        "scikit-learn",
+        "Psutil",
+        "Matplotlib",
+        "Pympler",
+        "H5py",
+        "Bio",
+        "wheel",
+        "loguru",
+        "Pympler",
+        "click",
+    ]
+    classifiers = [
+            "Development Status :: 1 - Alpha",
+            "Intended Audience :: Developers",
+            "Topic :: Scientific/Engineering :: Bio-Informatics",
+            "License :: OSI Approved :: MIT License",
+    ]
+
+[project.urls]
+Repository = "https://github.com/BIONF/XspecT2.git"
+
+[project.scripts]
+xspect = "xspect.main:cli"
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
