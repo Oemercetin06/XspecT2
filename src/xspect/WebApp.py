@@ -47,8 +47,7 @@ logging.basicConfig(filename="logger.log", level=logging.ERROR)
 # init WebApp with flask
 app = Flask(__name__)
 
-# reading config file settings
-app.config.from_pyfile(r"config/settings.cfg")
+app.secret_key = "test"
 
 
 # Initialisiere eine leere Liste für die Optionen
