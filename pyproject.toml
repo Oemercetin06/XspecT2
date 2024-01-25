@@ -1,5 +1,5 @@
 [project]
-name = "xspect"
+name = "XspecT"
 version = "0.1.0"
 description = "Tool to monitor and characterize pathogens using Bloom filters."
 readme = {file = "README.md", content-type = "text/markdown"}

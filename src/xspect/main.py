@@ -9,7 +9,7 @@ from xspect.WebApp import app
 
 
 @click.group()
-@click.version_option(version="tbd", prog_name="XspecT")
+@click.version_option()
 def cli():
     """XspecT CLI."""
 
