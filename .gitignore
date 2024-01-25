@@ -173,3 +173,5 @@ tests/test_assemblies/
 .saved_options.txt
 
 files/
+out.gv
+out.png
