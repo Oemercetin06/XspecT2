@@ -405,6 +405,8 @@ def species():
             session["metagenome"] = data[-1]
             del data[-4:]
 
+            if not (os.path.exists("files")):
+                os.mkdir("files")
             name = r"files/" + str(secrets.token_hex(8)) + filename + ".txt"
 
             with open(name, "w") as filehandle:
