@@ -18,7 +18,9 @@ def cli():
 def download_filters():
     """Download filters."""
     click.echo("Downloading filters, this may take a while...")
-    download_test_filters("https://xspect.s3.eu-central-1.amazonaws.com/filters.zip")
+    download_test_filters(
+        "https://applbio.biologie.uni-frankfurt.de/download/xspect/filters.zip"
+    )
 
 
 # todo: add read amount option -> why 342480?
