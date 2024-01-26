@@ -568,6 +568,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
     print("Starting taxonomic assignment on species-level...")
     predictions = []
     scores = []
+    counterx = 0
     contig_header = []
     contig_seq = []
     # Phillip
@@ -761,8 +762,54 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
             # print("Scores: ", score)
             if metagenome:
                 # map kmers to genome for HGT detection
+                # change later to new functions this is OLD
+                if False:
+                    for prediction in contigs_classified:
+                        kmers = contigs_classified[prediction][5]
+                        # Strip "A."
+                        prediction = prediction[2:]
+                        # kmer mapping to genome, start by loading the kmer_dict in
+                        path_pos = (
+                            "filter\kmer_positions\Acinetobacter\\"
+                            + prediction
+                            + "_positions.txt"
+                        )
+                        # delete later
+                        path_posv2 = (
+                            "filter\kmer_positions\Acinetobacter\\"
+                            + prediction
+                            + "_complete_positions.txt"
+                        )
+                        # cluster kmers to contigs
+                        # delete try later
+                        try:
+                            with open(path_pos, "rb") as fp:
+                                kmer_dict = pickle.load(fp)
+                        except:
+                            with open(path_posv2, "rb") as fp:
+                                kmer_dict = pickle.load(fp)
+                        contig_amounts_distances = bs.cluster_kmers(kmers, kmer_dict)
+                        contigs_classified[genus[0] + ". " + prediction][
+                            6
+                        ] = contig_amounts_distances
+                        # del kmer_dict
                 for key, value in contigs_classified.items():
                     number_of_contigs = value[1]
+                    # save results
+                    results_clustering = [
+                        [
+                            key
+                            + ","
+                            + str(statistics.median(value[0]))
+                            + ","
+                            + str(number_of_contigs),
+                            str(statistics.median(value[2]))
+                            + ","
+                            + str(round(value[3] / number_of_contigs, 2))
+                            + ","
+                            + str(statistics.median(value[4])),
+                        ]
+                    ]
                     # with open(r'Results/XspecT_mini_csv/Results_Clustering.csv', 'a', newline='') as file:
                     # writer = csv.writer(file)
                     # writer.writerows(results_clustering)
@@ -803,6 +850,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                 counter = 0
                 reads = []
                 reads_classified = {}
+                reads_passed = 0
                 ambiguous_reads = 0
 
                 # ---------------------------------------------------------------------------------------------
@@ -939,25 +987,20 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     # HGT identification pipeline start
 
                     # skip species clear reads
-                    if max(score) <= 0.9:
-                        # identify split reads from HGT
-                        split_regions = map_k.identify_split_reads(
-                            score, BF.kmer_hits_single
-                        )
+                    # if max(score) <= 0.9:
+                    # identify split reads from HGT
+                    #    split_regions = map.identify_split_reads(score, BF.kmer_hits_single)
 
-                        # split_read contains touples --> ([first part of list, second part of list], index of species)
+                    # split_read contains touples --> ([first part of list, second part of list], index of species)
 
-                        # check if it is in fact a split read , 0.6 is arbitrary value, it is the threshold for the difference between the two regions
-                        if (
-                            abs(sum(split_regions[0][0]) - sum(split_regions[0][1]))
-                            > 0.6
-                        ):
-                            # get the species names
-                            acceptor_species = names[split_regions[0][1]]
-                            donor_species = names[split_regions[1][1]]
-                            donor_acceptor = [donor_species, acceptor_species]
-                    else:
-                        donor_acceptor = [None]
+                    # check if it is in fact a split read , 0.6 is arbitrary value, it is the threshold for the difference between the two regions
+                    #   if abs(sum(split_regions[0][0]) - sum(split_regions[0][1])) > 0.6:
+                    # get the species names
+                    #      acceptor_species = names[split_regions[0][1]]
+                    #      donor_species = names[split_regions[1][1]]
+                    #      donor_acceptor = [donor_species, acceptor_species]
+                    # else:
+                    #    donor_acceptor = [None]
 
                     # ---------------------------------------------------------------------------------------------
                     # Collect results from classification
@@ -970,8 +1013,6 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                             [bootstrap_score],
                             reads_filtered,
                             None,
-                            [dna_composition],
-                            [donor_acceptor],
                         ]
                     else:
                         reads_classified[genus[0] + ". " + prediction][1] += 1
@@ -988,12 +1029,8 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                         reads_classified[genus[0] + ". " + prediction][
                             5
                         ] += reads_filtered
-                        reads_classified[genus[0] + ". " + prediction][7] += [
-                            dna_composition
-                        ]
-                        reads_classified[genus[0] + ". " + prediction][8] += [
-                            donor_acceptor
-                        ]
+                        # reads_classified[genus[0] + ". " + prediction][7] += [dna_composition]
+                    # reads_classified[genus[0] + ". " + prediction][8] += [donor_acceptor]
 
             else:
                 # classification for sequence pure reads, check every 10th kmer (or everyone for "complete" mode)
@@ -1018,6 +1055,47 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
             if metagenome:
                 # ---------------------------------------------------------------------------------------------
                 # map kmers to genome for HGT detection
+                if False:
+                    # map and cluster single reads to genome
+                    read_clusters = []
+                    for prediction in reads_classified:
+                        # load list of kmers from read
+                        kmers = reads_classified[prediction][5]
+                        # Strip genus name
+                        prediction = prediction[2:]
+
+                        # kmer mapping to genome, start by loading the kmer_dict in
+                        path_pos = (
+                            "filter\kmer_positions\Acinetobacter\\"
+                            + prediction
+                            + "_positions.txt"
+                        )
+                        # delete later
+                        path_posv2 = (
+                            "filter\kmer_positions\Acinetobacter\\"
+                            + prediction
+                            + "_complete_positions.txt"
+                        )
+                        # cluster kmers to reads
+                        # delete try later
+                        try:
+                            with open(path_pos, "rb") as fp:
+                                kmer_dict = pickle.load(fp)
+                        except:
+                            with open(path_posv2, "rb") as fp:
+                                kmer_dict = pickle.load(fp)
+                        test = map.map_kmers(kmers, kmer_dict, genus)
+                        clusters = map.cluster_kmers(kmers, kmer_dict)
+                        read_clusters.append(clusters)
+                        reads_classified[genus[0] + ". " + prediction][
+                            6
+                        ] = reads_amounts_distances
+                        # del kmer_dict
+
+                    # now cluster mappings of multiple reads to genome
+                    for cluster in read_clusters:
+                        # TODO
+                        continue
 
                 # ---------------------------------------------------------------------------------------------
                 # Collect results from classification
@@ -1034,8 +1112,6 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                         round(value[2] / value[0], 2),
                         round(value[3] / value[0], 2),
                         statistics.median(value[4]),
-                        value[6],
-                        value[7],
                     )
             score_edit = [str(x) for x in score]
             score_edit = ",".join(score_edit)
