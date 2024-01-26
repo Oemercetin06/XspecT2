@@ -2,16 +2,6 @@ from pathlib import Path
 import os
 
 
-def get_zip_files_path(dir_name):
-    """Returns str of file path to the zip files.
-
-    :param dir_name: Name of the current genus_metadata directory.
-    :type dir_name: str
-    :return: File path to zip files.
-    """
-    return Path(os.getcwd()) / "genus_metadata" / dir_name / "zip_files_extracted"
-
-
 def get_concatenate_file_path(dir_name):
     """Returns str to file path of the concatenate directory.
 

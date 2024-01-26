@@ -5,39 +5,6 @@ from sklearn.cluster import KMeans
 import numpy as np
 
 
-def create_genome_kmer_list(genome_dir, k, genus):
-    """Erstellt für jedes Genom eine Liste aller kmere"""
-
-    # list of files in the directory
-    files = sorted(os.listdir(genome_dir))
-
-    # loop over all files in the directory
-    for file in files:
-        # path to the current genome
-        genome_path = genome_dir + "/" + file
-
-        # Create a list of all kmers in a genome/species
-        kmer_list = []
-
-        # open the file with the genome
-        with open(genome_path, "r") as file:
-            genome = file.readlines()
-
-        # loop over all contigs in the genome
-        for contig in genome:
-            # loop over all kmers in the contig
-            for i in range(len(contig) - k + 1):
-                kmer = contig[i : i + k]
-                kmer_list.append(kmer)
-
-        # filename for the pickle file
-        filename = genome_path.split("/")[-1] + "_kmer_list.txt"
-
-        # saves the list of all kmers in the genome in a pickle file
-        with open("kmer_positions/" + genus + "/" + filename, "wb") as file:
-            pickle.dump(kmer_list, file)
-
-
 def identify_split_reads(score, kmer_hits_single):
     """This method identifies if the read is split because of HGT"""
 
@@ -117,59 +84,6 @@ def cluster_zeros_ones(input_list, threshold=None):
     cluster_1 = input_list_copy[split_index:]
 
     return [cluster_0, cluster_1]
-
-
-def map_kmers(kmers, predictions, genus):
-    """Map kmers to their respective genome"""
-
-    # check for pure- or split-read
-    if len(predictions) == 1:
-        prediction = predictions[0]
-
-        # get the kmer list for the genome
-        # TODO: decide filename
-        filename = "Test"
-        with open(
-            "kmer_positions/" + genus + "/" + filename + "_kmer_list.txt", "rb"
-        ) as fp:
-            kmer_list = pickle.load(fp)
-
-        # map kmers to the genome
-        kmer_positions = []
-        for kmer in kmers:
-            # get all indices of the kmer in the kmer list
-            indices = [i for i, x in enumerate(kmer_list) if x == kmer]
-            kmer_positions += indices
-
-        # sort the list of kmer positions in ascending order
-        # is this biologically correct? Its neccecary for not unqiue kmers but the true position of the kmer is lost
-        kmer_positions.sort()
-
-        # 1. Cluster iteration: cluster kmers that lie directly next to each other
-        clusters = []
-        for i, position in enumerate(kmer_positions):
-            # skip already clustered kmers
-            if position in cluster:
-                continue
-            cluster = []
-            cluster.append(position)
-            # add all kmers that lie directly next to each other to the cluster
-            for j in range(i + 1, len(kmer_positions)):
-                if kmer_positions[j] == kmer_positions[j - 1] + 1:
-                    cluster.append(kmer_positions[j])
-                else:
-                    clusters.append(cluster)
-                    break
-
-        # 2. Cluster iteration: cluster clusters that are at max 10 kmers apart
-        final_clusters = []
-        # threshold for the distance between two clusters
-        distance_threshold = 5
-        for i, cluster in enumerate(clusters):
-            if cluster[i] != final_clusters[-1]:
-                final_clusters += cluster[i]
-            if (clusters[i + 1][0] - clusters[i][-1]) < distance_threshold:
-                final_clusters += clusters[i + 1]
 
 
 # TODO:

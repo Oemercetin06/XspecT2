@@ -13,11 +13,6 @@ from xspect.train_filter.ncbi_api import download_assemblies
 from xspect.train_filter import html_scrap
 
 
-def get_current_time():
-    """Returns the current time in the form hh:mm:ss."""
-    return asctime(localtime()).split()[3]
-
-
 def select_assemblies(accessions):
     """Selects up to 4 assemblies, preferably assemblies that were not used for training the filters.
 
@@ -244,7 +239,11 @@ def save_csv(genus, scores):
     :param scores: The scores gathered by a lookup of a bloomfilter.
     :type scores: list
     """
-    path = Path(os.getcwd()) / "Training_data" / (genus + "_Training_data_spec.csv")
+    training_data_path = Path(os.getcwd()) / "Training_data"
+    if not os.path.exists(training_data_path):
+        os.mkdir(training_data_path)
+
+    path = training_data_path / (genus + "_Training_data_spec.csv")
     with open(path, "w", newline="") as file:
         writer = csv.writer(file)
         writer.writerows(scores)

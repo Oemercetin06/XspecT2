@@ -281,40 +281,6 @@ def pre_processing_prefilter2(genus):
     return BF
 
 
-def pre_processing_prefilter_Culicidae():
-    "Preprocesses the mosquito prefilter"
-    with open(r"filter/FilterCulicidae.txt", "rb") as fp:
-        clonetypes = pickle.load(fp)
-    # initialising filter with database parameters
-    # must be the same values used when trained!!
-    BF = BF_v2.AbaumanniiBloomfilter(9000000)
-    BF.set_arraysize(9000000)
-    BF.set_hashes(7)
-    BF.set_k(21)
-    paths = sorted(os.listdir(r"filter/Culicidae_Prefilter/"))
-    for i in range(len(paths)):
-        paths[i] = r"filter/Culicidae_Prefilter/" + paths[i]
-    BF.read_clonetypes(paths, clonetypes)
-    return BF
-
-
-def pre_processing_Culicidae_species():
-    "Preprocesses the mosquito species filter"
-    with open(r"filter/FilterCulicidaeSpecies.txt", "rb") as fp:
-        clonetypes = pickle.load(fp)
-    # initialising filter with database parameters
-    # must be the same values used when trained!!
-    BF = BF_v2.AbaumanniiBloomfilter(350000)
-    BF.set_arraysize(350000)
-    BF.set_hashes(7)
-    BF.set_k(21)
-    paths = sorted(os.listdir(r"filter/Culicidae_species/"))
-    for i in range(len(paths)):
-        paths[i] = r"filter/Culicidae_species/" + paths[i]
-    BF.read_clonetypes(paths, clonetypes)
-    return BF
-
-
 def read_search_pre(reads, BF_pre, ext):
     reads_new = []
     counter = 0

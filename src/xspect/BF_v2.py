@@ -304,13 +304,6 @@ class AbaumanniiBloomfilter:
         with open(output_dir, "wb") as output_file:
             pickle.dump(kmer_dict, output_file)
 
-    def train_lines(self, lines, ct):
-        """Trains Extracted lines of fasta/fna file, given as list of strings"""
-        for j in range(len(lines)):
-            for i in range(len(lines[j]) - self.k + 1):
-                # trains k-mere into filter
-                self.train(str(lines[j][i : i + self.k]), ct)
-
     def lookup_sequence(self, path):
         """uses lookup function for whole sequence, takes path to file: file must be FASTA"""
 
@@ -552,86 +545,6 @@ class AbaumanniiBloomfilter:
                     else:
                         self.lookup(kmer_reversed)
 
-    def lookup_unique(self, reads, quick=False):
-        """Reading extracted fq-reads, only unique kmers"""
-        self.number_of_kmeres = 0
-        self.hits_per_filter = [0] * self.clonetypes
-        unique = set()
-        if quick:
-            # Quick: Non-overlapping k-mers
-            for single_read in reads:
-                # r is rest, so all kmers have size k
-                for j in range(0, len(single_read) - self.k, 100):
-                    unique.add(single_read[j : j + self.k])
-            for kmer in unique:
-                self.number_of_kmeres += 1
-                self.lookup(kmer)
-        else:
-            for single_read in reads:
-                for j in range(len(single_read) - self.k + 1):
-                    # updating counter
-                    self.number_of_kmeres += 1
-                    # lookup for kmer
-                    self.lookup(str(single_read[j : j + self.k]))
-
-    def helper(self):
-        """Creates svm Traingings-Data from a set of genomes"""
-        # https://pythonguides.com/python-write-a-list-to-csv/
-        # https://stackoverflow.com/questions/21431052/sort-list-of-strings-by-a-part-of-the-string
-        files = os.listdir(r"Training_data\genomes")
-        # delete all non fna/fasta files from list
-        for i in range(len(files) - 1, -1, -1):
-            if "fna" in files[i] or "fasta" in files[i]:
-                continue
-            else:
-                del files[i]
-        paths = files[:]
-        scores = []
-        files_split = []
-        names = []
-        # extracts the GCF-Number
-        for i in range(len(files)):
-            files_split.append(files[i].split("_"))
-            try:
-                files_split[i] = files_split[i][0] + "_" + files_split[i][1]
-            except:
-                files_split[i] = files[i].split(".")[-2]
-        for i in range(len(files)):
-            paths[i] = r"Training_data/genomes/" + paths[i]
-        # extracts the names of all species from the file-name
-        for i in range(len(files)):
-            with open(paths[i]) as file:
-                head = file.readline()
-                head = head.split()
-                if head[2] == "sp.":
-                    names.append("none")
-                    continue
-                names.append(head[2])
-        # performs a lookup in the BF and saves the scores in a list
-        for i in range(len(files)):
-            self.number_of_kmeres = 0
-            self.hits_per_filter = [0] * self.clonetypes
-            for sequence in SeqIO.parse(paths[i], "fasta"):
-                for j in range(0, len(sequence.seq) - self.k, 500):
-                    self.number_of_kmeres += 1
-                    self.lookup(str(sequence.seq[j : j + self.k]))
-            score = self.get_score()
-            score = [str(x) for x in score]
-            score = ",".join(score)
-            scores.append(files_split[i] + "," + score + "," + names[i])
-        # sorts the list by species name
-        scores.sort(key=lambda x: x.split(",")[-1][:2])
-        names = [x for x in names if x != "none"]
-        names = list(dict.fromkeys(names))
-        scores.insert(0, sorted(names))
-        scores[0] = ["File"] + scores[0] + ["Label"]
-        for i in range(1, len(scores)):
-            scores[i] = [scores[i]]
-        # writes the Traingings-Data to a csv-filter
-        with open(r"Training_data/Training_data_spec.csv", "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerows(scores)
-
     def cleanup(self):
         """deletes matrix"""
         self.matrix = None
@@ -721,52 +634,6 @@ class AbaumanniiBloomfilter:
         reads = None
         self.table.cleanup()
         return coordinates_forward, coordinates_reversed
-
-    def oxa_search_genomes(self, genome):
-        for i in genome:
-            for j in range(0, len(i), 20):
-                hits = sum(self.hits_per_filter)
-                kmer = i[j : j + self.k]
-                self.lookup(kmer, True)
-
-                if sum(self.hits_per_filter) > hits:
-                    for n in range(j - 19, j + 20, 1):
-                        if 0 <= j < len(i):
-                            kmer = i[n : n + self.k]
-                            self.lookup(kmer, True)
-                else:
-                    pass
-
-    def oxa_search_genomes_v2(self, genome):
-        for i in genome:
-            j = 0
-            success = False
-            while j < len(i):
-                hits = sum(self.hits_per_filter)
-                kmer = i[j : j + self.k]
-                self.lookup(kmer, True)
-                if success == False:
-                    if sum(self.hits_per_filter) > hits:
-                        for n in range(j - 19, j + 20, 1):
-                            if 0 <= j < len(i):
-                                kmer = i[n : n + self.k]
-                                self.lookup(kmer, True)
-                        j += 40
-                        success = True
-                    else:
-                        j += 20
-                        success = False
-                else:
-                    if sum(self.hits_per_filter) > hits:
-                        for n in range(j, j + 20, 1):
-                            if 0 <= j < len(i):
-                                kmer = i[n : n + self.k]
-                                self.lookup(kmer, True)
-                        j += 40
-                        success = True
-                    else:
-                        j += 20
-                        success = False
 
     def oxa_search_genomes_v3(self, genome):
         coordinates = []

@@ -178,11 +178,6 @@ class ExtractConcatenate:
                 os.remove(file_path)
 
 
-def get_current_time():
-    """Returns the current time in the form hh:mm:ss."""
-    return asctime(localtime()).split()[3]
-
-
 def main():
     pass
 
