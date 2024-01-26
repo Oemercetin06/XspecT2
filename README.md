@@ -12,48 +12,42 @@ Local extensions of the reference database are supported.
 
 The tool is available as a web-based application and a smaller command line interface.
 
-
 ## Installation
-To install Xspect, please download the lastest 64 bit Python version install the package:
+To install Xspect, please download the lastest 64 bit Python version and install the package using pip:
 ```
-pip install .
+pip install git+https://github.com/BIONF/XspecT2.git
 ```
 If you would like to train filters yourself, you need to install Jellyfish, which is used to count distinct k-meres in the assemblies. It can be installed using bioconda:
 ```
 conda install -c bioconda jellyfish
 ```
-If you're using Apple Silicon, it is possible that this command installs an incorrect Jellyfish package. Please refer to the official [Jellyfish project](https://github.com/gmarcais/Jellyfish) for installation guidance.
+On Apple Silicon, it is possible that this command installs an incorrect Jellyfish package. Please refer to the official [Jellyfish project](https://github.com/gmarcais/Jellyfish) for installation guidance.
 
 ## Usage
 ### Get the Bloomfilters
-To download two basic pre-trained filters, you can use the built-in command:
-
+To download basic pre-trained filters, you can use the built-in command:
 ```
-python main.py download-filters
+xspect download-filters
 ```
-Additional filters can be trained using:
+Additional species filters can be trained using:
 ```
-python main.py train you-ncbi-genus-name
+xspect train you-ncbi-genus-name
 ```
 
 ### How to run the web app
 Run the following command lines in a console, a browser window will open automatically after the application is fully loaded.
-
 ```
-python main.py web
+xspect web
 ```
 
 ### How to use the XspecT command line interface
-Open the file main.py with the configuration you want to run it with as arguments.
-
+Run xspect with the configuration you want to run it with as arguments.
 ```
-python main.py classify -s -i -o your-genus path/to/your/input-set
+xspect classify -s -i -o your-genus path/to/your/input-set
 ```
-
-For further instructions on how to use the command line interface, execute
+For further instructions on how to use the command line interface, execute:
 ```
-python main.py --help
-python main.py classify --help
+xspect --help
 ```
 
 ## Input Data
