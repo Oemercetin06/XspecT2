@@ -169,8 +169,8 @@ files/
 Training_data/
 
 tests/test_assemblies/
-.string_list.txt
-.saved_options.txt
+string_list.txt
+saved_options.txt
 
 files/
 out.gv
