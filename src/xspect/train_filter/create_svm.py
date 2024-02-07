@@ -1,29 +1,33 @@
 import csv
 import os
 import pickle
-from linecache import getline
 from pathlib import Path
-from time import sleep, asctime, localtime
+from time import sleep
 
 from Bio import SeqIO
 from loguru import logger
 
 import xspect.BF_v2 as BF_v2
+from xspect.file_io import (
+    delete_non_fasta,
+    get_accessions,
+    get_file_paths,
+    get_species_names,
+)
 from xspect.train_filter.ncbi_api import download_assemblies
-from xspect.train_filter import html_scrap
 
 
 def select_assemblies(accessions):
-    """Selects up to 4 assemblies, preferably assemblies that were not used for training the filters.
+    """Selects up to 4 assemblies, ideally assemblies that were not used for training the filters.
 
     :param accessions: All selected assembly accessions for every species.
     :type accessions: dict
     :return: Dict with species name as key and selected accessions as value.
     """
-    all_accessions = dict()
+    all_accessions = {}
 
     for sci_name, current_accessions in accessions.items():
-        selected_accessions = list()
+        selected_accessions = []
         # Select 4 assemblies beginning from the last one.
         for i in range(len(current_accessions) - 1, -1, -1):
             selected_accessions.append(current_accessions[i])
@@ -58,81 +62,6 @@ def get_svm_assemblies(all_accessions, dir_name):
             zip_file_name=file_name,
         )
     logger.info("Downloads finished")
-
-
-def delete_non_fasta(files):
-    """Delete all non fasta files from the list.
-
-    :param files: List of file names.
-    :type files: list[str]
-    :return: List with only fasta files.
-    """
-    # All possible fasta file endings.
-    fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
-
-    # Iterate through file list backwards and delete all non fasta files.
-    for i in range(len(files) - 1, -1, -1):
-        file = files[i].split(".")
-        if file[-1] in fasta_endings:
-            continue
-        else:
-            del files[i]
-
-    return files
-
-
-def get_accessions(files):
-    """Extracts the accession from the file names.
-
-    :param files: List of file names.
-    :type files: list[str]
-    :return: List of all accessions.
-    """
-    accessions = list()
-    for i in range(len(files)):
-        accessions.append(files[i].split("_"))
-        accessions[i] = accessions[i][0] + "_" + accessions[i][1]
-
-    return accessions
-
-
-def get_paths(dir_name, files):
-    """Make a list with the paths to the files.
-
-    :param dir_name: Name of the parent directory.
-    :type dir_name: str
-    :param files: List of file names.
-    :type files: list[str]
-    :return: A list with all file paths.
-    """
-    path = Path(os.getcwd()) / "genus_metadata" / dir_name / "training_data"
-    paths = list()
-    for file in files:
-        paths.append(str(path / file))
-
-    return paths
-
-
-def get_species_names(file_paths):
-    """Extracts the species names.
-
-    :param file_paths: List with the file paths.
-    :type file_paths: list[str]
-    :return: List with all species names.
-    """
-    names = list()
-    for path in file_paths:
-        header = getline(path, 1)
-        name = header.replace("\n", "").replace(">", "")
-        if not name.isdigit():
-            logger.error(
-                "The header of file: {path} does not contain a correct ID: {name}. The ID needs to be "
-                "just numbers"
-            )
-            logger.error("Aborting")
-            exit()
-        names.append(name)
-    return names
 
 
 def init_bf(genus, array_size, hashes=7, k=21):
@@ -264,8 +193,8 @@ def new_helper(spacing, genus, dir_name, array_size, k=21):
     :type k: int
     """
     # Get all files.
-    path = Path(os.getcwd()) / "genus_metadata" / dir_name / "training_data"
-    files = os.listdir(path)
+    base_path = Path(os.getcwd()) / "genus_metadata" / dir_name / "training_data"
+    files = os.listdir(base_path)
 
     # Delete all non fasta files.
     files = delete_non_fasta(files)
@@ -274,7 +203,7 @@ def new_helper(spacing, genus, dir_name, array_size, k=21):
     accessions = get_accessions(files)
 
     # Get all complete file paths.
-    file_paths = get_paths(dir_name, files)
+    file_paths = get_file_paths(base_path, files)
 
     # Get all species names from the header in the fasta files.
     names = get_species_names(file_paths)
@@ -291,28 +220,3 @@ def new_helper(spacing, genus, dir_name, array_size, k=21):
 
     # Save results in csv file.
     save_csv(genus, scores)
-
-
-def main():
-    taxons = ["54736", "28901"]
-    used_accessions = [
-        "GCF_000439255.1",
-        "GCF_006051015.1",
-        "GCF_006113225.1",
-        "GCF_016653555.1",
-        "GCF_000006945.2",
-        "GCF_000783815.2",
-        "GCF_001558355.2",
-        "GCF_001647755.1",
-    ]
-    array_size = 67000000
-    dir_name = "Salmonella_15_9_2023_10-59-31"
-    genus = "Salmonella"
-    ani = html_scrap.TaxonomyCheck()
-    ani_gcf = ani.ani_gcf
-    print(f"Training new svm")
-    new_helper(genus, dir_name, array_size, k=21)
-
-
-if __name__ == "__main__":
-    main()
