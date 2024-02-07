@@ -50,12 +50,3 @@ class NCBIChildrenTree:
         :return: The taxon IDs as a list.
         """
         return self._children_taxon_ids
-
-
-def main():
-    taxon = "286"
-    print(NCBIChildrenTree(taxon).children_ids())
-
-
-if __name__ == "__main__":
-    main()

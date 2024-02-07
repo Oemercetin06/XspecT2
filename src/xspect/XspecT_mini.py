@@ -7,14 +7,12 @@ import statistics
 import sys
 from pathlib import Path
 from Bio import SeqIO, Seq
-from Bio.Seq import Seq
 from numpy import sum
 import psutil
 import xspect.Classifier as Classifier
 import xspect.search_filter as search_filter
 from xspect.OXA_Table import OXATable
 import xspect.Bootstrap as bs
-import xspect.map_kmers as map_k
 from xspect.train_filter.interface_XspecT import load_translation_dict
 
 

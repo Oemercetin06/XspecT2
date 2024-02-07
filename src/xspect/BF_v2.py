@@ -113,20 +113,6 @@ class AbaumanniiBloomfilter:
 
         return score
 
-    def get_norm(self):
-        """Divides each vector entry by sum of vector entrys"""
-        s = sum(self.hits_per_filter)
-        score = []
-
-        # calculates float for each value in [hits per filter]
-        for i in range(self.clonetypes):
-            if self.hits_per_filter[i] == 0 or s == 0:
-                score.append(0.0)
-            else:
-                score.append(round(float(self.hits_per_filter[i]) / s, 2))
-
-        return score
-
     def get_reads(self):
         """gets number of reads"""
         return self.reads
@@ -169,7 +155,6 @@ class AbaumanniiBloomfilter:
         self.matrix = bitarray(0)
         self.number_of_kmeres = 0
         self.hits_per_filter = [0] * self.clonetypes
-        i = 0
 
         # creating matrix from single filters
         for path in paths:
@@ -177,7 +162,6 @@ class AbaumanniiBloomfilter:
 
             with open(path, "rb") as fh:
                 temp.fromfile(fh)
-            i += 1
             self.matrix.extend(temp)
 
     # Bloomfilter
@@ -242,9 +226,9 @@ class AbaumanniiBloomfilter:
         # getting hash Values
         positions = self.hash(kmer)
         # changing 0s to 1 in filter
-        for i in range(len(positions)):
+        for position in positions:
             # getting position of cell
-            self.matrix[self.array_size * clonetype + positions[i]] = True
+            self.matrix[self.array_size * clonetype + position] = True
 
     def train_sequence(self, filepath, clonetype, quick=False):
         """trains whole sequence into filter, takes filepath to file and the desired filter as input"""
@@ -274,54 +258,6 @@ class AbaumanniiBloomfilter:
                     # self.train(str(sequence.seq[i: i + self.k]), clonetype)
                     # testing
                     # self.train(str(sequence.seq[i: i + self.k].reverse_complement()), clonetype)
-
-    def train_kmer_positions(self, filepath, name, genus):
-        """Erstellt eine Text-Datei welche die Position und Contig-ID eines jeden kmer speichert."""
-        # Pfad zum Output-Verzeichnis für die 21-mer-Positionen
-        output_dir = "filter\kmer_positions\\" + genus + "\\" + name
-        kmer_dict = {}
-        with h5py.File(output_dir, "a") as output_file:
-            # Schleife über alle Contigs im Input-Assembly
-            # with open(output_dir, "w") as output_file:
-            for record in SeqIO.parse(filepath, "fasta"):
-                # Extrahiere Kmer aus der Contig-Sequenz und speichere in der Ausgabedatei
-                # Erstellen eines neuen Datensatzes im HDF5-File für den aktuellen Contig
-                contig_name = record.id
-                # contig_group = output_file.create_group(contig_name)
-
-                # Extrahiere Kmer aus der Contig-Sequenz und speichere in der HDF5-Datei
-                positions = []
-                kmers = []
-                for i in range(len(record.seq) - self.k + 1):
-                    kmer = str(record.seq[i : i + self.k])
-                    position = i + 1
-                    kmer_dict[kmer] = [position, contig_name]
-                    # kmers.append(kmer)
-                    # positions.append(position)
-
-                # contig_group.create_dataset("kmers", data=kmers)
-                # contig_group.create_dataset("positions", data=positions)
-        with open(output_dir, "wb") as output_file:
-            pickle.dump(kmer_dict, output_file)
-
-    def lookup_sequence(self, path):
-        """uses lookup function for whole sequence, takes path to file: file must be FASTA"""
-
-        # Counter of k-meres
-        self.number_of_kmeres = 0
-        self.hits_per_filter = [0] * self.clonetypes
-
-        # for each sequence (in multi-FASTA file)
-
-        # counting hits in Intervals
-        self.readset = [0] * self.clonetypes
-
-        for sequence in SeqIO.parse(path, "fasta"):
-            # for each k-mere
-            for i in range(0, len(sequence.seq) - self.k + 1):
-                # lookup for all k-meres in filter
-                self.lookup(str(sequence.seq[i : i + self.k]))
-                self.number_of_kmeres += 1
 
     def lookup_txt(self, reads, genus, ext=False, quick=False):
         """Reading extracted fq-reads"""

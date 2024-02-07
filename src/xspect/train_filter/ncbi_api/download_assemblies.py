@@ -5,10 +5,8 @@
 __author__ = "Berger, Phillip"
 
 import os
-
-import requests
-
 from pathlib import Path
+import requests
 
 
 def download_assemblies(accessions, dir_name, target_folder, zip_file_name):
@@ -32,11 +30,3 @@ def download_assemblies(accessions, dir_name, target_folder, zip_file_name):
     genome_download = requests.get(api_url, params=parameters)
     with open(path, "wb") as f:
         f.write(genome_download.content)
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()
