@@ -113,20 +113,6 @@ class AbaumanniiBloomfilter:
 
         return score
 
-    def get_norm(self):
-        """Divides each vector entry by sum of vector entrys"""
-        s = sum(self.hits_per_filter)
-        score = []
-
-        # calculates float for each value in [hits per filter]
-        for i in range(self.clonetypes):
-            if self.hits_per_filter[i] == 0 or s == 0:
-                score.append(0.0)
-            else:
-                score.append(round(float(self.hits_per_filter[i]) / s, 2))
-
-        return score
-
     def get_reads(self):
         """gets number of reads"""
         return self.reads
@@ -169,7 +155,6 @@ class AbaumanniiBloomfilter:
         self.matrix = bitarray(0)
         self.number_of_kmeres = 0
         self.hits_per_filter = [0] * self.clonetypes
-        i = 0
 
         # creating matrix from single filters
         for path in paths:
@@ -177,7 +162,6 @@ class AbaumanniiBloomfilter:
 
             with open(path, "rb") as fh:
                 temp.fromfile(fh)
-            i += 1
             self.matrix.extend(temp)
 
     # Bloomfilter
@@ -242,9 +226,9 @@ class AbaumanniiBloomfilter:
         # getting hash Values
         positions = self.hash(kmer)
         # changing 0s to 1 in filter
-        for i in range(len(positions)):
+        for position in positions:
             # getting position of cell
-            self.matrix[self.array_size * clonetype + positions[i]] = True
+            self.matrix[self.array_size * clonetype + position] = True
 
     def train_sequence(self, filepath, clonetype, quick=False):
         """trains whole sequence into filter, takes filepath to file and the desired filter as input"""
@@ -274,61 +258,6 @@ class AbaumanniiBloomfilter:
                     # self.train(str(sequence.seq[i: i + self.k]), clonetype)
                     # testing
                     # self.train(str(sequence.seq[i: i + self.k].reverse_complement()), clonetype)
-
-    def train_kmer_positions(self, filepath, name, genus):
-        """Erstellt eine Text-Datei welche die Position und Contig-ID eines jeden kmer speichert."""
-        # Pfad zum Output-Verzeichnis für die 21-mer-Positionen
-        output_dir = "filter\kmer_positions\\" + genus + "\\" + name
-        kmer_dict = {}
-        with h5py.File(output_dir, "a") as output_file:
-            # Schleife über alle Contigs im Input-Assembly
-            # with open(output_dir, "w") as output_file:
-            for record in SeqIO.parse(filepath, "fasta"):
-                # Extrahiere Kmer aus der Contig-Sequenz und speichere in der Ausgabedatei
-                # Erstellen eines neuen Datensatzes im HDF5-File für den aktuellen Contig
-                contig_name = record.id
-                # contig_group = output_file.create_group(contig_name)
-
-                # Extrahiere Kmer aus der Contig-Sequenz und speichere in der HDF5-Datei
-                positions = []
-                kmers = []
-                for i in range(len(record.seq) - self.k + 1):
-                    kmer = str(record.seq[i : i + self.k])
-                    position = i + 1
-                    kmer_dict[kmer] = [position, contig_name]
-                    # kmers.append(kmer)
-                    # positions.append(position)
-
-                # contig_group.create_dataset("kmers", data=kmers)
-                # contig_group.create_dataset("positions", data=positions)
-        with open(output_dir, "wb") as output_file:
-            pickle.dump(kmer_dict, output_file)
-
-    def train_lines(self, lines, ct):
-        """Trains Extracted lines of fasta/fna file, given as list of strings"""
-        for j in range(len(lines)):
-            for i in range(len(lines[j]) - self.k + 1):
-                # trains k-mere into filter
-                self.train(str(lines[j][i : i + self.k]), ct)
-
-    def lookup_sequence(self, path):
-        """uses lookup function for whole sequence, takes path to file: file must be FASTA"""
-
-        # Counter of k-meres
-        self.number_of_kmeres = 0
-        self.hits_per_filter = [0] * self.clonetypes
-
-        # for each sequence (in multi-FASTA file)
-
-        # counting hits in Intervals
-        self.readset = [0] * self.clonetypes
-
-        for sequence in SeqIO.parse(path, "fasta"):
-            # for each k-mere
-            for i in range(0, len(sequence.seq) - self.k + 1):
-                # lookup for all k-meres in filter
-                self.lookup(str(sequence.seq[i : i + self.k]))
-                self.number_of_kmeres += 1
 
     def lookup_txt(self, reads, genus, ext=False, quick=False):
         """Reading extracted fq-reads"""
@@ -552,86 +481,6 @@ class AbaumanniiBloomfilter:
                     else:
                         self.lookup(kmer_reversed)
 
-    def lookup_unique(self, reads, quick=False):
-        """Reading extracted fq-reads, only unique kmers"""
-        self.number_of_kmeres = 0
-        self.hits_per_filter = [0] * self.clonetypes
-        unique = set()
-        if quick:
-            # Quick: Non-overlapping k-mers
-            for single_read in reads:
-                # r is rest, so all kmers have size k
-                for j in range(0, len(single_read) - self.k, 100):
-                    unique.add(single_read[j : j + self.k])
-            for kmer in unique:
-                self.number_of_kmeres += 1
-                self.lookup(kmer)
-        else:
-            for single_read in reads:
-                for j in range(len(single_read) - self.k + 1):
-                    # updating counter
-                    self.number_of_kmeres += 1
-                    # lookup for kmer
-                    self.lookup(str(single_read[j : j + self.k]))
-
-    def helper(self):
-        """Creates svm Traingings-Data from a set of genomes"""
-        # https://pythonguides.com/python-write-a-list-to-csv/
-        # https://stackoverflow.com/questions/21431052/sort-list-of-strings-by-a-part-of-the-string
-        files = os.listdir(r"Training_data\genomes")
-        # delete all non fna/fasta files from list
-        for i in range(len(files) - 1, -1, -1):
-            if "fna" in files[i] or "fasta" in files[i]:
-                continue
-            else:
-                del files[i]
-        paths = files[:]
-        scores = []
-        files_split = []
-        names = []
-        # extracts the GCF-Number
-        for i in range(len(files)):
-            files_split.append(files[i].split("_"))
-            try:
-                files_split[i] = files_split[i][0] + "_" + files_split[i][1]
-            except:
-                files_split[i] = files[i].split(".")[-2]
-        for i in range(len(files)):
-            paths[i] = r"Training_data/genomes/" + paths[i]
-        # extracts the names of all species from the file-name
-        for i in range(len(files)):
-            with open(paths[i]) as file:
-                head = file.readline()
-                head = head.split()
-                if head[2] == "sp.":
-                    names.append("none")
-                    continue
-                names.append(head[2])
-        # performs a lookup in the BF and saves the scores in a list
-        for i in range(len(files)):
-            self.number_of_kmeres = 0
-            self.hits_per_filter = [0] * self.clonetypes
-            for sequence in SeqIO.parse(paths[i], "fasta"):
-                for j in range(0, len(sequence.seq) - self.k, 500):
-                    self.number_of_kmeres += 1
-                    self.lookup(str(sequence.seq[j : j + self.k]))
-            score = self.get_score()
-            score = [str(x) for x in score]
-            score = ",".join(score)
-            scores.append(files_split[i] + "," + score + "," + names[i])
-        # sorts the list by species name
-        scores.sort(key=lambda x: x.split(",")[-1][:2])
-        names = [x for x in names if x != "none"]
-        names = list(dict.fromkeys(names))
-        scores.insert(0, sorted(names))
-        scores[0] = ["File"] + scores[0] + ["Label"]
-        for i in range(1, len(scores)):
-            scores[i] = [scores[i]]
-        # writes the Traingings-Data to a csv-filter
-        with open(r"Training_data/Training_data_spec.csv", "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerows(scores)
-
     def cleanup(self):
         """deletes matrix"""
         self.matrix = None
@@ -721,52 +570,6 @@ class AbaumanniiBloomfilter:
         reads = None
         self.table.cleanup()
         return coordinates_forward, coordinates_reversed
-
-    def oxa_search_genomes(self, genome):
-        for i in genome:
-            for j in range(0, len(i), 20):
-                hits = sum(self.hits_per_filter)
-                kmer = i[j : j + self.k]
-                self.lookup(kmer, True)
-
-                if sum(self.hits_per_filter) > hits:
-                    for n in range(j - 19, j + 20, 1):
-                        if 0 <= j < len(i):
-                            kmer = i[n : n + self.k]
-                            self.lookup(kmer, True)
-                else:
-                    pass
-
-    def oxa_search_genomes_v2(self, genome):
-        for i in genome:
-            j = 0
-            success = False
-            while j < len(i):
-                hits = sum(self.hits_per_filter)
-                kmer = i[j : j + self.k]
-                self.lookup(kmer, True)
-                if success == False:
-                    if sum(self.hits_per_filter) > hits:
-                        for n in range(j - 19, j + 20, 1):
-                            if 0 <= j < len(i):
-                                kmer = i[n : n + self.k]
-                                self.lookup(kmer, True)
-                        j += 40
-                        success = True
-                    else:
-                        j += 20
-                        success = False
-                else:
-                    if sum(self.hits_per_filter) > hits:
-                        for n in range(j, j + 20, 1):
-                            if 0 <= j < len(i):
-                                kmer = i[n : n + self.k]
-                                self.lookup(kmer, True)
-                        j += 40
-                        success = True
-                    else:
-                        j += 20
-                        success = False
 
     def oxa_search_genomes_v3(self, genome):
         coordinates = []

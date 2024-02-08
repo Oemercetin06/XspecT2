@@ -7,18 +7,16 @@ import pickle
 from platform import python_version
 import sys
 from time import localtime, perf_counter, asctime, sleep
-
 from loguru import logger
 from numpy import mean
-
-
+from xspect import file_io
+from xspect.file_io import concatenate_meta
 from xspect.train_filter.ncbi_api import (
     ncbi_assembly_metadata,
     ncbi_taxon_metadata,
     ncbi_children_tree,
     download_assemblies,
 )
-
 from xspect.train_filter import (
     create_svm,
     html_scrap,
@@ -26,7 +24,6 @@ from xspect.train_filter import (
     get_paths,
     interface_XspecT,
     k_mer_count,
-    check_folders,
 )
 
 
@@ -96,34 +93,6 @@ def copy_custom_data(bf_path: str, svm_path: str, dir_name: str):
         file_path = Path(svm_path) / file
         new_file_path = new_svm_path / file
         shutil.copy2(file_path, new_file_path)
-
-
-def concatenate_meta(dir_name: str):
-    """Concatenates all concatenated fasta files that are used to train bloomfilters to one fasta file.
-
-    :param dir_name:
-    :return:
-    """
-    path = Path(os.getcwd()) / "genus_metadata" / dir_name
-    files_path = path / "concatenate"
-    fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
-    genus = dir_name.split("_")[0]
-    meta_path = path / (genus + ".fasta")
-    files = os.listdir(files_path)
-
-    with open(meta_path, "w") as meta_file:
-        # Write the header.
-        meta_header = f">{genus} metagenome\n"
-        meta_file.write(meta_header)
-
-        # Open each concatenated species file and write the sequence in the meta file.
-        for file in files:
-            file_ending = str(file).split(".")[-1]
-            if file_ending in fasta_endings:
-                with open((files_path / str(file)), "r") as species_file:
-                    for line in species_file:
-                        if line[0] != ">":
-                            meta_file.write(line.replace("\n", ""))
 
 
 def count_avg_seq_len(dir_name):
@@ -363,7 +332,7 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
         spacing = 500
 
     # Check folder structure
-    check_folders.check_folder_structure()
+    file_io.check_folder_structure()
 
     # Check user input.
     genus = check_user_input(user_input=genus)
@@ -405,8 +374,6 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
         # Download the chosen assemblies.
         # One file for each species with it's downloaded assemblies in zip format.
         start_download = perf_counter()
-        """for key, value in all_metadata.items():
-            print(f"{key}: {value}")"""
 
         # Iterate through all species.
         logger.info("Downloading assemblies for bloomfilter training")
@@ -441,6 +408,7 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
             dir_name=dir_name, delete=True
         )
         extract_bf.bf()
+        concatenate_meta(Path(os.getcwd()) / "genus_metadata" / dir_name, genus)
         logger.info("Finished extracting and concatenating\n")
         end_concatenate = perf_counter()
 
@@ -509,7 +477,7 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
 
         # Create Metagenome fasta file of all concatenated fasta files.
         logger.info("Creating meta fasta file")
-        concatenate_meta(dir_name)
+        concatenate_meta(Path(os.getcwd()) / "genus_metadata" / dir_name, genus)
 
     elif mode == "3":
         logger.info("Checking metagenome file")
@@ -531,7 +499,7 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
     while not result:
         logger.error("Metagenome file was not correctly created")
         logger.info("Trying to remake metagenome fasta file")
-        concatenate_meta(dir_name)
+        concatenate_meta(Path(os.getcwd()) / "genus_metadata" / dir_name, genus)
         logger.info("Rechecking metagenome file")
         result = check_meta_file_size(dir_name)
         count += 1

@@ -27,12 +27,11 @@ dependencies = [
         "Pympler",
         "click",
     ]
-    classifiers = [
-            "Development Status :: 1 - Alpha",
-            "Intended Audience :: Developers",
-            "Topic :: Scientific/Engineering :: Bio-Informatics",
-            "License :: OSI Approved :: MIT License",
-    ]
+  classifiers = [
+          "Intended Audience :: Developers",
+          "Topic :: Scientific/Engineering :: Bio-Informatics",
+          "License :: OSI Approved :: MIT License",
+  ]
 
 [project.urls]
 Repository = "https://github.com/BIONF/XspecT2.git"
@@ -48,3 +47,7 @@ build-backend = "setuptools.build_meta"
 pythonpath = [
   "src"
 ]
+
+[project.optional-dependencies]
+docs = ["sphinx", "furo", "myst-parser", "sphinx-copybutton", "sphinx-autobuild"]
+test = ["pytest", "pytest-cov"]

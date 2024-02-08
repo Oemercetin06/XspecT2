@@ -3,6 +3,8 @@
 import subprocess
 import sys
 import pytest
+from click.testing import CliRunner
+from src.xspect.main import cli
 
 
 @pytest.mark.parametrize(
@@ -24,13 +26,9 @@ import pytest
 )
 def test_species_assignment(assembly_dir_path, genus, species):
     """Test the species assignment"""
-    result = subprocess.run(
-        f"xspect classify {genus} {assembly_dir_path}",
-        shell=True,
-        capture_output=True,
-        check=False,
-    )
-    assert species in result.stdout.decode("utf-8")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["classify", genus, assembly_dir_path])
+    assert species in result.output
 
 
 @pytest.mark.parametrize(
@@ -43,13 +41,9 @@ def test_species_assignment(assembly_dir_path, genus, species):
 )
 def test_ic_assignment(assembly_dir_path, ic):
     """Test the international clonal (IC) type assignment"""
-    result = subprocess.run(
-        f"xspect classify -i Acinetobacter {assembly_dir_path}",
-        shell=True,
-        capture_output=True,
-        check=False,
-    )
-    assert ic in result.stdout.decode("utf-8")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["classify", "-i", "Acinetobacter", assembly_dir_path])
+    assert ic in result.output
 
 
 @pytest.mark.parametrize(
@@ -65,11 +59,6 @@ def test_ic_assignment(assembly_dir_path, ic):
 )
 def test_oxa_assignment(assembly_dir_path, oxa):
     """Test the OXA type assignment"""
-    path = "tests/test_assemblies"
-    result = subprocess.run(
-        f"xspect classify -o Acinetobacter {assembly_dir_path}",
-        shell=True,
-        capture_output=True,
-        check=False,
-    )
-    assert all(x in result.stdout.decode("utf-8") for x in oxa)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["classify", "-o", "Acinetobacter", assembly_dir_path])
+    assert all(x in result.output for x in oxa)

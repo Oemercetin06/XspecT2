@@ -121,21 +121,6 @@ def sort_k_mer_counts(k_mer_counts):
     return k_mer_count_sorted
 
 
-def save_count(k_mer_counts, dir_name):
-    """Saves the number of distinct k-meres counted for each species in a txt file.
-
-    :param k_mer_counts: The species with their number of distinct k-meres.
-    :type k_mer_counts: list[tuple[str, int]]
-    :param dir_name: Name of the parent directory.
-    :type dir_name: str
-    """
-    file_name = Path(getcwd()) / "genus_metadata" / dir_name / "distinct_k_meres.txt"
-    with open(file_name, "w", encoding="utf-8") as f:
-        f.write(f"Species\tdistinct k-meres\n")
-        for species in k_mer_counts:
-            f.write(f"{species[0].decode('utf-8')}\t{species[1]:,}\n")
-
-
 def get_highest_k_mer_count(dir_name, k=21):
     """Gets highest k-mer count for all species and k-mer count of genus.
 

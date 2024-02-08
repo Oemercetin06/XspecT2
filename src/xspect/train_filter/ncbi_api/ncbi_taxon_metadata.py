@@ -51,11 +51,3 @@ class NCBITaxonMetadata:
 
     def get_metadata(self):
         return self._all_metadata
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()

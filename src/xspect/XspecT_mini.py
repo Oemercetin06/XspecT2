@@ -7,14 +7,12 @@ import statistics
 import sys
 from pathlib import Path
 from Bio import SeqIO, Seq
-from Bio.Seq import Seq
 from numpy import sum
 import psutil
 import xspect.Classifier as Classifier
 import xspect.search_filter as search_filter
 from xspect.OXA_Table import OXATable
 import xspect.Bootstrap as bs
-import xspect.map_kmers as map_k
 from xspect.train_filter.interface_XspecT import load_translation_dict
 
 
@@ -656,7 +654,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     BF.hits_per_filter = [0] * BF.clonetypes
                     for kmer in contigs_filtered:
                         BF.number_of_kmeres += 1
-                        kmer_reversed = str(Seq(kmer).reverse_complement())
+                        kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
                         if kmer > kmer_reversed:
                             BF.lookup(kmer)
                         else:
@@ -752,7 +750,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     for j in range(0, len(sequence.seq) - BF.k, mode):
                         BF.number_of_kmeres += 1
                         kmer = str(sequence.seq[j : j + BF.k])
-                        kmer_reversed = str(Seq(kmer).reverse_complement())
+                        kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
                         if kmer > kmer_reversed:
                             BF.lookup(kmer)
                         else:
@@ -931,7 +929,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     for kmer in reads_filtered:
                         if "N" not in kmer:
                             BF.number_of_kmeres += 1
-                            kmer_reversed = str(Seq(kmer).reverse_complement())
+                            kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
                             if kmer > kmer_reversed:
                                 BF.lookup(kmer)
                             else:
@@ -1043,7 +1041,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                         for j in range(0, len(sequence.seq) - BF.k + 1, mode):
                             BF.number_of_kmeres += 1
                             kmer = str(sequence.seq[j : j + BF.k])
-                            kmer_reversed = str(Seq(kmer).reverse_complement())
+                            kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
                             if kmer > kmer_reversed:
                                 BF.lookup(kmer)
                             else:
