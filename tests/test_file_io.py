@@ -14,10 +14,10 @@ from src.xspect.file_io import (
 )
 
 
-def test_check_folder_structure(tmpdir):
+def test_check_folder_structure(tmpdir, monkeypatch):
     """Test if the folder structure is created correctly."""
     # Set up temporary directory
-    os.chdir(tmpdir)
+    monkeypatch.chdir(tmpdir)
 
     # Call the function to be tested
     check_folder_structure()
@@ -98,10 +98,10 @@ def test_get_file_paths(base_path, file_names, expected_paths):
     assert get_file_paths(base_path, file_names) == expected_paths
 
 
-def test_concatenate_meta(tmpdir):
+def test_concatenate_meta(tmpdir, monkeypatch):
     """Test if the function concatenates fasta files correctly."""
     # Set up temporary directory
-    os.chdir(tmpdir)
+    monkeypatch.chdir(tmpdir)
 
     # Create a temporary directory for the concatenated fasta files
     concatenate_dir = Path(tmpdir) / "concatenate"
