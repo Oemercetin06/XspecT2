@@ -34,7 +34,7 @@ def download_filters():
 @click.option("-o", "--oxa/--no-oxa", help="OXA gene family detection.", default=False)
 @click.option(
     "-m",
-    "--metagenome/--no-metagenome",
+    "--meta/--no-meta",
     help="Metagenome classification.",
     default=False,
 )
@@ -48,7 +48,7 @@ def download_filters():
 @click.option(
     "-s", "--save", help="Save results to csv file.", is_flag=True, default=False
 )
-def classify(genus, path, species, ic, oxa, metagenome, complete, save):
+def classify(genus, path, species, ic, oxa, meta, complete, save):
     """Classify sample(s) from directory PATH."""
     click.echo("Classifying sample...")
     mode = 500
@@ -65,7 +65,7 @@ def classify(genus, path, species, ic, oxa, metagenome, complete, save):
         file_format,
         read_amount,
         save,
-        metagenome,
+        meta,
         genus,
         mode,
     )

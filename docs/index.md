@@ -3,6 +3,10 @@
 :hidden:
 
 quickstart
+installation
+input_data
+cli
+web
 :::
 
 :::{image} img/logo.png
