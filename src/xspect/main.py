@@ -1,5 +1,6 @@
 """Project CLI"""
 
+import subprocess
 import webbrowser
 import click
 from xspect.XspecT_mini import xspecT_mini
@@ -100,6 +101,15 @@ def classify(genus, path, species, ic, oxa, meta, complete, save):
 )
 def train(genus, bf_assembly_path, svm_assembly_path, complete, check):
     """Train model."""
+
+    # Ensure Jellyfish is installed
+    try:
+        subprocess.run(["jellyfish", "--version"], check=True, capture_output=True)
+    except FileNotFoundError as e:
+        raise click.ClickException(
+            "Jellyfish not found. Please install Jellyfish and try again."
+        ) from e
+
     mode = "1"
     if bf_assembly_path and svm_assembly_path:
         mode = "2"
