@@ -62,3 +62,21 @@ def test_oxa_assignment(assembly_dir_path, oxa):
     runner = CliRunner()
     result = runner.invoke(cli, ["classify", "-o", "Acinetobacter", assembly_dir_path])
     assert all(x in result.output for x in oxa)
+
+
+@pytest.mark.parametrize(
+    ["assembly_dir_path", "genus", "species"],
+    [
+        (
+            "GCF_000069245.1_ASM6924v1_genomic.fna",
+            "Acinetobacter",
+            "Acinetobacter nosocomialis",
+        ),
+    ],
+    indirect=["assembly_dir_path"],
+)
+def test_metagenome_mode(assembly_dir_path, genus, species):
+    """Test the metagenome mode"""
+    runner = CliRunner()
+    result = runner.invoke(cli, ["classify", "-m", genus, assembly_dir_path])
+    assert species in result.output

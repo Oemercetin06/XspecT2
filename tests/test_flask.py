@@ -122,30 +122,30 @@ def test_results(genus_client, assembly_file_path, species, oxa, ic):
     assert ic in response.text
 
 
-# @pytest.mark.parametrize(
-#     ["genus_client", "assembly_file_path", "species", "oxa", "ic"],
-#     [
-#         (
-#             "Acinetobacter",
-#             "GCF_000069245.1_ASM6924v1_genomic.fna",
-#             "Acinetobacter baumannii",
-#             "",
-#             "",
-#         )
-#     ],
-#     indirect=["genus_client", "assembly_file_path"],
-# )
-# def test_metagenome(genus_client, assembly_file_path, species, oxa, ic):
-#     """Test the species (Xspect) assignment & result page."""
-#     with genus_client.session_transaction() as session:
-#         session["filename"] = assembly_file_path
-#         session["quick"] = True
-#         session["metagenome"] = True
-#         session["OXA"] = bool(oxa)
+@pytest.mark.parametrize(
+    ["genus_client", "assembly_file_path", "species", "oxa", "ic"],
+    [
+        (
+            "Acinetobacter",
+            "GCF_000069245.1_ASM6924v1_genomic.fna",
+            "Acinetobacter baumannii",
+            "",
+            "",
+        )
+    ],
+    indirect=["genus_client", "assembly_file_path"],
+)
+def test_metagenome(genus_client, assembly_file_path, species, oxa, ic):
+    """Test the species (Xspect) assignment & result page."""
+    with genus_client.session_transaction() as session:
+        session["filename"] = assembly_file_path
+        session["quick"] = True
+        session["metagenome"] = True
+        session["OXA"] = bool(oxa)
 
-#     response = genus_client.get("/assignspec", follow_redirects=True)
-#     assert len(response.history) == 1
-#     assert response.request.path == "/resultsspec"
-#     assert species in response.text
-#     assert oxa in response.text
-#     assert ic in response.text
+    response = genus_client.get("/assignspec", follow_redirects=True)
+    assert len(response.history) == 1
+    assert response.request.path == "/resultsspec"
+    assert species in response.text
+    assert oxa in response.text
+    assert ic in response.text

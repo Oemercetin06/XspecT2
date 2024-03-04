@@ -12,7 +12,7 @@ import logging
 import pickle
 import secrets
 import pandas as pd
-from Bio import Entrez, Medline
+from Bio import Entrez, Medline, SeqIO
 from flask import (
     Flask,
     render_template,
@@ -139,35 +139,25 @@ def assignspec():
         return redirect("/resultsspec")
 
     else:
-        # Checking file type
-        # if the file is fasta -> concat lines
-        ext = filename.split(".")[-2]
+        ext = filename.split(".")[-1]
         with open(filename) as f:
             reads = f.read().splitlines()
 
-        # Concat Lines if not .fq file
-        if ext != "fq" and ext != "fastq":
-            reads = "".join(reads)
-            reads = reads.split(">")
+        if ext == "fq" or ext == "fastq":
+            sequences = SeqIO.parse(filename, "fastq")
+            quick = 2
+        else:
             if quick:
                 quick = 1
             else:
                 quick = 0
-            if metagenome:
-                quick = 4
-            reads.pop(0)
-        else:
-            if metagenome:
-                quick = 4
-            else:
-                quick = 2
-        # deleting file
-        os.remove(filename)
+            sequences = SeqIO.parse(filename, "fasta")
 
-        for i in range(len(reads)):
-            reads[i] = reads[i].upper()
+        reads = [str(sequence.seq).upper() for sequence in sequences]
+
     # starts the lookup for a given sequence
     if metagenome:
+        quick = 4
         start_meta = time.time()
         reads, reads_oxa = read_search_pre(reads, BF_Master_prefilter, ext)
         end_meta = time.time()
@@ -193,8 +183,8 @@ def assignspec():
         # assign reads to species
         species_dict = {}
         predictions_names = set()
-        for ele in predictions:
-            predictions_names.add(ele)
+        for prediction in predictions:
+            predictions_names.add(prediction)
         for species in predictions_names:
             species_dict[species] = []
         # dict with species as keys and reads as values for oxa search
@@ -322,11 +312,6 @@ def assignspec():
             "Assignment done for " + str(filename) + ", Time needed: " + str(needed)
         )
         return redirect("/resultsspec")
-
-    app.logger.info(
-        "Assignment done for " + str(filename) + ", Time needed: " + str(needed)
-    )
-    return redirect("/resultsspec")
 
 
 # about page
@@ -511,6 +496,7 @@ def resultsspec():
 
     elif metagenome:
         reads_classified = session.get("reads_classified")
+        genus = session.get("genus")
         # sort reads_classified by highest value of the second element
         sorted_reads_classified = dict(
             sorted(reads_classified.items(), key=lambda x: x[1][1], reverse=True)
@@ -518,8 +504,9 @@ def resultsspec():
         # get key of reads_classified with highest value of the second element from the value
         predictions = []
         values = []
+        translation_dict = load_translation_dict(genus)
         for key, value in sorted_reads_classified.items():
-            predictions.append(key)
+            predictions.append(translation_dict[key])
             values.append(value[1])
         clonetypes_sorted = predictions[:12]
         values_sorted = values[:12]

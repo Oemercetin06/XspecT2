@@ -608,7 +608,9 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     threshold_contig = sample_size * 0.7
                     for i in range(0, len(str(sequence.seq)) - BF_1_1.k, sample_size):
                         if "N" not in str(sequence.seq[i : i + BF_1_1.k]):
-                            BF_1_1.lookup(str(sequence.seq[i : i + BF_1_1.k]).upper())
+                            BF_1_1.lookup_canonical(
+                                str(sequence.seq[i : i + BF_1_1.k]).upper()
+                            )
 
                     # needs at least 70% hits to continue with the contig
                     counter = 0
@@ -620,7 +622,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                                 )
                                 counter += 1
                                 # how many kmers? to use
-                                if counter >= 5000000:
+                                if counter >= 5000:
                                     break
                         # contigs_kmers.append(str(reverse_sequence[j: j + BF_1_1.k]))
                         contigs.append(contigs_kmers)
@@ -638,7 +640,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                         for j in range(len(contigs[i])):
                             BF_1_1.number_of_kmeres += 1
                             hits_per_filter_copy = BF_1_1.hits_per_filter[:]
-                            BF_1_1.lookup(contigs[i][j])
+                            BF_1_1.lookup_canonical(contigs[i][j])
                             if hits_per_filter_copy != BF_1_1.hits_per_filter:
                                 threshold += 1
                         # parameter value needs to be determined
@@ -654,11 +656,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     BF.hits_per_filter = [0] * BF.clonetypes
                     for kmer in contigs_filtered:
                         BF.number_of_kmeres += 1
-                        kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
-                        if kmer > kmer_reversed:
-                            BF.lookup(kmer)
-                        else:
-                            BF.lookup(kmer_reversed)
+                        BF.lookup_canonical(kmer)
                     score = BF.get_score()
                     score_edit = [str(x) for x in score]
                     score_edit = ",".join(score_edit)
@@ -750,11 +748,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     for j in range(0, len(sequence.seq) - BF.k, mode):
                         BF.number_of_kmeres += 1
                         kmer = str(sequence.seq[j : j + BF.k])
-                        kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
-                        if kmer > kmer_reversed:
-                            BF.lookup(kmer)
-                        else:
-                            BF.lookup(kmer_reversed)
+                        BF.lookup_canonical(kmer)
 
             score = BF.get_score()
             # print("Scores: ", score)
@@ -884,11 +878,11 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     #    if "N" not in str(sequence.seq[i: i + BF_1_1.k]):
                     #        BF_1_1.lookup(str(sequence.seq[i: i + BF_1_1.k]))
                     if "N" not in str(sequence.seq):
-                        BF_1_1.lookup(k1)
-                        BF_1_1.lookup(k2)
-                        BF_1_1.lookup(k3)
-                        BF_1_1.lookup(k4)
-                        BF_1_1.lookup(k5)
+                        BF_1_1.lookup_canonical(k1)
+                        BF_1_1.lookup_canonical(k2)
+                        BF_1_1.lookup_canonical(k3)
+                        BF_1_1.lookup_canonical(k4)
+                        BF_1_1.lookup_canonical(k5)
                     else:
                         continue
                     # needs at least 2 of 3 hits to continue with read
@@ -913,7 +907,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                             BF_1_1.number_of_kmeres += 1
                             hits_per_filter_copy = BF_1_1.hits_per_filter[:]
                             if "N" not in reads[i][j]:
-                                BF_1_1.lookup(reads[i][j])
+                                BF_1_1.lookup_canonical(reads[i][j])
                             if hits_per_filter_copy != BF_1_1.hits_per_filter:
                                 threshold += 1
                         if threshold >= 0.7 * len(reads[i]):
@@ -929,11 +923,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                     for kmer in reads_filtered:
                         if "N" not in kmer:
                             BF.number_of_kmeres += 1
-                            kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
-                            if kmer > kmer_reversed:
-                                BF.lookup(kmer)
-                            else:
-                                BF.lookup(kmer_reversed)
+                            BF.lookup_canonical(kmer)
                         else:
                             continue
                     score = BF.get_score()
@@ -1041,11 +1031,7 @@ def xspecT(BF, BF_1_1, files, paths, file_format, read_amount, metagenome, genus
                         for j in range(0, len(sequence.seq) - BF.k + 1, mode):
                             BF.number_of_kmeres += 1
                             kmer = str(sequence.seq[j : j + BF.k])
-                            kmer_reversed = str(Seq.Seq(kmer).reverse_complement())
-                            if kmer > kmer_reversed:
-                                BF.lookup(kmer)
-                            else:
-                                BF.lookup(kmer_reversed)
+                            BF.lookup_canonical(kmer)
                     else:
                         break
             score = BF.get_score()

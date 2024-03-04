@@ -299,7 +299,7 @@ def read_search_pre(reads, BF_pre, ext):
             threshold_read = sample_size * 0.7
             for i in range(0, len(single_read) - BF_pre.k, sample_size):
                 if "N" not in single_read[i : i + BF_pre.k]:
-                    BF_pre.lookup(single_read[i : i + BF_pre.k])
+                    BF_pre.lookup_canonical(single_read[i : i + BF_pre.k])
         # for reads use a static sample of 5
         # Taking sum of list as reference, if sum has not increased after testing those 3 kmeres,
         # then the read won't be tested further
@@ -312,11 +312,11 @@ def read_search_pre(reads, BF_pre, ext):
             k4 = single_read[BF_pre.k : BF_pre.k * 2]
             k5 = single_read[mid + BF_pre.k : mid + BF_pre.k * 2]
             if "N" not in single_read:
-                BF_pre.lookup(k1)
-                BF_pre.lookup(k2)
-                BF_pre.lookup(k3)
-                BF_pre.lookup(k4)
-                BF_pre.lookup(k5)
+                BF_pre.lookup_canonical(k1)
+                BF_pre.lookup_canonical(k2)
+                BF_pre.lookup_canonical(k3)
+                BF_pre.lookup_canonical(k4)
+                BF_pre.lookup_canonical(k5)
             threshold_read = 3
         # needs at least 2 of 3 hits to continue with read
         counter = 0
@@ -348,7 +348,7 @@ def read_search_pre(reads, BF_pre, ext):
         for j in range(len(reads_new[i])):
             BF_pre.number_of_kmeres += 1
             hits_per_filter_copy = BF_pre.hits_per_filter[:]
-            BF_pre.lookup(reads_new[i][j])
+            BF_pre.lookup_canonical(reads_new[i][j])
             if hits_per_filter_copy != BF_pre.hits_per_filter:
                 threshold += 1
         if threshold >= cutoff * len(reads_new[i]):
@@ -373,7 +373,7 @@ def read_search_spec(reads, quick, BF, ext, genus):
         names = [translation_dict[name] for name in names_id]
         return score, names, hits, None
     # Metagenome mode
-    elif quick == 4:
+    elif  quick == 4:
         reads_classified, predictions = BF.lookup_txt(reads, genus, ext, quick)
         hits = None
         names = None

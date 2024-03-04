@@ -127,7 +127,7 @@ def perform_lookup(bloomfilter, files, file_paths, accessions, names, spacing):
             # Dominik: changed sample size to var
             for j in range(0, len(sequence.seq) - BF.k, spacing):
                 BF.number_of_kmeres += 1
-                BF.lookup(str(sequence.seq[j : j + BF.k]))
+                BF.lookup_canonical(str(sequence.seq[j : j + BF.k]))
 
         score = BF.get_score()
         score = [str(x) for x in score]

@@ -48,6 +48,7 @@ class AbaumanniiBloomfilter:
     ]  # names of the IC's
     number_of_kmeres = 0  # counter of k-meres, will be used to calculate score
     reads = 1000  # standard read number
+    kmer_hits_single = []  # kmer hits per filter
 
     def __init__(self, arraysize):
         """creates empty matrix"""
@@ -181,8 +182,17 @@ class AbaumanniiBloomfilter:
 
         return positions
 
+    def lookup_canonical(self, kmer, limit=False):
+        """takes kmer input string and checks all clonetypes if the cononicalized kmer is inside that set of kmers"""
+
+        # canonicalize
+        complement = str(Seq(kmer).reverse_complement())
+        kmer = max(kmer, complement)
+
+        self.lookup(kmer, limit)
+
     def lookup(self, kmer, limit=False):
-        """checks if an element is in the filters, returns list with True/False,
+        """
         takes kmer input string and checks all clonetypes if the k-mer is inside that set of kmers
         """
 
@@ -201,18 +211,20 @@ class AbaumanniiBloomfilter:
             # (i*self.array_size) skips to the same position in the next filter
             hits[i] = (
                 self.matrix[positions[0] + row]
-                & self.matrix[positions[1] + row]
-                & self.matrix[positions[2] + row]
-                & self.matrix[positions[3] + row]
-                & self.matrix[positions[4] + row]
-                & self.matrix[positions[5] + row]
-                & self.matrix[positions[6] + row]
+                and self.matrix[positions[1] + row]
+                and self.matrix[positions[2] + row]
+                and self.matrix[positions[3] + row]
+                and self.matrix[positions[4] + row]
+                and self.matrix[positions[5] + row]
+                and self.matrix[positions[6] + row]
             )
 
             if hits[i]:
                 temp[i] += 1
                 self.hit = True
                 if limit:
+                    # reset single kmer kit vector / memory management
+                    self.kmer_hits_single = []
                     if self.table.lookup(self.names[i], kmer):
                         self.hits_per_filter[i] += 1
                 else:
@@ -274,11 +286,7 @@ class AbaumanniiBloomfilter:
                         continue
                     self.number_of_kmeres += 1
                     kmer = str(single_read[j : j + self.k])
-                    kmer_reversed = str(Seq(kmer).reverse_complement())
-                    if kmer > kmer_reversed:
-                        self.lookup(kmer)
-                    else:
-                        self.lookup(kmer_reversed)
+                    self.lookup_canonical(kmer)
         # XspecT Sequence-Reads every 10th kmer
         elif quick == 2:
             for single_read in range(0, len(reads)):
@@ -291,11 +299,7 @@ class AbaumanniiBloomfilter:
                     # lookup for kmer
                     temp = reads[single_read]
                     kmer = str(temp[j : j + self.k])
-                    kmer_reversed = str(Seq(kmer).reverse_complement())
-                    if kmer > kmer_reversed:
-                        self.lookup(kmer)
-                    else:
-                        self.lookup(kmer_reversed)
+                    self.lookup_canonical(kmer)
                     if self.hit == True:
                         hit_counter += 1
         elif quick == 3:
@@ -307,11 +311,7 @@ class AbaumanniiBloomfilter:
                         continue
                     self.number_of_kmeres += 1
                     kmer = str(single_read[j : j + self.k])
-                    kmer_reversed = str(Seq(kmer).reverse_complement())
-                    if kmer > kmer_reversed:
-                        self.lookup(kmer)
-                    else:
-                        self.lookup(kmer_reversed)
+                    self.lookup_canonical(kmer)
         # metagenome mode
         elif quick == 4:
             print("Stage 1")
@@ -332,13 +332,8 @@ class AbaumanniiBloomfilter:
                 self.hits_per_filter = [0] * self.clonetypes
                 for kmer in read:
                     counter += 1
-                    # lookup for kmer, use lexikographical smaller kmer
                     self.number_of_kmeres += 1
-                    kmer_reversed = str(Seq(kmer).reverse_complement())
-                    if kmer > kmer_reversed:
-                        self.lookup(kmer)
-                    else:
-                        self.lookup(kmer_reversed)
+                    self.lookup_canonical(kmer)
                 score = self.get_score()
                 score_edit = [str(x) for x in score]
                 score_edit = ",".join(score_edit)
@@ -383,9 +378,9 @@ class AbaumanniiBloomfilter:
                 bootstrap_score = bootstrap_score / bootstrap_n
                 # bootstrap_score = 1
 
-                if ("A." + prediction) not in reads_classified:
+                if prediction not in reads_classified:
                     # Value 5 war vohrer = read
-                    reads_classified["A." + prediction] = [
+                    reads_classified[prediction] = [
                         [max(score)],
                         1,
                         [len(read)],
@@ -395,13 +390,11 @@ class AbaumanniiBloomfilter:
                         None,
                     ]
                 else:
-                    reads_classified["A." + prediction][0] += [max(score)]
-                    reads_classified["A." + prediction][1] += 1
-                    reads_classified["A." + prediction][2] += [len(read)]
-                    reads_classified["A." + prediction][3] += sorted(score)[-2] / max(
-                        score
-                    )
-                    reads_classified["A." + prediction][4] += [bootstrap_score]
+                    reads_classified[prediction][0] += [max(score)]
+                    reads_classified[prediction][1] += 1
+                    reads_classified[prediction][2] += [len(read)]
+                    reads_classified[prediction][3] += sorted(score)[-2] / max(score)
+                    reads_classified[prediction][4] += [bootstrap_score]
                     # reads_classified["A." + prediction][5] += None
                 # tracker.print_diff()
             # not ready yet
@@ -475,11 +468,7 @@ class AbaumanniiBloomfilter:
                     self.number_of_kmeres += 1
                     # lookup for kmer
                     kmer = str(single_read[j : j + self.k])
-                    kmer_reversed = str(Seq(kmer).reverse_complement())
-                    if kmer > kmer_reversed:
-                        self.lookup(kmer)
-                    else:
-                        self.lookup(kmer_reversed)
+                    self.lookup_canonical(kmer)
 
     def cleanup(self):
         """deletes matrix"""
