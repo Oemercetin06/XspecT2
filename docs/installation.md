@@ -44,4 +44,6 @@ Check if the installation was successful:
 xspect --version
 ```
 
-For filter training, please see [Optional Filter Training Requirement](https://www.notion.so/Installation-60aafcfa979d41bb818dbf3bce33142e?pvs=21)
+For filter training, please see [Optional Filter Training Requirement]
+
+[Optional Filter Training Requirement]: #optional-custom-filter-training-requirement
