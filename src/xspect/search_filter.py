@@ -373,7 +373,7 @@ def read_search_spec(reads, quick, BF, ext, genus):
         names = [translation_dict[name] for name in names_id]
         return score, names, hits, None
     # Metagenome mode
-    elif  quick == 4:
+    elif quick == 4:
         reads_classified, predictions = BF.lookup_txt(reads, genus, ext, quick)
         hits = None
         names = None
