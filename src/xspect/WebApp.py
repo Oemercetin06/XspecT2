@@ -23,6 +23,7 @@ from flask import (
     make_response,
     jsonify,
 )
+from requests import HTTPError
 from xspect.Classifier import classify
 from xspect.search_filter import (
     single_oxa,
@@ -569,15 +570,46 @@ def resultsspec():
     filename = session.get("filename")[22:]
     filename = os.path.splitext(filename)[0]
 
-    # PUBMED LITERATURE SEARCH --------------------------------------------------------------------------------------------
+    literature_all = literature_search(prediction)
 
+    return render_template(
+        "species.html",
+        results_oxa=values_oxa,
+        oxas=oxa_names,
+        results_ct=values_sorted,
+        hits_ct=hits_ct,
+        clonetypes=clonetypes_sorted,
+        results_claast=values_claast,
+        hits_claast=hits_claast,
+        clonetypes_claast=clonetypes_claast,
+        filename=filename,
+        maxi=maxi,
+        time=session.get("time"),
+        prediction=prediction,
+        prediction_claast=prediction_claast,
+        literature_all=literature_all,
+        additional_info=additional_info,
+        text=text,
+        metagenome=metagenome,
+        oxa_labels=oxa_labels,
+        oxa_data=oxa_data,
+    )
+
+
+def literature_search(query):
+    """Searches for literature on PubMed"""
+    # PUBMED LITERATURE SEARCH --------------------------------------------------------------------------------------------
     # Pubmed literature search Source: https://gist.github.com/bonzanini/5a4c39e4c02502a8451d
     # and https://biopython-tutorial.readthedocs.io/en/latest/notebooks/09%20-%20Accessing%20NCBIs%20Entrez%20databases.html
     Entrez.email = "xspectBIOINF@web.de"
-    handle = Entrez.esearch(
-        db="pubmed", sort="relevance", retmax="10", retmode="xml", term=prediction
-    )
-    pubmed_results = Entrez.read(handle)
+    try:
+        handle = Entrez.esearch(
+            db="pubmed", sort="relevance", retmax="10", retmode="xml", term=query
+        )
+        pubmed_results = Entrez.read(handle)
+    except HTTPError as e:
+        print(e)
+        return None
 
     id_list = pubmed_results["IdList"]
     literature = []
@@ -602,7 +634,7 @@ def resultsspec():
             literature_abstract.append(
                 paper["MedlineCitation"]["Article"]["Abstract"]["AbstractText"]
             )
-        except:
+        except KeyError:
             literature_abstract.append(["No abstract available"])
 
     for i in range(len(literature_content)):
@@ -633,92 +665,4 @@ def resultsspec():
         literature_id,
     ]
 
-    if request.method == "POST":
-        data = request.json
-        Entrez.email = "xspectBIOINF@web.de"
-        handle = Entrez.esearch(
-            db="pubmed",
-            sort=str(data[1]),
-            retmax=str(data[0]),
-            retmode="xml",
-            term=prediction,
-        )
-        pubmed_results = Entrez.read(handle)
-
-        id_list = pubmed_results["IdList"]
-        literature = []
-        for i in id_list:
-            literature.append("https://pubmed.ncbi.nlm.nih.gov/" + str(i) + "/")
-        ids = ",".join(id_list)
-        handle = Entrez.efetch(db="pubmed", retmode="xml", id=ids)
-        papers = Entrez.read(handle)
-
-        handle2 = Entrez.efetch(db="pubmed", id=ids, rettype="medline")
-        literature_info = Medline.parse(handle2)
-        literature_info = list(literature_info)
-
-        literature_content = []
-        literature_abstract = []
-        literature_authors = []
-        literature_journal = []
-        literature_id = []
-        for paper in papers["PubmedArticle"]:
-            literature_content.append(
-                paper["MedlineCitation"]["Article"]["ArticleTitle"]
-            )
-            literature_abstract.append(
-                paper["MedlineCitation"]["Article"]["Abstract"]["AbstractText"]
-            )
-
-        for i in range(len(literature_content)):
-            literature_id.append("paper_" + str(i))
-
-        for record in literature_info:
-            literature_authors.append(record.get("AU", "?"))
-            literature_journal.append(record.get("SO", "?"))
-
-        for i in range(len(literature_authors)):
-            literature_authors[i] = " ,".join(literature_authors[i])
-
-        for i in range(len(literature_abstract)):
-            literature_abstract[i] = " ".join(literature_abstract[i])
-
-        CLEANR = re.compile("<.*?>")
-
-        for i in range(len(literature_content)):
-            literature_content[i] = re.sub(CLEANR, "", literature_content[i])
-            literature_abstract[i] = re.sub(CLEANR, "", literature_abstract[i])
-
-        literature_all = [
-            literature,
-            literature_content,
-            literature_abstract,
-            literature_authors,
-            literature_journal,
-            literature_id,
-        ]
-
-        return json.dumps(literature_all)
-
-    return render_template(
-        "species.html",
-        results_oxa=values_oxa,
-        oxas=oxa_names,
-        results_ct=values_sorted,
-        hits_ct=hits_ct,
-        clonetypes=clonetypes_sorted,
-        results_claast=values_claast,
-        hits_claast=hits_claast,
-        clonetypes_claast=clonetypes_claast,
-        filename=filename,
-        maxi=maxi,
-        time=session.get("time"),
-        prediction=prediction,
-        prediction_claast=prediction_claast,
-        literature_all=literature_all,
-        additional_info=additional_info,
-        text=text,
-        metagenome=metagenome,
-        oxa_labels=oxa_labels,
-        oxa_data=oxa_data,
-    )
+    return literature_all
