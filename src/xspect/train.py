@@ -178,56 +178,6 @@ def check_meta_file_content(dir_name: str):
                     logger.info(f"{file} in metagenome")
 
 
-def init_argparse() -> argparse.ArgumentParser:
-    """Initiate the command line parser for XspecT-trainer.py"""
-    parser = argparse.ArgumentParser(
-        prog="XspecT-trainer",
-        description="Automatically trains bloomfilter, of a given genus, so they can later be used by XspecT to "
-        "assign species to assemblies.",
-    )
-    parser.add_argument(
-        "genus",
-        type=str,
-        help="The name of the genus for which the filters will be trained. Can also be a NCBI Taxon ID",
-    )
-    parser.add_argument(
-        "mode",
-        metavar="mode",
-        choices=["1", "2", "3"],
-        type=str,
-        help="Declares which mode should be used. 1: Train bloomfilters with assemblies from the ncbi"
-        "RefSeq database. 2: Train bloomfilters with custom assembles. The paths to the assemblies"
-        "need to be given. 3: Check if metagenome file was correctly created.",
-    )
-    parser.add_argument(
-        "-bf",
-        "--bf_path",
-        type=str,
-        help="The path to the assemblies that will be used to train the bloomfilters if mode 2 is used.",
-    )
-    parser.add_argument(
-        "-svm",
-        "--svm_path",
-        type=str,
-        help="The path to the assemblies that will be used to train the support-vector-machine if "
-        "mode 2 is used.",
-    )
-    parser.add_argument(
-        "-c",
-        "--complete",
-        action="store_true",
-        help="Declares if all of every 500th k-mere should be used to train the bloomfilters.",
-    )
-    parser.add_argument(
-        "-d",
-        "--dir_name",
-        type=str,
-        help="Write the directory name from genus_metadata to check metagenome file.",
-    )
-
-    return parser
-
-
 def set_logger(dir_name: str):
     """Sets the logger parameters.
 
@@ -312,19 +262,6 @@ def delete_dir(dir_path: Path):
     shutil.rmtree(dir_path, ignore_errors=False, onerror=None)
 
 
-def main():
-    # command line should look like this: python XspecT_trainer.py genus mode path_to_bf_files path_to_svm_files
-    parser = init_argparse()
-    args = parser.parse_args()
-    genus = args.genus
-    mode = args.mode
-    complete = args.complete
-    bf_path = args.bf_path
-    svm_path = args.svm_path
-    dir_name = args.dir_name
-    train(genus, mode, complete, bf_path, svm_path, dir_name)
-
-
 def train(genus, mode, complete, bf_path, svm_path, dir_name):
     if complete:
         spacing = 1
@@ -370,6 +307,10 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
         all_metadata = all_metadata.get_all_metadata()
         logger.info("Finished metadata collecting\n")
         end_meta = perf_counter()
+
+        # Ensure that the genus has at least one species with accessions.
+        if not all_metadata:
+            raise ValueError("No species with accessions found")
 
         # Download the chosen assemblies.
         # One file for each species with it's downloaded assemblies in zip format.
@@ -605,7 +546,3 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
     save_translation_dict(dir_name, translation_dict)
 
     logger.info("XspecT-trainer is finished.")
-
-
-if __name__ == "__main__":
-    main()

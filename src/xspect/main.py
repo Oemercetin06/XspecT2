@@ -5,7 +5,7 @@ import webbrowser
 import click
 from xspect.XspecT_mini import xspecT_mini
 from xspect.download_filters import download_test_filters
-from xspect.XspecT_trainer import train as x_train
+from xspect.train import train as x_train
 from xspect.WebApp import app
 
 
@@ -115,7 +115,10 @@ def train(genus, bf_assembly_path, svm_assembly_path, complete, check):
         mode = "2"
     if check:
         mode = "3"
-    x_train(genus, mode, complete, bf_assembly_path, svm_assembly_path, "")
+    try:
+        x_train(genus, mode, complete, bf_assembly_path, svm_assembly_path, "")
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
 
 
 @cli.command()

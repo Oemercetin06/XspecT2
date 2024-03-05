@@ -7,7 +7,7 @@ from time import perf_counter, localtime, asctime
 from loguru import logger
 import numpy as np
 
-import xspect.XspecT_trainer
+import xspect.train
 
 
 def get_seq_paths(dir_name: str):
