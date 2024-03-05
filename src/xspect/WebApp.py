@@ -607,62 +607,63 @@ def literature_search(query):
             db="pubmed", sort="relevance", retmax="10", retmode="xml", term=query
         )
         pubmed_results = Entrez.read(handle)
-    except HTTPError as e:
-        print(e)
-        return None
 
-    id_list = pubmed_results["IdList"]
-    literature = []
-    for i in id_list:
-        literature.append("https://pubmed.ncbi.nlm.nih.gov/" + str(i) + "/")
-    ids = ",".join(id_list)
-    handle = Entrez.efetch(db="pubmed", retmode="xml", id=ids)
-    papers = Entrez.read(handle)
+        id_list = pubmed_results["IdList"]
+        literature = []
+        for i in id_list:
+            literature.append("https://pubmed.ncbi.nlm.nih.gov/" + str(i) + "/")
+        ids = ",".join(id_list)
+        handle = Entrez.efetch(db="pubmed", retmode="xml", id=ids)
+        papers = Entrez.read(handle)
 
-    handle2 = Entrez.efetch(db="pubmed", id=ids, rettype="medline")
-    literature_info = Medline.parse(handle2)
-    literature_info = list(literature_info)
+        handle2 = Entrez.efetch(db="pubmed", id=ids, rettype="medline")
+        literature_info = Medline.parse(handle2)
+        literature_info = list(literature_info)
 
-    literature_content = []
-    literature_abstract = []
-    literature_authors = []
-    literature_journal = []
-    literature_id = []
-    for paper in papers["PubmedArticle"]:
-        literature_content.append(paper["MedlineCitation"]["Article"]["ArticleTitle"])
-        try:
-            literature_abstract.append(
-                paper["MedlineCitation"]["Article"]["Abstract"]["AbstractText"]
+        literature_content = []
+        literature_abstract = []
+        literature_authors = []
+        literature_journal = []
+        literature_id = []
+        for paper in papers["PubmedArticle"]:
+            literature_content.append(
+                paper["MedlineCitation"]["Article"]["ArticleTitle"]
             )
-        except KeyError:
-            literature_abstract.append(["No abstract available"])
+            try:
+                literature_abstract.append(
+                    paper["MedlineCitation"]["Article"]["Abstract"]["AbstractText"]
+                )
+            except KeyError:
+                literature_abstract.append(["No abstract available"])
 
-    for i in range(len(literature_content)):
-        literature_id.append("paper_" + str(i))
+        for i in range(len(literature_content)):
+            literature_id.append("paper_" + str(i))
 
-    for record in literature_info:
-        literature_authors.append(record.get("AU", "?"))
-        literature_journal.append(record.get("SO", "?"))
+        for record in literature_info:
+            literature_authors.append(record.get("AU", "?"))
+            literature_journal.append(record.get("SO", "?"))
 
-    for i in range(len(literature_authors)):
-        literature_authors[i] = " ,".join(literature_authors[i])
+        for i in range(len(literature_authors)):
+            literature_authors[i] = " ,".join(literature_authors[i])
 
-    for i in range(len(literature_abstract)):
-        literature_abstract[i] = " ".join(literature_abstract[i])
+        for i in range(len(literature_abstract)):
+            literature_abstract[i] = " ".join(literature_abstract[i])
 
-    CLEANR = re.compile("<.*?>")
+        CLEANR = re.compile("<.*?>")
 
-    for i in range(len(literature_content)):
-        literature_content[i] = re.sub(CLEANR, "", literature_content[i])
-        literature_abstract[i] = re.sub(CLEANR, "", literature_abstract[i])
+        for i in range(len(literature_content)):
+            literature_content[i] = re.sub(CLEANR, "", literature_content[i])
+            literature_abstract[i] = re.sub(CLEANR, "", literature_abstract[i])
 
-    literature_all = [
-        literature,
-        literature_content,
-        literature_abstract,
-        literature_authors,
-        literature_journal,
-        literature_id,
-    ]
+        literature_all = [
+            literature,
+            literature_content,
+            literature_abstract,
+            literature_authors,
+            literature_journal,
+            literature_id,
+        ]
 
-    return literature_all
+        return literature_all
+    except Exception as e:
+        return None
