@@ -124,8 +124,9 @@ def train(genus, bf_assembly_path, svm_assembly_path, complete, check):
 @cli.command()
 def web():
     """Open the XspecT web app."""
-    webbrowser.open("http://localhost:8000")
-    app.run(host="0.0.0.0", port=8000, debug=True, threaded=True)
+    port = 8000
+    print(f"To open the web app, go to http://localhost:{port}/")
+    app.run(host="0.0.0.0", port=port, debug=True, threaded=True)
 
 
 if __name__ == "__main__":
