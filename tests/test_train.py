@@ -3,7 +3,7 @@ Training script tests
 """
 
 import pytest
-import src.xspect.train as train
+from src.xspect import train
 
 
 def test_invalid_taxonomy_check():
@@ -12,4 +12,4 @@ def test_invalid_taxonomy_check():
     where species do not fulfill taxonomy check requirements.
     """
     with pytest.raises(ValueError):
-        train.train("Amnimonas", "1", False, "", "", "")
+        train.train_ncbi("Amnimonas")

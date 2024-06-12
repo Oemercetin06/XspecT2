@@ -23,13 +23,8 @@ To install Xspect, please download the lastest 64 bit Python version and install
 ```
 pip install xspect
 ```
-If you would like to train filters yourself, you need to install Jellyfish, which is used to count distinct k-meres in the assemblies. It can be installed using bioconda:
-```
-conda install -c bioconda jellyfish
-```
-On Apple Silicon, it is possible that this command installs an incorrect Jellyfish package. Please refer to the official [Jellyfish project] for installation guidance.
+Please note that Apple Silicon is currently not supported.
 
-[Jellyfish project]: https://github.com/gmarcais/Jellyfish
 ## Usage
 ### Get the Bloomfilters
 To download basic pre-trained filters, you can use the built-in command:

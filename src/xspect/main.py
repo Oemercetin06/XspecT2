@@ -1,12 +1,11 @@
 """Project CLI"""
 
-import subprocess
-import webbrowser
+from pathlib import Path
 import click
-from xspect.XspecT_mini import xspecT_mini
 from xspect.download_filters import download_test_filters
-from xspect.train import train as x_train
-from xspect.WebApp import app
+from xspect.model_management import get_genus_model, get_species_model
+from xspect.train import train_ncbi
+from xspect.web_app import app
 
 
 @click.group()
@@ -24,52 +23,34 @@ def download_filters():
     )
 
 
-# todo: add read amount option -> why 342480?
 @cli.command()
 @click.argument("genus")
-@click.argument("path", type=click.Path(exists=True, dir_okay=True, file_okay=False))
-@click.option(
-    "-s", "--species/--no-species", help="Species classification.", default=True
-)
-@click.option("-i", "--ic/--no-ic", help="IC strain typing.", default=False)
-@click.option("-o", "--oxa/--no-oxa", help="OXA gene family detection.", default=False)
+@click.argument("path", type=click.Path(exists=True, dir_okay=False, file_okay=True))
 @click.option(
     "-m",
     "--meta/--no-meta",
     help="Metagenome classification.",
     default=False,
 )
-@click.option(
-    "-c",
-    "--complete",
-    help="Use every single k-mer as input for classification.",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "-s", "--save", help="Save results to csv file.", is_flag=True, default=False
-)
-def classify(genus, path, species, ic, oxa, meta, complete, save):
+def classify(genus, path, meta):
     """Classify sample(s) from directory PATH."""
     click.echo("Classifying sample...")
-    mode = 500
-    if complete:
-        mode = 1
-    file_format = "fasta"
-    read_amount = 342480
+    sequence_input = Path(path)
+    species_filter_model = get_species_model(genus)
 
-    xspecT_mini(
-        path,
-        species,
-        ic,
-        oxa,
-        file_format,
-        read_amount,
-        save,
-        meta,
-        genus,
-        mode,
-    )
+    if meta:
+        genus_filter_model = get_genus_model(genus)
+        filtered_sequences = genus_filter_model.filter(sequence_input)
+        prediction, scores = species_filter_model.predict(
+            filtered_sequences["Acinetobacter"]
+        )
+    else:
+        prediction, scores = species_filter_model.predict(sequence_input)
+
+    prediction = species_filter_model.display_names[prediction[0]]
+
+    print(prediction)
+    print(scores)
 
 
 @cli.command()
@@ -86,37 +67,15 @@ def classify(genus, path, species, ic, oxa, meta, complete, save):
     help="Path to assembly directory for SVM training.",
     type=click.Path(exists=True, dir_okay=True, file_okay=False),
 )
-@click.option(
-    "-c",
-    "--complete",
-    help="Train filter on every single k-mer.",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--check",
-    help="Check if metagenome file was correctly created.",
-    is_flag=True,
-    default=False,
-)
-def train(genus, bf_assembly_path, svm_assembly_path, complete, check):
+def train(genus, bf_assembly_path, svm_assembly_path):
     """Train model."""
 
-    # Ensure Jellyfish is installed
+    if bf_assembly_path or svm_assembly_path:
+        raise NotImplementedError(
+            "Training with specific assembly paths is not yet implemented."
+        )
     try:
-        subprocess.run(["jellyfish", "--version"], check=True, capture_output=True)
-    except FileNotFoundError as e:
-        raise click.ClickException(
-            "Jellyfish not found. Please install Jellyfish and try again."
-        ) from e
-
-    mode = "1"
-    if bf_assembly_path and svm_assembly_path:
-        mode = "2"
-    if check:
-        mode = "3"
-    try:
-        x_train(genus, mode, complete, bf_assembly_path, svm_assembly_path, "")
+        train_ncbi(genus)
     except ValueError as e:
         raise click.ClickException(str(e)) from e
 

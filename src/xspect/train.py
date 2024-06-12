@@ -1,16 +1,17 @@
-import argparse
 import os
 import shutil
-from linecache import getline
 from pathlib import Path
-import pickle
 from platform import python_version
 import sys
 from time import localtime, perf_counter, asctime, sleep
 from loguru import logger
-from numpy import mean
 from xspect import file_io
+from xspect.definitions import get_xspect_tmp_path
 from xspect.file_io import concatenate_meta
+from xspect.models.probabilistic_filter_svm_model import ProbabilisticFilterSVMModel
+from xspect.models.probabilistic_single_filter_model import (
+    ProbabilisticSingleFilterModel,
+)
 from xspect.train_filter.ncbi_api import (
     ncbi_assembly_metadata,
     ncbi_taxon_metadata,
@@ -23,7 +24,6 @@ from xspect.train_filter import (
     extract_and_concatenate,
     get_paths,
     interface_XspecT,
-    k_mer_count,
 )
 
 
@@ -76,9 +76,9 @@ def copy_custom_data(bf_path: str, svm_path: str, dir_name: str):
     new_svm_path = path / "training_data"
 
     # Make the new directories.
-    os.mkdir(path)
-    os.mkdir(new_bf_path)
-    os.mkdir(new_svm_path)
+    path.mkdir(exist_ok=True)
+    new_bf_path.mkdir(exist_ok=True)
+    new_svm_path.mkdir(exist_ok=True)
 
     # Move bloomfilter files.
     bf_files = os.listdir(bf_path)
@@ -95,89 +95,6 @@ def copy_custom_data(bf_path: str, svm_path: str, dir_name: str):
         shutil.copy2(file_path, new_file_path)
 
 
-def count_avg_seq_len(dir_name):
-    """Counts the sequence length for each species concatenated fasta file and computes the average.
-
-    :param dir_name: Directory name for current genus.
-    :type dir_name: str
-    :return: The average sequence length.
-    """
-    path = get_paths.get_concatenate_file_path(dir_name)
-
-    # Create list with all sequence lengths.
-    files = os.listdir(path)
-    counts = list()
-    for file in files:
-        file_path = path / str(file)
-        sequence = getline(str(file_path), 2)
-        counts.append(len(sequence))
-
-    # Return avg. sequence length.
-    return int(round(float(mean(counts)), 0))
-
-
-def check_meta_file_size(dir_name) -> bool:
-    """Checks the metagenome fasta file if every concatenated species file was used for
-    its creation by comparing the file sizes.
-
-    :param dir_name: Directory name for current genus.
-    :type dir_name: str
-    :return: True or False depending on the answer.
-    """
-    path = Path(os.getcwd())
-    species_path = path / "genus_metadata" / dir_name / "concatenate"
-    genus = dir_name.split("_")[0]
-    meta_path = path / "genus_metadata" / dir_name / (str(genus) + ".fasta")
-
-    species_files = os.listdir(species_path)
-    all_files_size = 0
-    for file in species_files:
-        file_size = os.path.getsize(species_path / str(file))
-        all_files_size += file_size
-
-    meta_file_size = os.path.getsize(meta_path)
-
-    all_files_size = round(all_files_size / (1024**2))
-    meta_file_size = round(meta_file_size / (1024**2))
-
-    # Compare both sizes.
-    same = False
-    if all_files_size == meta_file_size:
-        same = True
-    return same
-
-
-def check_meta_file_content(dir_name: str):
-    """Checks if every sequence used to concatenate the meta file is fully inside the meta file.
-
-    :param dir_name: Directory name for current genus.
-    :return: True if every sequence is inside the meta file.
-    """
-    path = Path(os.getcwd()) / "genus_metadata" / dir_name
-    concatenate_path = path / "concatenate"
-    genus = dir_name.split("_")[0]
-    mg_file_name = f"{genus}.fasta"
-    mg_file_path = path / mg_file_name
-    mg_str = ""
-    with open(mg_file_path, "r") as mg_file:
-        for line in mg_file:
-            if line[0] != ">":
-                mg_str = line
-    files = os.listdir(concatenate_path)
-
-    for file in files:
-        file_path = concatenate_path / file
-        with open(file_path, "r") as con_file:
-            for line in con_file:
-                if line[0] == ">":
-                    continue
-
-                if line not in mg_str:
-                    logger.error(f"{file} not in metagenome")
-                else:
-                    logger.info(f"{file} in metagenome")
-
-
 def set_logger(dir_name: str):
     """Sets the logger parameters.
 
@@ -188,7 +105,7 @@ def set_logger(dir_name: str):
     # Starting logger.
     logger.remove()
     logger.add(sys.stderr, format="{time:HH:mm:ss} | {level} | {message}", level="INFO")
-    log_path = Path(os.getcwd()) / "genus_metadata" / dir_name / (genus + ".log")
+    log_path = get_xspect_tmp_path() / dir_name / (genus + ".log")
     logger.add(log_path, format="{time:HH:mm:ss} | {level} | {message}", level="DEBUG")
 
 
@@ -198,41 +115,17 @@ def create_translation_dict(dir_name: str) -> dict[str, str]:
     :param dir_name: Directory name for current genus.
     :return: The created translation dictionary.
     """
-    path = Path(os.getcwd()) / "genus_metadata" / dir_name / "concatenate"
+    path = get_xspect_tmp_path() / dir_name / "concatenate"
     files = os.listdir(path)
     translation_dict = dict()
     for file in files:
         file_split = file.split(".")[0].split("_")
         tax_id = file_split[0]
+        final_file_name = tax_id + ".fasta"
         name = file_split[1]
-        translation_dict[tax_id] = name
+        translation_dict[final_file_name] = name
 
     return translation_dict
-
-
-def save_translation_dict(dir_name: str, translation_dict: dict[str, str]):
-    """Saves the translation dict in filter/translation_dicts as pickle file.
-
-    :param dir_name: Directory name for current genus.
-    :param translation_dict: A dictionary with taxon ID as key and its corresponding scientific name as value.
-    """
-    genus = dir_name.split("_")[0]
-    folder_path = Path(os.getcwd()) / "filter" / "translation_dicts"
-    # Check if folder exists
-    if os.path.exists(folder_path):
-        # Check if it is a folder
-        if not os.path.isdir(folder_path):
-            logger.error("Path: {path} is not a folder", path=folder_path)
-            logger.error("Aborting")
-            exit()
-    else:
-        # Create folder
-        os.mkdir(folder_path)
-
-    file_name = f"{genus}.pickle"
-    file_path = folder_path / file_name
-    with open(file_path, "wb") as f:
-        pickle.dump(translation_dict, f)
 
 
 def change_bf_assembly_file_names(dir_name: str):
@@ -240,7 +133,7 @@ def change_bf_assembly_file_names(dir_name: str):
 
     :param dir_name: Directory name for current genus.
     """
-    path = Path(os.getcwd()) / "genus_metadata" / dir_name / "concatenate"
+    path = get_xspect_tmp_path() / dir_name / "concatenate"
     files = os.listdir(path)
     for file in files:
         file_split = file.split(".")[0].split("_")
@@ -254,22 +147,11 @@ def get_current_time():
     return asctime(localtime()).split()[3]
 
 
-def delete_dir(dir_path: Path):
-    """
+def train_ncbi(genus: str):
+    """Train genus and species models with NCBI assemblies from the given genus."""
 
-    :param dir_path:
-    """
-    shutil.rmtree(dir_path, ignore_errors=False, onerror=None)
-
-
-def train(genus, mode, complete, bf_path, svm_path, dir_name):
-    if complete:
-        spacing = 1
-    else:
-        spacing = 500
-
-    # Check folder structure
-    file_io.check_folder_structure()
+    if not isinstance(genus, str):
+        raise TypeError("genus must be a string")
 
     # Check user input.
     genus = check_user_input(user_input=genus)
@@ -283,222 +165,119 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
 
     # Time for the whole program.
     start_all = perf_counter()
-    if mode == "1":
-        # Search for every defined species of the genus.
-        start_tax = perf_counter()
-        logger.info("Getting all species of the genus")
-        children_ids = ncbi_children_tree.NCBIChildrenTree(genus).children_ids()
-        species_dict = ncbi_taxon_metadata.NCBITaxonMetadata(
-            children_ids
-        ).get_metadata()
-        end_tax = perf_counter()
 
-        # Get all gcf accessions that have Taxonomy check result OK.
-        logger.info("Checking ANI data for updates")
-        ani = html_scrap.TaxonomyCheck()
-        ani_gcf = ani.ani_gcf()
+    # Search for every defined species of the genus.
+    start_tax = perf_counter()
+    logger.info("Getting all species of the genus")
+    children_ids = ncbi_children_tree.NCBIChildrenTree(genus).children_ids()
+    species_dict = ncbi_taxon_metadata.NCBITaxonMetadata(children_ids).get_metadata()
+    end_tax = perf_counter()
 
-        # Look for up to 8 assembly accessions per species.
-        start_meta = perf_counter()
-        logger.info("Getting assembly metadata")
-        all_metadata = ncbi_assembly_metadata.NCBIAssemblyMetadata(
-            all_metadata=species_dict, ani_gcf=ani_gcf, count=8, contig_n50=10000
-        )
-        all_metadata = all_metadata.get_all_metadata()
-        logger.info("Finished metadata collecting\n")
-        end_meta = perf_counter()
+    # Get all gcf accessions that have Taxonomy check result OK.
+    logger.info("Checking ANI data for updates")
+    ani = html_scrap.TaxonomyCheck()
+    ani_gcf = ani.ani_gcf()
 
-        # Ensure that the genus has at least one species with accessions.
-        if not all_metadata:
-            raise ValueError("No species with accessions found")
+    # Look for up to 8 assembly accessions per species.
+    start_meta = perf_counter()
+    logger.info("Getting assembly metadata")
+    all_metadata = ncbi_assembly_metadata.NCBIAssemblyMetadata(
+        all_metadata=species_dict, ani_gcf=ani_gcf, count=8, contig_n50=10000
+    )
+    all_metadata = all_metadata.get_all_metadata()
+    logger.info("Finished metadata collecting\n")
+    end_meta = perf_counter()
 
-        # Download the chosen assemblies.
-        # One file for each species with it's downloaded assemblies in zip format.
-        start_download = perf_counter()
+    # Ensure that the genus has at least one species with accessions.
+    if not all_metadata:
+        raise ValueError("No species with accessions found")
 
-        # Iterate through all species.
-        logger.info("Downloading assemblies for bloomfilter training")
-        for metadata in all_metadata.values():
-            # Only try to download when the species has accessions.
-            if len(metadata["accessions"]) >= 1:
-                sleep(5)
-                species_name = metadata["sci_name"]
-                tax_id = metadata["tax_id"]
-                logger.info("Downloading {id}_{name}", id=tax_id, name=species_name)
-                file_name = f"{tax_id}_{species_name}.zip"
+    # Download the chosen assemblies.
+    # One file for each species with it's downloaded assemblies in zip format.
+    start_download = perf_counter()
 
-                # Selecting the first 4 assemblies for training the filters.
-                accessions = list()
-                for accession in metadata["accessions"]:
-                    accessions.append(accession)
-                    if len(accessions) == 4:
-                        break
+    # Iterate through all species.
+    logger.info("Downloading assemblies for bloomfilter training")
+    for metadata in all_metadata.values():
+        # Only try to download when the species has accessions.
+        if len(metadata["accessions"]) >= 1:
+            sleep(5)
+            species_name = metadata["sci_name"]
+            tax_id = metadata["tax_id"]
+            logger.info("Downloading {id}_{name}", id=tax_id, name=species_name)
+            file_name = f"{tax_id}_{species_name}.zip"
 
-                download_assemblies.download_assemblies(
-                    accessions=accessions,
-                    dir_name=dir_name,
-                    target_folder="zip_files",
-                    zip_file_name=file_name,
-                )
-        logger.info("Downloads finished\n")
-        end_download = perf_counter()
+            # Selecting the first 4 assemblies for training the filters.
+            accessions = metadata["accessions"][:4]
 
-        # Concatenate all assemblies of each species.
-        start_concatenate = perf_counter()
-        extract_bf = extract_and_concatenate.ExtractConcatenate(
-            dir_name=dir_name, delete=True
-        )
-        extract_bf.bf()
-        concatenate_meta(Path(os.getcwd()) / "genus_metadata" / dir_name, genus)
-        logger.info("Finished extracting and concatenating\n")
-        end_concatenate = perf_counter()
-
-        # Compute average sequence length.
-        avg_len = count_avg_seq_len(dir_name)
-
-        # Download assemblies for svm creation.
-        start_svm_dl = perf_counter()
-        logger.info("Downloading assemblies for support-vector-machine training")
-        accessions = dict()
-        for metadata in all_metadata.values():
-            # Only add taxon with accessions.
-            if len(metadata["accessions"]) >= 1:
-                accessions[metadata["tax_id"]] = metadata["accessions"]
-
-        # Downloading assemblies.
-        create_svm.get_svm_assemblies(all_accessions=accessions, dir_name=dir_name)
-        logger.info("Finished downloading\n")
-
-        # Extracting assemblies.
-        extract_svm = extract_and_concatenate.ExtractConcatenate(
-            dir_name=dir_name, delete=True
-        )
-        extract_svm.svm(species_accessions=accessions)
-
-        end_svm_dl = perf_counter()
-
-    elif mode == "2":
-        # Mode 2 needs to folders one with concatenated fasta files.
-        # The files should have .fasta as a file ending and its name should be the species ID and its name without
-        # the genus name. e.g. 28901_enterica.fasta for Salmonella enterica. The ID can be any ID. The standard is ncbi
-        # taxon IDs. The ID should only contain numbers from 0-9.
-        # The second folder should have assembly fasta files for every species. These should have a code in the file
-        # name to understand where the data came from. Its header should have > at the start and after the species
-        # ID. E.g. >28901\n
-
-        # Check if paths were given.
-        if bf_path:
-            if not os.path.exists(bf_path):
-                logger.error(
-                    "The given path to the bloomfilter assemblies doesn't exist"
-                )
-                logger.error("Aborting")
-                exit()
-        else:
-            logger.error("There was no path to the bloomfilter assemblies given")
-            logger.error("Aborting")
-            exit()
-        if svm_path:
-            if not os.path.exists(svm_path):
-                logger.error(
-                    "The given path to the support-vector-machine assemblies doesn't exist"
-                )
-                logger.error("Aborting")
-                exit()
-        else:
-            logger.error(
-                "There was no path to the support-vector-machine assemblies given"
+            download_assemblies.download_assemblies(
+                accessions=accessions,
+                dir_name=dir_name,
+                target_folder="zip_files",
+                zip_file_name=file_name,
             )
-            logger.error("Aborting")
-            exit()
+    logger.info("Downloads finished\n")
+    end_download = perf_counter()
 
-        # Move the given files to genus_metadata.
-        logger.info("Copying data given into genus_metadata")
-        copy_custom_data(bf_path=bf_path, svm_path=svm_path, dir_name=dir_name)
+    # Concatenate all assemblies of each species.
+    start_concatenate = perf_counter()
+    extract_bf = extract_and_concatenate.ExtractConcatenate(
+        dir_name=dir_name, delete=True
+    )
+    extract_bf.bf()
+    concatenate_meta(get_xspect_tmp_path() / dir_name, genus)
+    logger.info("Finished extracting and concatenating\n")
+    end_concatenate = perf_counter()
 
-        # Create Metagenome fasta file of all concatenated fasta files.
-        logger.info("Creating meta fasta file")
-        concatenate_meta(Path(os.getcwd()) / "genus_metadata" / dir_name, genus)
+    # Download assemblies for svm creation.
+    start_svm_dl = perf_counter()
+    logger.info("Downloading assemblies for support-vector-machine training")
+    accessions = {}
+    for metadata in all_metadata.values():
+        # Only add taxon with accessions.
+        if len(metadata["accessions"]) >= 1:
+            accessions[metadata["tax_id"]] = metadata["accessions"]
 
-    elif mode == "3":
-        logger.info("Checking metagenome file")
-        mg_check_dir_name = dir_name
-        if not mg_check_dir_name:
-            logger.error("There was no directory name given")
-            logger.error("Aborting")
-            exit()
-        check_meta_file_content(mg_check_dir_name)
-        logger.info("Finished")
-        logger.opt(record=True).info("Elapsed time: {record[elapsed]}")
-        exit()
+    # Downloading assemblies.
+    create_svm.get_svm_assemblies(all_accessions=accessions, dir_name=dir_name)
+    logger.info("Finished downloading\n")
 
-    # Check file sizes.
-    result = False
-    logger.info("Checking if metagenome file was correctly created")
-    result = check_meta_file_size(dir_name)
-    count = 0
-    while not result:
-        logger.error("Metagenome file was not correctly created")
-        logger.info("Trying to remake metagenome fasta file")
-        concatenate_meta(Path(os.getcwd()) / "genus_metadata" / dir_name, genus)
-        logger.info("Rechecking metagenome file")
-        result = check_meta_file_size(dir_name)
-        count += 1
-        if count == 3:
-            logger.error("Can't create metagenome file")
-            logger.error("Aborting")
-            exit()
+    # Extracting assemblies.
+    extract_svm = extract_and_concatenate.ExtractConcatenate(
+        dir_name=dir_name, delete=True
+    )
+    extract_svm.svm(species_accessions=accessions)
+
+    end_svm_dl = perf_counter()
 
     # Make dictionary for translating taxon ID to scientific name.
     translation_dict = create_translation_dict(dir_name)
     change_bf_assembly_file_names(dir_name)
 
-    # Count all distinct k-mers and return the highest count.
-    start_count = perf_counter()
-    logger.info("Counting all distinct k-meres")
-    highest_counts = k_mer_count.get_highest_k_mer_count(dir_name)
-    output_file_path = Path(os.getcwd()) / "output"
-    os.remove(output_file_path)
-    end_count = perf_counter()
-
     # Train new Bloomfilters with concatenated files of each species.
     start_bf = perf_counter()
-    # Compute the array size with the highest count of distinct k-mers.
-    array_size_species = int(
-        round(interface_XspecT.compute_array_size(highest_counts[0]) + 1000000, -6)
-    )
-    array_size_complete = int(
-        round(interface_XspecT.compute_array_size(highest_counts[1]) + 1000000, -6)
-    )
-
-    # Save array sizes for XspecT.
-    logger.info("Saving bloomfilter sizes\n")
-    interface_XspecT.save_array_sizes(
-        genus, [str(array_size_species), str(array_size_complete)]
-    )
 
     # Train Bloomfilters of species.
     logger.info("Training bloomfilters")
     species_files_path, species_result_path = interface_XspecT.make_paths(
         dir_name, genus
     )
-    interface_XspecT.new_train_core(
-        species_files_path, species_result_path, array_size_species
-    )
-    interface_XspecT.new_write_file_dyn(species_result_path, genus, meta_mode=False)
 
     # Train Bloomfilter for complete genus.
     logger.info("Training metagenome bloomfilter")
-    mg_files_path = get_paths.get_current_dir_file_path(dir_name)
-    mg_result_path = get_paths.get_metagenome_filter_path()
-    interface_XspecT.new_train_core(
-        str(mg_files_path), str(mg_result_path), array_size_complete
-    )
-    interface_XspecT.new_write_file_dyn(str(mg_result_path), genus, meta_mode=True)
+    mg_files_path = Path(get_paths.get_current_dir_file_path(dir_name))
 
-    # Delete concatenated assemblies.
-    # Delete species files.
-    delete_dir(species_files_path)
+    genus_model = ProbabilisticSingleFilterModel(
+        k=21,
+        model_display_name=genus,
+        author="Test",
+        author_email="test@example.com",
+        model_type="Genus",
+        base_path=Path(species_result_path).parent,
+    )
+    genus_model.fit(mg_files_path / f"{genus}.fasta", genus)
+    genus_model.save()
+
     # Delete metagenome file.
     os.remove(mg_files_path / f"{genus}.fasta")
 
@@ -506,15 +285,29 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
 
     # Create support vector machine.
     start_svm = perf_counter()
-    logger.info("Training support-vector-machine")
-    # Create svm.
-    create_svm.new_helper(
-        spacing, genus=genus, dir_name=dir_name, array_size=array_size_species, k=21
+    logger.info("Training species filters with support-vector-machine")
+
+    species_model = ProbabilisticFilterSVMModel(
+        k=21,
+        model_display_name=genus,
+        author="Test",
+        author_email="test@example.com",
+        model_type="Species",
+        base_path=Path(species_result_path).parent,
+        kernel="rbf",
+        c=1.0,
     )
+    svm_dir = get_xspect_tmp_path() / dir_name / "training_data"
+    species_model.fit(Path(species_files_path), svm_dir, display_names=translation_dict)
+    species_model.save()
+
+    # Delete concatenated assemblies.
+    # Delete species files.
+    shutil.rmtree(species_files_path)
 
     # Delete used assemblies.
     assemblies_path = get_paths.get_current_dir_file_path(dir_name) / "training_data"
-    delete_dir(assemblies_path)
+    shutil.rmtree(assemblies_path)
 
     end_svm = perf_counter()
     end_all = perf_counter()
@@ -523,26 +316,46 @@ def train(genus, mode, complete, bf_path, svm_path, dir_name):
         "Program runtime: {time} m", time=(round((end_all - start_all) / 60, 2))
     )
 
-    if mode == "1":
-        # Print and save collected statistics.
-        logger.info("Saving collected runtime statistics")
-        time_print = (
-            f"Python version: {python_version()} \n"
-            f"Average sequence length: {avg_len:,} \n"
-            f"All time: {(end_all-start_all)/60:.2f} m\n"
-            f"Tax time: {(end_tax-start_tax):.2f} s\n"
-            f"Meta time: {(end_meta-start_meta)/60:.2f} m\n"
-            f"Download time: {(end_download-start_download)/60:.2f} m\n"
-            f"Concatenate time: {(end_concatenate-start_concatenate):.2f} s\n"
-            f"Count time: {(end_count-start_count)/60:.2f} m\n"
-            f"Training time: {(end_bf-start_bf)/60:.2f} m\n"
-            f"Support vector machine time: {((end_svm+end_svm_dl)-(start_svm+start_svm_dl))/60:.2f} m\n"
-        )
+    # Print and save collected statistics.
+    logger.info("Saving collected runtime statistics")
+    time_print = (
+        f"Python version: {python_version()} \n"
+        f"All time: {(end_all-start_all)/60:.2f} m\n"
+        f"Tax time: {(end_tax-start_tax):.2f} s\n"
+        f"Meta time: {(end_meta-start_meta)/60:.2f} m\n"
+        f"Download time: {(end_download-start_download)/60:.2f} m\n"
+        f"Concatenate time: {(end_concatenate-start_concatenate):.2f} s\n"
+        f"Training time: {(end_bf-start_bf)/60:.2f} m\n"
+        f"Support vector machine time: {((end_svm+end_svm_dl)-(start_svm+start_svm_dl))/60:.2f} m\n"
+    )
 
-        # Save time measurements.
-        interface_XspecT.save_time_stats(time_print, dir_name)
+    # Save time measurements.
+    interface_XspecT.save_time_stats(time_print, dir_name)
 
     # Save translation dict
-    save_translation_dict(dir_name, translation_dict)
+    # save_translation_dict(dir_name, translation_dict)
 
     logger.info("XspecT-trainer is finished.")
+
+
+def train_from_directory(display_name: str, dir_path: Path, meta: bool = False):
+    """Train the gene family and gene filter.
+
+    :param display_name: Name of the model.
+    :param dir: Input directory.
+    """
+
+    if not isinstance(display_name, str):
+        raise TypeError("display_name must be a string")
+
+    if not isinstance(dir_path, Path) and dir_path.exists() and dir_path.is_dir():
+        raise ValueError("dir must be Path object to a valid directory")
+
+    # check if the directory contains the necessary files
+    # copy to temp path
+    # check if svm training data exists
+    # train model, with svm data if it exists
+    # add display names
+    # train metagenome model
+    # clean up temp path
+    pass

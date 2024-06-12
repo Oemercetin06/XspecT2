@@ -10,13 +10,14 @@ from pathlib import Path
 from Bio import SeqIO
 from loguru import logger
 import xspect.file_io as file_io
+from xspect.definitions import get_xspect_tmp_path
 
 
 class ExtractConcatenate:
     _fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
 
     def __init__(self, dir_name: str, delete: bool):
-        self._path = Path(os.getcwd()) / "genus_metadata" / dir_name
+        self._path = get_xspect_tmp_path() / dir_name
         self._dir_name = dir_name
         self._delete = delete
         self._all_assemblies: list[str] = list()
@@ -55,7 +56,7 @@ class ExtractConcatenate:
     def _copy_assemblies(self, unzipped_path, assemblies_path):
         os.mkdir(assemblies_path)
         for folder in os.listdir(unzipped_path):
-            for root, dirs, files in os.walk(unzipped_path / str(folder)):
+            for root, _, files in os.walk(unzipped_path / str(folder)):
                 for file in files:
                     file_ending = file.split(".")[-1]
                     if file_ending in self._fasta_endings:
@@ -74,13 +75,13 @@ class ExtractConcatenate:
                     if accession in file:
                         file_path = assemblies_path / str(file)
                         # Change the header.
-                        with open(file_path, "r") as f:
+                        with open(file_path, "r", encoding="utf-8") as f:
                             sequence = ""
                             for line in f.readlines():
                                 if line[0] != ">":
                                     sequence += line
                             new_header = f">{name}\n"
-                        with open(file_path, "w") as f:
+                        with open(file_path, "w", encoding="utf-8") as f:
                             f.write(new_header)
                             f.write(sequence)
 
@@ -88,14 +89,11 @@ class ExtractConcatenate:
         # Make new directory
         os.mkdir(concatenate_path)
 
-        genus = self._dir_name.split("_")[0]
-        meta_path = self._path / (genus + ".fasta")
-
         # Open the fasta files for each species.
         for folder in os.listdir(unzipped_path):
             species_files = list()
             # Walk through dirs to get all fasta files.
-            for root, dirs, files in os.walk(unzipped_path / folder):
+            for root, _, files in os.walk(unzipped_path / folder):
                 for file in files:
                     file_ending = file.split(".")[-1]
                     if file_ending in self._fasta_endings:
@@ -117,12 +115,12 @@ class ExtractConcatenate:
 
             # Save concatenated sequences and headers
             species_path = concatenate_path / (folder + ".fasta")
-            with open(species_path, "w") as species_file:
+            with open(species_path, "w", encoding="utf-8") as species_file:
                 species_file.write(species_header)
                 species_file.write(species_sequence)
 
     def _save_all_assemblies(self):
         path = self._path / "all_bf_assemblies.txt"
-        with open(path, "w") as file:
+        with open(path, "w", encoding="utf-8") as file:
             for assembly in self._all_assemblies:
                 file.write(f"{assembly}\n")

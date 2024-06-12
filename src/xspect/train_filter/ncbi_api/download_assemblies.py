@@ -1,12 +1,12 @@
-"""
-
-"""
+"""This module contains methods to download assemblies from the NCBI database."""
 
 __author__ = "Berger, Phillip"
 
+# pylint: disable=line-too-long
+
 import os
-from pathlib import Path
 import requests
+from xspect.definitions import get_xspect_tmp_path
 
 
 def download_assemblies(accessions, dir_name, target_folder, zip_file_name):
@@ -21,12 +21,11 @@ def download_assemblies(accessions, dir_name, target_folder, zip_file_name):
     :param zip_file_name: Name of the zip file. E.g. Klebsiella aerogenes.zip.
     :type zip_file_name: str
     """
-    path = (
-        Path(os.getcwd()) / "genus_metadata" / dir_name / target_folder / zip_file_name
-    )
+
+    path = get_xspect_tmp_path() / dir_name / target_folder / zip_file_name
     api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/genome/accession/{','.join(accessions)}/download"
     parameters = {"include_annotation_type": "GENOME_FASTA", "filename": zip_file_name}
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    genome_download = requests.get(api_url, params=parameters)
+    genome_download = requests.get(api_url, params=parameters, timeout=20)
     with open(path, "wb") as f:
         f.write(genome_download.content)

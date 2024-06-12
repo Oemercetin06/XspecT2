@@ -5,20 +5,18 @@
 __author__ = "Berger, Phillip"
 
 import datetime
-import requests
 import pickle
 import time
-from pathlib import Path
-import os
-
+import requests
 from loguru import logger
+from xspect.definitions import get_xspect_root_path
 
 
 class TaxonomyCheck:
     _main_url = "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/ANI_report_prokaryotes.txt"
     _test_url = "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/"
-    _main_path = Path(os.getcwd()) / "genus_metadata" / "taxonomy_check.txt"
-    _test_path = Path(os.getcwd()) / "genus_metadata" / "tax_check_date.txt"
+    _main_path = get_xspect_root_path() / "taxonomy_check.txt"
+    _test_path = get_xspect_root_path() / "tax_check_date.txt"
     _new_time: list
     _tax_check_ok = list()
 
@@ -112,15 +110,3 @@ class TaxonomyCheck:
 
     def ani_gcf(self):
         return self._tax_check_ok
-
-
-def main():
-    start = time.perf_counter()
-    tax_check = TaxonomyCheck()
-    end = time.perf_counter()
-    print(f"{end-start:.2f} s\n")
-    print(tax_check.ani_gcf()[:5])
-
-
-if __name__ == "__main__":
-    main()

@@ -2,12 +2,10 @@
 File IO module.
 """
 
-from linecache import getline
 import os
 from pathlib import Path
 import zipfile
-
-from loguru import logger
+from Bio import SeqIO
 
 
 def check_folder_structure():
@@ -31,78 +29,6 @@ def check_folder_structure():
     for folder_path in folder_paths:
         if not os.path.isdir(folder_path):
             os.mkdir(folder_path)
-
-
-def delete_non_fasta(files):
-    """Delete all non fasta files from the list and return the list without those file names.
-
-    :param files: List of file names.
-    :type files: list[str]
-    :return: List with only fasta files.
-    """
-    # All possible fasta file endings.
-    fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
-
-    # Iterate through file list backwards and delete all non fasta files.
-    for i in range(len(files) - 1, -1, -1):
-        file = files[i].split(".")
-        if file[-1] in fasta_endings:
-            continue
-        else:
-            del files[i]
-
-    return files
-
-
-def get_accessions(file_names: list[str]) -> list[str]:
-    """Extract accessions from file names.
-
-    :param files: List of file names.
-    :type files: list[str]
-    :return: List of all accessions.
-    :rtype: list[str]
-    """
-    accessions = []
-    for idx, file in enumerate(file_names):
-        accessions.append(file.split("_"))
-        accessions[idx] = accessions[idx][0] + "_" + accessions[idx][1]
-
-    return accessions
-
-
-def get_file_paths(base_path: Path, file_names: list[str]) -> list[Path]:
-    """Make a list with the paths to the files.
-
-    :param base_path: Path of the parent directory.
-    :type base_path: Path
-    :param files: List of file names.
-    :type files: list[str]
-    :return: A list with all file paths.
-    :rtype: list[Path]
-    """
-    return [base_path / file for file in file_names]
-
-
-def get_species_names(file_paths: list[Path]):
-    """Extracts the species names.
-
-    :param file_paths: List with the file paths.
-    :type file_paths: list[Path]
-    :return: List with all species names.
-    """
-    names = list()
-    for path in file_paths:
-        header = getline(str(path), 1)
-        name = header.replace("\n", "").replace(">", "")
-        if not name.isdigit():
-            logger.error(
-                "The header of file: {path} does not contain a correct ID: {name}. The ID needs to be "
-                "just numbers"
-            )
-            logger.error("Aborting")
-            exit()
-        names.append(name)
-    return names
 
 
 def delete_zip_files(dir_path):
@@ -129,7 +55,7 @@ def extract_zip(zip_path, unzipped_path):
 
 
 def concatenate_meta(path: Path, genus: str):
-    """Concatenates all concatenated fasta files that are used to train bloomfilters to one fasta file.
+    """Concatenates all species files to one fasta file.
 
     :param path: Path to the directory with the concatenated fasta files.
     :type path: Path
@@ -141,16 +67,38 @@ def concatenate_meta(path: Path, genus: str):
     meta_path = path / (genus + ".fasta")
     files = os.listdir(files_path)
 
-    with open(meta_path, "w") as meta_file:
+    with open(meta_path, "w", encoding="utf-8") as meta_file:
         # Write the header.
         meta_header = f">{genus} metagenome\n"
         meta_file.write(meta_header)
 
         # Open each concatenated species file and write the sequence in the meta file.
         for file in files:
-            file_ending = str(file).split(".")[-1]
+            file_ending = str(file).rsplit(".", maxsplit=1)[-1]
             if file_ending in fasta_endings:
-                with open((files_path / str(file)), "r") as species_file:
+                with open(
+                    (files_path / str(file)), "r", encoding="utf-8"
+                ) as species_file:
                     for line in species_file:
                         if line[0] != ">":
                             meta_file.write(line.replace("\n", ""))
+
+
+def get_record_iterator(file_path: Path):
+    """Returns a record iterator for a fasta or fastq file."""
+    if not isinstance(file_path, Path):
+        raise ValueError("Path must be a Path object")
+
+    if not file_path.exists():
+        raise ValueError("File does not exist")
+
+    if not file_path.is_file():
+        raise ValueError("Path must be a file")
+
+    if file_path.suffix in [".fasta", ".fna", ".fa"]:
+        return SeqIO.parse(file_path, "fasta")
+
+    if file_path.suffix in [".fastq", ".fq"]:
+        return SeqIO.parse(file_path, "fastq")
+
+    raise ValueError("Invalid file format, must be a fasta or fastq file")
