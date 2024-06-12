@@ -1,6 +1,7 @@
 """Probabilistic filter model for sequence data"""
 
 import json
+from math import ceil
 from pathlib import Path
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -116,7 +117,7 @@ class ProbabilisticFilterModel:
         return self.base_path / self.slug() / "index.cobs_classic"
 
     def calculate_hits(
-        self, sequence: Seq | SeqRecord, filter_ids: list[str] = None
+        self, sequence: Seq | SeqRecord, filter_ids: list[str] = None, step: int = 1
     ) -> dict:
         """Calculates the hits for a sequence"""
         if isinstance(sequence, SeqRecord):
@@ -132,7 +133,7 @@ class ProbabilisticFilterModel:
 
         cobs_path = str(self._get_cobs_index_path())
         s = cobs.Search(cobs_path)
-        r = s.search(str(sequence))
+        r = s.search(str(sequence), step=step)
         result_dict = self._convert_cobs_result_to_dict(r)
         if filter_ids:
             return {doc: result_dict[doc] for doc in filter_ids}
@@ -149,10 +150,13 @@ class ProbabilisticFilterModel:
             | Path
         ),
         filter_ids: list[str] = None,
+        step: int = 1,
     ) -> tuple[dict, dict]:
         """Returns scores for the sequence(s) based on the filters in the model"""
         if isinstance(sequence_input, (Seq, SeqRecord)):
-            return ProbabilisticFilterModel.predict(self, [sequence_input], filter_ids)
+            return ProbabilisticFilterModel.predict(
+                self, [sequence_input], filter_ids, step=step
+            )
 
         if self._is_sequence_list(sequence_input) | self._is_sequence_iterator(
             sequence_input
@@ -162,7 +166,9 @@ class ProbabilisticFilterModel:
             kmer_sum = 0
             hits = {}
             for individual_sequence in sequence_input:
-                individual_hits = self.calculate_hits(individual_sequence, filter_ids)
+                individual_hits = self.calculate_hits(
+                    individual_sequence, filter_ids, step=step
+                )
                 for doc in individual_hits:
                     if doc in hits:
                         hits[doc] += individual_hits[doc]
@@ -175,7 +181,7 @@ class ProbabilisticFilterModel:
 
         if isinstance(sequence_input, Path):
             return ProbabilisticFilterModel.predict(
-                self, get_record_iterator(sequence_input)
+                self, get_record_iterator(sequence_input), step=step
             )
 
         raise ValueError(
@@ -195,6 +201,7 @@ class ProbabilisticFilterModel:
         ),
         threshold: float = 0.7,
         filter_ids: list[str] = None,
+        step: int = 1,
     ):
         """Filters the sequences"""
 
@@ -204,7 +211,7 @@ class ProbabilisticFilterModel:
         if self._is_sequence_list(sequences) | self._is_sequence_iterator(sequences):
             filtered_sequences = {}
             for sequence in sequences:
-                scores, _ = self.predict(sequence, filter_ids)
+                scores, _ = self.predict(sequence, filter_ids, step=step)
                 for filter_id, score in scores.items():
                     if score >= threshold:
                         if filter_id in filtered_sequences:
@@ -266,6 +273,7 @@ class ProbabilisticFilterModel:
             | SeqIO.FastaIO.FastaIterator
             | SeqIO.QualityIO.FastqPhredIterator
         ),
+        step: int = 1,
     ) -> int:
         """Counts the number of kmers in the sequence(s)"""
         if isinstance(sequence_input, Seq):
@@ -284,7 +292,7 @@ class ProbabilisticFilterModel:
             for individual_sequence in sequence_input:
                 # we need to look specifically at .seq for SeqIO iterators
                 seq = individual_sequence.seq if is_iterator else individual_sequence
-                num_kmers = len(seq) - self.k + 1
+                num_kmers = ceil((len(seq) - self.k + 1) / step)
                 kmer_sum += num_kmers
             return kmer_sum
 

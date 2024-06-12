@@ -3,6 +3,7 @@
 # pylint: disable=no-name-in-module, too-many-instance-attributes
 
 import json
+from math import ceil
 from pathlib import Path
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -56,7 +57,9 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
         bloom_path.parent.mkdir(parents=True, exist_ok=True)
         self.bf.save(str(bloom_path))
 
-    def calculate_hits(self, sequence: Seq | SeqRecord, filter_ids=None) -> dict:
+    def calculate_hits(
+        self, sequence: Seq | SeqRecord, filter_ids=None, step: int = 1
+    ) -> dict:
         """Calculate the hits for the sequence"""
         if isinstance(sequence, SeqRecord):
             sequence = sequence.seq
@@ -67,7 +70,9 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
         if not len(sequence) > self.k:
             raise ValueError("Invalid sequence, must be longer than k")
 
-        num_hits = sum(1 for kmer in self._generate_kmers(sequence) if kmer in self.bf)
+        num_hits = sum(
+            1 for kmer in self._generate_kmers(sequence, step=step) if kmer in self.bf
+        )
         return {next(iter(self.display_names)): num_hits}
 
     @staticmethod
@@ -94,9 +99,11 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
             )
             return model
 
-    def _generate_kmers(self, sequence: Seq):
+    def _generate_kmers(self, sequence: Seq, step: int = 1):
         """Generate kmers from the sequence"""
-        for i in range(len(sequence) - self.k + 1):
-            kmer = sequence[i : i + self.k]
+        num_kmers = ceil((len(sequence) - self.k + 1) / step)
+        for i in range(num_kmers):
+            start_pos = i * step
+            kmer = sequence[start_pos : start_pos + self.k]
             minimizer = min(kmer, str(kmer.reverse_complement()))
             yield str(minimizer)

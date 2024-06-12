@@ -105,6 +105,7 @@ def assignspec():
     filename = session.get("filename", None)
     metagenome = session.get("metagenome")
     genus = session.get("genus")
+    step = 500 if session.get("quick") else 1
     start = time.time()
 
     if not os.path.exists(filename):
@@ -119,10 +120,10 @@ def assignspec():
         genus_filter_model = mm.get_genus_model(genus)
         filtered_sequences = genus_filter_model.filter(sequence_input)
         prediction, scores = species_filter_model.predict(
-            filtered_sequences["Acinetobacter"]
+            filtered_sequences["Acinetobacter"], step=step
         )
     else:
-        prediction, scores = species_filter_model.predict(sequence_input)
+        prediction, scores = species_filter_model.predict(sequence_input, step=step)
 
     prediction = species_filter_model.display_names[prediction[0]]
 

@@ -32,9 +32,16 @@ def download_filters():
     help="Metagenome classification.",
     default=False,
 )
-def classify(genus, path, meta):
+@click.option(
+    "-s",
+    "--step",
+    help="Sparse sampling step size (e. g. only every 500th kmer for step=500).",
+    default=500,
+)
+def classify(genus, path, meta, step):
     """Classify sample(s) from directory PATH."""
     click.echo("Classifying sample...")
+    click.echo(f"Step: {step}")
     sequence_input = Path(path)
     species_filter_model = get_species_model(genus)
 
@@ -42,10 +49,10 @@ def classify(genus, path, meta):
         genus_filter_model = get_genus_model(genus)
         filtered_sequences = genus_filter_model.filter(sequence_input)
         prediction, scores = species_filter_model.predict(
-            filtered_sequences["Acinetobacter"]
+            filtered_sequences["Acinetobacter"], step=step
         )
     else:
-        prediction, scores = species_filter_model.predict(sequence_input)
+        prediction, scores = species_filter_model.predict(sequence_input, step=step)
 
     prediction = species_filter_model.display_names[prediction[0]]
 
@@ -67,7 +74,13 @@ def classify(genus, path, meta):
     help="Path to assembly directory for SVM training.",
     type=click.Path(exists=True, dir_okay=True, file_okay=False),
 )
-def train(genus, bf_assembly_path, svm_assembly_path):
+@click.option(
+    "-s",
+    "--svm-step",
+    help="SVM Sparse sampling step size (e. g. only every 500th kmer for step=500).",
+    default=500,
+)
+def train(genus, bf_assembly_path, svm_assembly_path, svm_step):
     """Train model."""
 
     if bf_assembly_path or svm_assembly_path:
@@ -75,7 +88,7 @@ def train(genus, bf_assembly_path, svm_assembly_path):
             "Training with specific assembly paths is not yet implemented."
         )
     try:
-        train_ncbi(genus)
+        train_ncbi(genus, svm_step=svm_step)
     except ValueError as e:
         raise click.ClickException(str(e)) from e
 

@@ -53,7 +53,13 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         self.c = c
         self.save()
 
-    def fit(self, dir_path: Path, svm_path: Path, display_names: dict = None) -> None:
+    def fit(
+        self,
+        dir_path: Path,
+        svm_path: Path,
+        display_names: dict = None,
+        svm_step: int = 1,
+    ) -> None:
         """Fit the SVM to the sequences and labels"""
 
         super().fit(dir_path, display_names=display_names)
@@ -63,7 +69,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             if file.suffix not in [".fasta", ".fa", ".fna", ".fastq", ".fq"]:
                 continue
             print(f"Calculating {file.name} scores for SVM training...")
-            scores, _ = super().predict(file)
+            scores, _ = super().predict(file, step=svm_step)
             accession = "".join(file.name.split("_")[:2])
             file_header = getline(str(file), 1)
             label_id = file_header.replace("\n", "").replace(">", "")
@@ -94,10 +100,11 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             | Path
         ),
         filter_ids: list[str] = None,
+        step: int = 1,
     ) -> dict:
         """Predict the labels of the sequences"""
         # get scores and format them for the SVM
-        scores, _ = super().predict(sequence_input, filter_ids)
+        scores, hits = super().predict(sequence_input, filter_ids, step=step)
         svm_scores = dict(sorted(scores.items()))
         svm_scores = [list(svm_scores.values())]
 

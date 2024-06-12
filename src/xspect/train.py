@@ -147,7 +147,7 @@ def get_current_time():
     return asctime(localtime()).split()[3]
 
 
-def train_ncbi(genus: str):
+def train_ncbi(genus: str, svm_step: int = 1):
     """Train genus and species models with NCBI assemblies from the given genus."""
 
     if not isinstance(genus, str):
@@ -298,7 +298,12 @@ def train_ncbi(genus: str):
         c=1.0,
     )
     svm_dir = get_xspect_tmp_path() / dir_name / "training_data"
-    species_model.fit(Path(species_files_path), svm_dir, display_names=translation_dict)
+    species_model.fit(
+        Path(species_files_path),
+        svm_dir,
+        display_names=translation_dict,
+        svm_step=svm_step,
+    )
     species_model.save()
 
     # Delete concatenated assemblies.
