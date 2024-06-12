@@ -4,45 +4,30 @@ import os
 import shutil
 import requests
 
+from xspect.definitions import get_xspect_model_path, get_xspect_tmp_path
+
 
 def download_test_filters(url):
     """Download filters."""
 
-    if not os.path.exists("filter"):
-        os.makedirs("filter")
-
-    if not os.path.exists("Training_data"):
-        os.makedirs("Training_data")
+    download_path = get_xspect_tmp_path() / "models.zip"
+    extract_path = get_xspect_tmp_path() / "extracted_models"
 
     r = requests.get(url, allow_redirects=True, timeout=10)
-    with open("filter/filters.zip", "wb") as f:
+    with open(download_path, "wb") as f:
         f.write(r.content)
 
     shutil.unpack_archive(
-        "filter/filters.zip",
-        "filter/temp",
+        download_path,
+        extract_path,
         "zip",
     )
 
     shutil.copytree(
-        "filter/temp/filters/Training_data",
-        "Training_data",
+        extract_path,
+        get_xspect_model_path(),
         dirs_exist_ok=True,
     )
 
-    shutil.rmtree("filter/temp/filters/Training_data")
-
-    shutil.copytree(
-        "filter/temp/filters",
-        "filter",
-        dirs_exist_ok=True,
-    )
-
-    shutil.rmtree("filter/temp")
-
-    os.remove("filter/filters.zip")
-
-    saved_options = ["Salmonella"]
-    with open("saved_options.txt", "w") as f:
-        for item in saved_options:
-            f.write("%s\n" % item)
+    os.remove(download_path)
+    shutil.rmtree(extract_path)
