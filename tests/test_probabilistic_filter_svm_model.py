@@ -4,6 +4,7 @@
 
 from linecache import getline
 from pathlib import Path
+from csv import DictReader
 import pytest
 from src.xspect.models.probabilistic_filter_svm_model import ProbabilisticFilterSVMModel
 
@@ -42,20 +43,15 @@ def test_fit(filter_model, multiple_assembly_dir_path, multiple_assembly_svm_pat
     assert scores_file.is_file()
 
     with open(scores_file, "r", encoding="utf-8") as f:
-        f.readline()
-        scores = f.readlines()
-        # Check if the diagonal of the csv scores matrix is 1
-        assert scores[0].split(",")[3] == "1.0"
-        assert scores[1].split(",")[2] == "1.0"
-        assert scores[2].split(",")[1] == "1.0"
+        reader = DictReader(f)
+        for row in reader:
+            label_id = row["label_id"]
+            assert row[label_id] == "1.0"
 
-        # Check if scores outside the diagonal are less than 1
-        assert float(scores[0].split(",")[1]) < 1
-        assert float(scores[0].split(",")[2]) < 1
-        assert float(scores[1].split(",")[1]) < 1
-        assert float(scores[1].split(",")[3]) < 1
-        assert float(scores[2].split(",")[2]) < 1
-        assert float(scores[2].split(",")[3]) < 1
+            # scores outside of the diagonal should be less than 1
+            for key, value in row.items():
+                if key not in ["label_id", "file", label_id]:
+                    assert float(value) < 1
 
 
 def test_predict(trained_filter_model, multiple_assembly_svm_path):
