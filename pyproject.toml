@@ -18,6 +18,7 @@ dependencies = [
   "python-slugify",
   "cobs-index@git+https://github.com/aromberg/cobs",
   "rbloom"
+  "xxhash"
   ]
 classifiers = [
   "Intended Audience :: Developers",
