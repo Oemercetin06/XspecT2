@@ -59,7 +59,7 @@ def test_predict(trained_filter_model, multiple_assembly_svm_path):
     for file in Path(multiple_assembly_svm_path).iterdir():
         if file.suffix not in [".fasta", ".fa", ".fna", ".fastq", ".fq"]:
             continue
-        prediction, _ = trained_filter_model.predict(file)
+        prediction, _ = trained_filter_model.predict(file, step=500)
         file_header = getline(str(file), 1)
         label_id = file_header.replace("\n", "").replace(">", "")
         assert prediction == label_id
@@ -83,11 +83,11 @@ def test_save(filter_model):
         assert "1.0" in data
 
 
-def test_save_and_load(filter_model):
+def test_save_and_load(trained_filter_model):
     """Test the load method of the ProbabilisticFilterSVMModel class."""
-    filter_model.save()
-    json_path = filter_model.base_path / "test-filter-species.json"
+    trained_filter_model.save()
+    json_path = trained_filter_model.base_path / "test-filter-species.json"
     assert (json_path).is_file()
 
     loaded_model = ProbabilisticFilterSVMModel.load(json_path)
-    assert filter_model.to_dict() == loaded_model.to_dict()
+    assert trained_filter_model.to_dict() == loaded_model.to_dict()

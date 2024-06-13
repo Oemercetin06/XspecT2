@@ -9,6 +9,7 @@ from pathlib import Path
 from sklearn.svm import SVC
 from Bio.Seq import Seq
 from Bio import SeqIO
+import cobs_index as cobs
 from xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
 
 
@@ -104,7 +105,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
     ) -> dict:
         """Predict the labels of the sequences"""
         # get scores and format them for the SVM
-        scores, hits = super().predict(sequence_input, filter_ids, step=step)
+        scores, _ = super().predict(sequence_input, filter_ids, step=step)
         svm_scores = dict(sorted(scores.items()))
         svm_scores = [list(svm_scores.values())]
 
@@ -149,4 +150,10 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
                 num_hashes=model_json["num_hashes"],
             )
             model.display_names = model_json["display_names"]
+
+            p = model.get_cobs_index_path()
+            if not Path(p).exists():
+                raise FileNotFoundError(f"Index file not found at {p}")
+            model.index = cobs.Search(p, True)
+
             return model

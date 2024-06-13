@@ -43,6 +43,11 @@ class ProbabilisticFilterModel:
         self.display_names = {}
         self.fpr = fpr
         self.num_hashes = num_hashes
+        self.index = None
+
+    def get_cobs_index_path(self) -> Path:
+        """Returns the path to the cobs index"""
+        return str(self.base_path / self.slug() / "index.cobs_classic")
 
     def to_dict(self) -> dict:
         """Returns a dictionary representation of the model"""
@@ -109,12 +114,9 @@ class ProbabilisticFilterModel:
         index_params.false_positive_rate = self.fpr
         index_params.clobber = True
 
-        cobs.classic_construct_list(
-            doclist, str(self._get_cobs_index_path()), index_params
-        )
+        cobs.classic_construct_list(doclist, self.get_cobs_index_path(), index_params)
 
-    def _get_cobs_index_path(self):
-        return self.base_path / self.slug() / "index.cobs_classic"
+        self.index = cobs.Search(self.get_cobs_index_path(), True)
 
     def calculate_hits(
         self, sequence: Seq | SeqRecord, filter_ids: list[str] = None, step: int = 1
@@ -131,9 +133,7 @@ class ProbabilisticFilterModel:
         if not len(sequence) > self.k:
             raise ValueError("Invalid sequence, must be longer than k")
 
-        cobs_path = str(self._get_cobs_index_path())
-        s = cobs.Search(cobs_path)
-        r = s.search(str(sequence), step=step)
+        r = self.index.search(str(sequence), step=step)
         result_dict = self._convert_cobs_result_to_dict(r)
         if filter_ids:
             return {doc: result_dict[doc] for doc in filter_ids}
@@ -174,7 +174,7 @@ class ProbabilisticFilterModel:
                         hits[doc] += individual_hits[doc]
                     else:
                         hits[doc] = individual_hits[doc]
-                num_kmers = len(individual_sequence) - self.k + 1
+                num_kmers = self._count_kmers(individual_sequence, step=step)
                 kmer_sum += num_kmers
             scores = {doc: round(hits[doc] / kmer_sum, 2) for doc in hits}
             return scores, hits
@@ -257,6 +257,12 @@ class ProbabilisticFilterModel:
                 model_json["num_hashes"],
             )
             model.display_names = model_json["display_names"]
+
+            p = model.get_cobs_index_path()
+            if not Path(p).exists():
+                raise FileNotFoundError(f"Index file not found at {p}")
+            model.index = cobs.Search(p, True)
+
             return model
 
     def _convert_cobs_result_to_dict(self, cobs_result: cobs.SearchResult) -> dict:
@@ -269,6 +275,7 @@ class ProbabilisticFilterModel:
         self,
         sequence_input: (
             Seq
+            | SeqRecord
             | list[Seq]
             | SeqIO.FastaIO.FastaIterator
             | SeqIO.QualityIO.FastqPhredIterator
@@ -277,7 +284,10 @@ class ProbabilisticFilterModel:
     ) -> int:
         """Counts the number of kmers in the sequence(s)"""
         if isinstance(sequence_input, Seq):
-            return self._count_kmers([sequence_input])
+            return self._count_kmers([sequence_input], step=step)
+
+        if isinstance(sequence_input, SeqRecord):
+            return self._count_kmers(sequence_input.seq, step=step)
 
         is_sequence_list = isinstance(sequence_input, list) and all(
             isinstance(seq, Seq) for seq in sequence_input

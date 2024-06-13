@@ -145,13 +145,13 @@ def test_filter(trained_filter_model):
     }
 
 
-def test_filter_model_save_and_load(filter_model):
+def test_filter_model_save_and_load(trained_filter_model):
     """Test the save and load methods of the ProbabilisticFilterModel class."""
-    filter_model.save()
+    trained_filter_model.save()
     loaded_model = ProbabilisticFilterModel.load(
-        filter_model.base_path / "test-filter-species.json"
+        trained_filter_model.base_path / "test-filter-species.json"
     )
-    assert filter_model.to_dict() == loaded_model.to_dict()
+    assert trained_filter_model.to_dict() == loaded_model.to_dict()
 
 
 def test_trained_filter_model_save_and_load(trained_filter_model):
@@ -171,3 +171,18 @@ def test_count_kmers(filter_model):
     kmer_counts = filter_model._count_kmers(sequence)
     # k = 21
     assert kmer_counts == 60
+
+
+def test_calculate_hits(trained_filter_model):
+    """Test the calculate_hits method of the ProbabilisticFilterModel class."""
+    salmonella_sequence = Seq(
+        "AGAGATTACGTCTGGTTGCAAGAGATCATGACAGGGGGAATTGGTTGAAAATAAATATATCGCCAGCAGCACATGAACAA"
+    )
+
+    for step in range(1, 5):
+        hits = trained_filter_model.calculate_hits(salmonella_sequence, step=step)
+        assert hits == {
+            "GCF_000006945": 60 / step,
+            "GCF_000069245": 0,
+            "GCF_000018445": 0,
+        }

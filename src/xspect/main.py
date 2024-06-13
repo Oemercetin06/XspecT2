@@ -34,7 +34,7 @@ def download_filters():
     "-s",
     "--step",
     help="Sparse sampling step size (e. g. only every 500th kmer for step=500).",
-    default=500,
+    default=1,
 )
 def classify(genus, path, meta, step):
     """Classify sample(s) from directory PATH."""
