@@ -7,7 +7,6 @@ import xspect.fastapi as fastapi
 from xspect.download_filters import download_test_filters
 from xspect.model_management import get_genus_model, get_species_model
 from xspect.train import train_ncbi
-from xspect.web_app import app
 
 
 @click.group()
@@ -91,14 +90,6 @@ def train(genus, bf_assembly_path, svm_assembly_path, svm_step):
         train_ncbi(genus, svm_step=svm_step)
     except ValueError as e:
         raise click.ClickException(str(e)) from e
-
-
-@cli.command()
-def web():
-    """Open the XspecT web app."""
-    port = 8000
-    print(f"To open the web app, go to http://localhost:{port}/")
-    app.run(host="0.0.0.0", port=port, debug=True, threaded=True)
 
 
 @cli.command()
