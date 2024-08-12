@@ -17,6 +17,8 @@ dependencies = [
   "rbloom",
   "xxhash",
   "fastapi",
+  "uvicorn",
+  "python-multipart"
   ]
 classifiers = [
   "Intended Audience :: Developers",
