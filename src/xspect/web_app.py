@@ -148,11 +148,7 @@ def assignspec():
     session["vals_claast"] = [0, 0, 0, 0, 0, 0, 0, 0]
     session["names_claast"] = [0, 0, 0, 0, 0, 0, 0, 0]
     session["hits_claast"] = [0, 0, 0, 0, 0, 0, 0, 0]
-    app.logger.info(
-        "Assignment done for {file}, Time needed: {time}",
-        file=str(filename),
-        time=str(needed),
-    )
+    app.logger.info(f"Assignment done for {filename}, Time needed: {time}")
     return redirect("/resultsspec")
 
 
@@ -181,7 +177,7 @@ def train_new_genus():
         genus_name = list(request.json.values())[0]
 
         # Run XspecT_Trainer
-        train_ncbi(genus_name, "1", "", "")
+        train_ncbi(genus_name)
         print("")
         print("Training done!")
 
@@ -225,7 +221,7 @@ def species():
 
             # Returning a json signal to ajax to redirect to loading page
             # the loading page then triggers the assignment process
-            app.logger.info("Assignment started for {file}", file=filename)
+            # app.logger.info("Assignment started for {file}", file=filename)
             return json.dumps({"success": True})
 
         # Source: https://flask-restplus.readthedocs.io/en/stable/errors.html

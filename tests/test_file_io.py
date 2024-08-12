@@ -5,24 +5,8 @@ File IO module tests.
 import os
 from pathlib import Path
 from src.xspect.file_io import (
-    check_folder_structure,
     concatenate_meta,
 )
-
-
-def test_check_folder_structure(tmpdir, monkeypatch):
-    """Test if the folder structure is created correctly."""
-    monkeypatch.chdir(tmpdir)
-
-    check_folder_structure()
-
-    path = Path(os.getcwd())
-    assert os.path.isdir(path / "filter")
-    assert os.path.isdir(path / "genus_metadata")
-    assert os.path.isdir(path / "filter" / "array_sizes")
-    assert os.path.isdir(path / "filter" / "Metagenomes")
-    assert os.path.isdir(path / "filter" / "species_names")
-    assert os.path.isdir(path / "filter" / "translation_dicts")
 
 
 def test_concatenate_meta(tmpdir, monkeypatch):

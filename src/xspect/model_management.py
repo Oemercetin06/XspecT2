@@ -1,6 +1,6 @@
 """ This module contains functions to manage models. """
 
-from json import loads
+from json import loads, dumps
 from pathlib import Path
 from xspect.models.probabilistic_single_filter_model import (
     ProbabilisticSingleFilterModel,
@@ -23,16 +23,42 @@ def get_species_model(genus):
     return species_filter_model
 
 
-def get_model_metadata(path: Path):
+def get_model_metadata(model: str | Path):
     """Get the metadata of a model."""
-    if not isinstance(path, Path):
-        raise TypeError("Path must be a pathlib.Path object.")
-    if not path.exists() or not path.is_file():
-        raise FileNotFoundError(f"Model file {path} does not exist.")
+    if isinstance(model, str):
+        model_path = get_xspect_model_path() / (model + ".json")
+    elif isinstance(model, Path):
+        model_path = model
+    else:
+        raise ValueError("Model must be a string (slug) or a Path object.")
 
-    with open(path, "r", encoding="utf-8") as file:
+    if not model_path.exists() or not model_path.is_file():
+        raise ValueError(f"Model at {model_path} does not exist.")
+
+    with open(model_path, "r", encoding="utf-8") as file:
         model_json = loads(file.read())
         return model_json
+
+
+def update_model_metadata(model_slug: str, author: str, author_email: str):
+    """Update the metadata of a model."""
+    model_metadata = get_model_metadata(model_slug)
+    model_metadata["author"] = author
+    model_metadata["author_email"] = author_email
+
+    model_path = get_xspect_model_path() / (model_slug + ".json")
+    with open(model_path, "w", encoding="utf-8") as file:
+        file.write(dumps(model_metadata, indent=4))
+
+
+def update_model_display_name(model_slug: str, filter_id: str, display_name: str):
+    """Update the display name of a filter in a model."""
+    model_metadata = get_model_metadata(model_slug)
+    model_metadata["display_names"][filter_id] = display_name
+
+    model_path = get_xspect_model_path() / (model_slug + ".json")
+    with open(model_path, "w", encoding="utf-8") as file:
+        file.write(dumps(model_metadata, indent=4))
 
 
 def get_models():

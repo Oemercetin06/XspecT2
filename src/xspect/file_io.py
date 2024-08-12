@@ -8,29 +8,6 @@ import zipfile
 from Bio import SeqIO
 
 
-def check_folder_structure():
-    """Checks the folder structure and creates new folders if needed."""
-    # Create list of all folder paths.
-    root_path = Path(os.getcwd())
-    filter_path = root_path / "filter"
-    meta_path = root_path / "genus_metadata"
-    filter_folder_names = [
-        "array_sizes",
-        "Metagenomes",
-        "species_names",
-        "translation_dicts",
-    ]
-    folder_paths = [filter_path, meta_path]
-    for filter_folder_name in filter_folder_names:
-        filter_folder_path = filter_path / filter_folder_name
-        folder_paths.append(filter_folder_path)
-
-    # Check if folders exist. If not create them.
-    for folder_path in folder_paths:
-        if not os.path.isdir(folder_path):
-            os.mkdir(folder_path)
-
-
 def delete_zip_files(dir_path):
     """Delete all zip files in the given directory."""
     files = os.listdir(dir_path)

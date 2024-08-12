@@ -16,9 +16,10 @@ dependencies = [
   "loguru",
   "click",
   "python-slugify",
-  "cobs-index@git+https://github.com/aromberg/cobs",
+  "cobs-reloaded",
   "rbloom",
-  "xxhash"
+  "xxhash",
+  "fastapi",
   ]
 classifiers = [
   "Intended Audience :: Developers",

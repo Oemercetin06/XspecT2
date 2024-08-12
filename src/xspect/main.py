@@ -2,6 +2,8 @@
 
 from pathlib import Path
 import click
+import uvicorn
+import xspect.fastapi as fastapi
 from xspect.download_filters import download_test_filters
 from xspect.model_management import get_genus_model, get_species_model
 from xspect.train import train_ncbi
@@ -76,7 +78,7 @@ def classify(genus, path, meta, step):
     "-s",
     "--svm-step",
     help="SVM Sparse sampling step size (e. g. only every 500th kmer for step=500).",
-    default=500,
+    default=1,
 )
 def train(genus, bf_assembly_path, svm_assembly_path, svm_step):
     """Train model."""
@@ -97,6 +99,12 @@ def web():
     port = 8000
     print(f"To open the web app, go to http://localhost:{port}/")
     app.run(host="0.0.0.0", port=port, debug=True, threaded=True)
+
+
+@cli.command()
+def api():
+    """Open the XspecT FastAPI."""
+    uvicorn.run(fastapi.app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":

@@ -30,8 +30,7 @@ def test_get_species_model():
 
 def test_get_model_metadata():
     """Test the get_model_metadata function."""
-    aci_path = get_xspect_model_path() / "acinetobacter-genus.json"
-    aci_meta = mm.get_model_metadata(aci_path)
+    aci_meta = mm.get_model_metadata("acinetobacter-genus")
 
     assert aci_meta["model_display_name"] == "Acinetobacter"
 
