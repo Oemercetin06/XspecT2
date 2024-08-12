@@ -30,7 +30,7 @@ class NCBIAssemblyMetadata:
 
         tmp_metadata = dict()
         for tax_id, curr_metadata in self._all_metadata.items():
-            sleep(1)
+            sleep(2)
             species_name = curr_metadata["sci_name"]
             logger.info("Collecting metadata of {name}", name=species_name)
             accessions = self._make_request(taxon=tax_id)
