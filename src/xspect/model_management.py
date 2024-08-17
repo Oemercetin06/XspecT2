@@ -1,4 +1,4 @@
-""" This module contains functions to manage models. """
+"""This module contains functions to manage models."""
 
 from json import loads, dumps
 from pathlib import Path

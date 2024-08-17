@@ -6,6 +6,7 @@ The children are only of the next lower rank of the parent taxon.
 
 __author__ = "Berger, Phillip"
 
+import sys
 import requests
 
 from loguru import logger
@@ -24,7 +25,7 @@ class NCBIChildrenTree:
     def _request_tree(self):
         """Make the request for the children tree at the NCBI Datasets API."""
         api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/taxonomy/taxon/{self._taxon}/filtered_subtree"
-        raw_response = requests.get(api_url)
+        raw_response = requests.get(api_url, timeout=5)
         self._response = raw_response.json()["edges"]
         self._parent_taxon_id = str(self._response["1"]["visible_children"][0])
         try:
@@ -33,7 +34,7 @@ class NCBIChildrenTree:
             logger.error("KeyError for key: {key}", key=self._parent_taxon_id)
             logger.error("Response: {response}", response=str(self._response))
             logger.error("Aborting")
-            exit()
+            sys.exit()
         for child_id in tmp_children_ids:
             self._children_taxon_ids.append(str(child_id))
 

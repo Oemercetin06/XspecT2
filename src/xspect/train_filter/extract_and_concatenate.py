@@ -1,6 +1,4 @@
-"""
-
-"""
+""" Module for extracting and concatenating assemblies. """
 
 __author__ = "Berger, Phillip"
 
@@ -9,46 +7,43 @@ import shutil
 from pathlib import Path
 from Bio import SeqIO
 from loguru import logger
-import xspect.file_io as file_io
+from xspect import file_io
 from xspect.definitions import get_xspect_tmp_path
 
 
 class ExtractConcatenate:
+    """Class to extract and concatenate assemblies."""
+
     _fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
 
     def __init__(self, dir_name: str, delete: bool):
         self._path = get_xspect_tmp_path() / dir_name
         self._dir_name = dir_name
         self._delete = delete
-        self._all_assemblies: list[str] = list()
+        self._all_assemblies: list[str] = []
 
     def bf(self):
+        """Extract and concatenate assemblies for Bloom filter training."""
         zip_path = self._path / "zip_files"
         unzipped_path = self._path / "zip_files_extracted"
         concatenate_path = self._path / "concatenate"
-        logger.info("Extracting assemblies")
         file_io.extract_zip(zip_path, unzipped_path)
-        logger.info("Concatenating assemblies")
         self._concatenate_bf(unzipped_path, concatenate_path)
         self._save_all_assemblies()
         if self._delete:
-            logger.info("Deleting copies")
             file_io.delete_zip_files(zip_path)
             shutil.rmtree(zip_path, ignore_errors=False)
             shutil.rmtree(unzipped_path, ignore_errors=False)
 
     def svm(self, species_accessions: dict):
+        """Extract and concatenate assemblies for generating SVM training data."""
         zip_path = self._path / "training_data_zipped"
         unzipped_path = self._path / "training_data_unzipped"
         assemblies_path = self._path / "training_data"
-        logger.info("Extracting assemblies")
         file_io.extract_zip(zip_path, unzipped_path)
-        logger.info("Copying assemblies into one folder")
         self._copy_assemblies(unzipped_path, assemblies_path)
-        logger.info("Changing headers")
         self._change_header(assemblies_path, species_accessions)
         if self._delete:
-            logger.info("Deleting copies")
             file_io.delete_zip_files(zip_path)
             shutil.rmtree(zip_path, ignore_errors=False)
             shutil.rmtree(unzipped_path, ignore_errors=False)

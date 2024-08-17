@@ -1,3 +1,5 @@
+"""This module contains functions to select and download assemblies for SVM creation."""
+
 from time import sleep
 from loguru import logger
 from xspect.train_filter.ncbi_api import download_assemblies
@@ -41,4 +43,3 @@ def get_svm_assemblies(all_accessions, dir_name):
             target_folder="training_data_zipped",
             zip_file_name=file_name,
         )
-    logger.info("Downloads finished")

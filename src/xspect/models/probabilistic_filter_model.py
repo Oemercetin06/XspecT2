@@ -185,8 +185,9 @@ class ProbabilisticFilterModel:
             )
 
         raise ValueError(
-            "Invalid sequence input, must be a Seq object, a list of Seq objects, a SeqIO "
-            "FastaIterator, a SeqIO FastqPhredIterator, or a Path object to a fasta/fastq file"
+            "Invalid sequence input, must be a Seq object, a list of Seq objects, a"
+            " SeqIO FastaIterator, a SeqIO FastqPhredIterator, or a Path object to a"
+            " fasta/fastq file"
         )
 
     def filter(
@@ -225,8 +226,9 @@ class ProbabilisticFilterModel:
             return self.filter(get_record_iterator(sequences), threshold, filter_ids)
 
         raise ValueError(
-            "Invalid sequence input, must be a Seq object, a list of Seq objects, a SeqIO "
-            "FastaIterator, a SeqIO FastqPhredIterator, or a Path object to a fasta/fastq file"
+            "Invalid sequence input, must be a Seq object, a list of Seq objects, a"
+            " SeqIO FastaIterator, a SeqIO FastqPhredIterator, or a Path object to a"
+            " fasta/fastq file"
         )
 
     def save(self) -> None:
@@ -307,8 +309,8 @@ class ProbabilisticFilterModel:
             return kmer_sum
 
         raise ValueError(
-            "Invalid sequence input, must be a Seq object, a list of Seq objects, a SeqIO "
-            "FastaIterator, or a SeqIO FastqPhredIterator"
+            "Invalid sequence input, must be a Seq object, a list of Seq objects, a"
+            " SeqIO FastaIterator, or a SeqIO FastqPhredIterator"
         )
 
     def _is_sequence_list(self, sequence_input):

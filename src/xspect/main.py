@@ -3,7 +3,7 @@
 from pathlib import Path
 import click
 import uvicorn
-import xspect.fastapi as fastapi
+from xspect import fastapi
 from xspect.download_filters import download_test_filters
 from xspect.model_management import get_genus_model, get_species_model
 from xspect.train import train_ncbi
