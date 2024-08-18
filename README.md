@@ -3,7 +3,7 @@
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<img src="/src/xspect/static/Logo.png" height="50%" width="50%">
+<img src="/src/docs/img/logo.png" height="50%" width="50%">
 <!-- start intro -->
 XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or sub-type level using [Bloom Filters] and a [Support Vector Machine]. It also identifies existing [blaOxa-genes] and provides a list of relevant research papers for further information.
 <br/><br/>
