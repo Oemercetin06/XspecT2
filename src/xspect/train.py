@@ -209,10 +209,7 @@ def train_ncbi(genus: str, svm_step: int = 1):
     logger.info("Concatenating and extracting")
 
     # Concatenate all assemblies of each species.
-    extract_bf = extract_and_concatenate.ExtractConcatenate(
-        dir_name=dir_name, delete=True
-    )
-    extract_bf.bf()
+    extract_and_concatenate.bf(dir_name=dir_name, delete=True)
     concatenate_meta(get_xspect_tmp_path() / dir_name, genus)
 
     # Download assemblies for svm creation.
@@ -229,10 +226,9 @@ def train_ncbi(genus: str, svm_step: int = 1):
     logger.info("Extracting SVM assemblies")
 
     # Extracting assemblies.
-    extract_svm = extract_and_concatenate.ExtractConcatenate(
-        dir_name=dir_name, delete=True
+    extract_and_concatenate.svm(
+        species_accessions=accessions, dir_name=dir_name, delete=True
     )
-    extract_svm.svm(species_accessions=accessions)
 
     # Make dictionary for translating taxon ID to scientific name.
     translation_dict = create_translation_dict(dir_name)

@@ -3,6 +3,9 @@
 from pathlib import Path
 from os import getcwd
 
+fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
+fastq_endings = ["fastq", "fq"]
+
 
 def get_xspect_root_path():
     """Return the root path for XspecT data."""

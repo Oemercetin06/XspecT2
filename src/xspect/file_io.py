@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import zipfile
 from Bio import SeqIO
+from xspect.definitions import fasta_endings, fastq_endings
 
 
 def delete_zip_files(dir_path):
@@ -40,7 +41,6 @@ def concatenate_meta(path: Path, genus: str):
     :type genus: str
     """
     files_path = path / "concatenate"
-    fasta_endings = ["fasta", "fna", "fa", "ffn", "frn"]
     meta_path = path / (genus + ".fasta")
     files = os.listdir(files_path)
 
@@ -72,10 +72,16 @@ def get_record_iterator(file_path: Path):
     if not file_path.is_file():
         raise ValueError("Path must be a file")
 
-    if file_path.suffix in [".fasta", ".fna", ".fa"]:
+    if file_path.suffix[1:] in fasta_endings:
         return SeqIO.parse(file_path, "fasta")
 
-    if file_path.suffix in [".fastq", ".fq"]:
+    if file_path.suffix[1:] in fastq_endings:
         return SeqIO.parse(file_path, "fastq")
 
     raise ValueError("Invalid file format, must be a fasta or fastq file")
+
+
+def get_records_by_id(file: Path, ids: list[str]):
+    """Return records with the specified ids."""
+    records = get_record_iterator(file)
+    return [record for record in records if record.id in ids]
