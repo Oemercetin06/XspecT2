@@ -4,6 +4,7 @@
 
 from pathlib import Path
 import pytest
+from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from src.xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
 
@@ -29,7 +30,7 @@ def trained_filter_model(filter_model, multiple_assembly_dir_path):
     return filter_model
 
 
-def test_filter_model_initialization(filter_model):
+def test_model_initialization(filter_model):
     """Test the initialization of the ProbabilisticFilterModel class."""
     assert filter_model.k == 21
     assert filter_model.model_display_name == "Test Filter"
@@ -72,13 +73,24 @@ def test_fit_with_display_names(filter_model, multiple_assembly_dir_path):
 def test_predict(trained_filter_model):
     """Test the predict method of the ProbabilisticFilterModel class."""
 
-    salmonella_sequence = Seq(
-        "AGAGATTACGTCTGGTTGCAAGAGATCATGACAGGGGGAATTGGTTGAAAATAAATATATCGCCAGCAGCACATGAACAA"
+    salmonella_record = SeqRecord(
+        seq=Seq(
+            "AGAGATTACGTCTGGTTGCAAGAGATCATGACAGGGGGAATTGGTTGAAAATAAATATATCGCCAGCAGCACATGAACAA"
+        ),
+        id="test",
     )
 
-    scores, hits = trained_filter_model.predict(salmonella_sequence)
-    assert scores == {"GCF_000006945": 1.0, "GCF_000069245": 0.0, "GCF_000018445": 0.0}
-    assert hits == {"GCF_000006945": 60, "GCF_000069245": 0, "GCF_000018445": 0}
+    res = trained_filter_model.predict(salmonella_record)
+    assert res.get_scores()["total"] == {
+        "GCF_000006945": 1.0,
+        "GCF_000069245": 0.0,
+        "GCF_000018445": 0.0,
+    }
+    assert res.get_total_hits() == {
+        "GCF_000006945": 60,
+        "GCF_000069245": 0,
+        "GCF_000018445": 0,
+    }
 
 
 @pytest.mark.parametrize(
@@ -102,50 +114,11 @@ def test_predict(trained_filter_model):
 def test_predict_from_file(trained_filter_model, assembly_file_path, expected_scores):
     """Test the predict method of the ProbabilisticFilterModel class with a file
     containing multiple (sub)sequences."""
-    scores, _ = trained_filter_model.predict(Path(assembly_file_path))
-    assert scores == expected_scores
+    res = trained_filter_model.predict(Path(assembly_file_path))
+    assert res.get_scores()["total"] == expected_scores
 
 
-# single sequence, list of sequences, and list of sequences with  and without filter_ids, respectively
-def test_filter(trained_filter_model):
-    """Test the filter method of the ProbabilisticFilterModel class."""
-
-    salmonella_sequence = Seq(
-        "AGAGATTACGTCTGGTTGCAAGAGATCATGACAGGGGGAATTGGTTGAAAATAAATATATCGCCAGCAGCACATGAACAA"
-    )
-    acinetobacter_sequence = Seq(
-        "TAAATAAATTTATATAGCTAAAAATAAAGGGAATGAATTAATCATTCCCTTTATTTGATTTAGATCAAAGTAACTTTATC"
-    )
-    filtered_sequences_single_sequence = trained_filter_model.filter(
-        salmonella_sequence
-    )
-    filtered_sequences_single_sequence_with_filter_id = trained_filter_model.filter(
-        salmonella_sequence, filter_ids=["GCF_000006945"]
-    )
-    filtered_sequences_list = trained_filter_model.filter(
-        [salmonella_sequence, acinetobacter_sequence]
-    )
-    filtered_sequences_list_with_filter_id = trained_filter_model.filter(
-        [salmonella_sequence, acinetobacter_sequence],
-        filter_ids=["GCF_000018445"],
-    )
-
-    assert filtered_sequences_single_sequence == {
-        "GCF_000006945": [salmonella_sequence]
-    }
-    assert filtered_sequences_single_sequence_with_filter_id == {
-        "GCF_000006945": [salmonella_sequence]
-    }
-    assert filtered_sequences_list == {
-        "GCF_000006945": [salmonella_sequence],
-        "GCF_000018445": [acinetobacter_sequence],
-    }
-    assert filtered_sequences_list_with_filter_id == {
-        "GCF_000018445": [acinetobacter_sequence],
-    }
-
-
-def test_filter_model_save_and_load(trained_filter_model):
+def test_model_save_and_load(trained_filter_model):
     """Test the save and load methods of the ProbabilisticFilterModel class."""
     trained_filter_model.save()
     loaded_model = ProbabilisticFilterModel.load(

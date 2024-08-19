@@ -1,7 +1,6 @@
 """Tests for the model_management module."""
 
 import xspect.model_management as mm
-from xspect.definitions import get_xspect_model_path
 
 
 def test_get_genus_model():

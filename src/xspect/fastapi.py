@@ -4,6 +4,7 @@ from shutil import copyfileobj
 from fastapi import FastAPI, UploadFile, BackgroundTasks
 from xspect.definitions import get_xspect_upload_path
 from xspect.download_filters import download_test_filters
+from xspect.file_io import get_records_by_id
 import xspect.model_management as mm
 from xspect.train import train_ncbi
 
@@ -25,16 +26,12 @@ def classify(genus: str, file: str, meta: bool = False, step: int = 500):
 
     if meta:
         genus_filter_model = mm.get_genus_model(genus)
-        filtered_sequences = genus_filter_model.filter(sequence_input, step=step)
-        prediction, scores = species_filter_model.predict(
-            filtered_sequences[genus], step=step
-        )
-    else:
-        prediction, scores = species_filter_model.predict(sequence_input, step=step)
+        filter_res = genus_filter_model.predict(sequence_input, step=step)
+        filtered_sequences = filter_res.get_filtered_subsequences(genus, 0.7)
+        sequence_input = get_records_by_id(sequence_input, filtered_sequences)
+    res = species_filter_model.predict(sequence_input, step=step)
 
-    prediction = species_filter_model.display_names[prediction[0]]
-
-    return {"prediction": prediction, "scores": scores}
+    return {"prediction": res.prediction, "scores": res.get_scores()["total"]}
 
 
 @app.post("/train")

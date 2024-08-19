@@ -54,24 +54,3 @@ def test_save_and_load(trained_filter_model):
     assert loaded_filter_model.to_dict() == trained_filter_model.to_dict()
     hits = trained_filter_model.calculate_hits(Seq("TAAATAAATTTATATAGCTAAA"))
     assert hits == {"concatenated_assembly": 2}
-
-
-def test_filter(trained_filter_model):
-    """Test the filter method."""
-    reads = [
-        Seq(  # Acinetobacter
-            "CAATTGATTTTGAATTTAAATTTATTCACAAGAGATTTCTTTTTAGGCAAAATCAAACGAAATCGTCATGACAGATGTGG"
-        ),
-        Seq(  # Salmonella
-            "AGAGATTACGTCTGGTTGCAAGAGATCATGACAGGGGGAATTGGTTGAAAATAAATATATCGCCAGCAGCACATGAACAA"
-        ),
-    ]
-
-    filtered_reads = trained_filter_model.filter(reads)
-    assert filtered_reads == {
-        "concatenated_assembly": [
-            Seq(
-                "CAATTGATTTTGAATTTAAATTTATTCACAAGAGATTTCTTTTTAGGCAAAATCAAACGAAATCGTCATGACAGATGTGG"
-            )
-        ]
-    }

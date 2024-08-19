@@ -59,7 +59,8 @@ def test_predict(trained_filter_model, multiple_assembly_svm_path):
     for file in Path(multiple_assembly_svm_path).iterdir():
         if file.suffix not in [".fasta", ".fa", ".fna", ".fastq", ".fq"]:
             continue
-        prediction, _ = trained_filter_model.predict(file, step=500)
+        res = trained_filter_model.predict(file, step=500)
+        prediction = res.prediction
         file_header = getline(str(file), 1)
         label_id = file_header.replace("\n", "").replace(">", "")
         assert prediction == label_id

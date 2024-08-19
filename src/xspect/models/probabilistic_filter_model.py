@@ -9,6 +9,7 @@ from Bio import SeqIO
 from slugify import slugify
 import cobs_index as cobs
 from xspect.file_io import get_record_iterator
+from xspect.models.model_result import ModelResult
 
 
 class ProbabilisticFilterModel:
@@ -119,11 +120,9 @@ class ProbabilisticFilterModel:
         self.index = cobs.Search(self.get_cobs_index_path(), True)
 
     def calculate_hits(
-        self, sequence: Seq | SeqRecord, filter_ids: list[str] = None, step: int = 1
+        self, sequence: Seq, filter_ids: list[str] = None, step: int = 1
     ) -> dict:
         """Calculates the hits for a sequence"""
-        if isinstance(sequence, SeqRecord):
-            sequence = sequence.seq
 
         if not isinstance(sequence, (Seq)):
             raise ValueError(
@@ -142,18 +141,17 @@ class ProbabilisticFilterModel:
     def predict(
         self,
         sequence_input: (
-            Seq
-            | SeqRecord
-            | list[Seq]
+            SeqRecord
+            | list[SeqRecord]
             | SeqIO.FastaIO.FastaIterator
             | SeqIO.QualityIO.FastqPhredIterator
             | Path
         ),
         filter_ids: list[str] = None,
         step: int = 1,
-    ) -> tuple[dict, dict]:
+    ) -> ModelResult:
         """Returns scores for the sequence(s) based on the filters in the model"""
-        if isinstance(sequence_input, (Seq, SeqRecord)):
+        if isinstance(sequence_input, (SeqRecord)):
             return ProbabilisticFilterModel.predict(
                 self, [sequence_input], filter_ids, step=step
             )
@@ -161,69 +159,22 @@ class ProbabilisticFilterModel:
         if self._is_sequence_list(sequence_input) | self._is_sequence_iterator(
             sequence_input
         ):
-            # calculate scores and hits for all sequences combined,
-            # by calculating hits for each sequence first
-            kmer_sum = 0
             hits = {}
+            num_kmers = {}
             for individual_sequence in sequence_input:
                 individual_hits = self.calculate_hits(
-                    individual_sequence, filter_ids, step=step
+                    individual_sequence.seq, filter_ids, step=step
                 )
-                for doc in individual_hits:
-                    if doc in hits:
-                        hits[doc] += individual_hits[doc]
-                    else:
-                        hits[doc] = individual_hits[doc]
-                num_kmers = self._count_kmers(individual_sequence, step=step)
-                kmer_sum += num_kmers
-            scores = {doc: round(hits[doc] / kmer_sum, 2) for doc in hits}
-            return scores, hits
+                num_kmers[individual_sequence.id] = self._count_kmers(
+                    individual_sequence, step=step
+                )
+                hits[individual_sequence.id] = individual_hits
+            return ModelResult(hits, num_kmers)
 
         if isinstance(sequence_input, Path):
             return ProbabilisticFilterModel.predict(
                 self, get_record_iterator(sequence_input), step=step
             )
-
-        raise ValueError(
-            "Invalid sequence input, must be a Seq object, a list of Seq objects, a"
-            " SeqIO FastaIterator, a SeqIO FastqPhredIterator, or a Path object to a"
-            " fasta/fastq file"
-        )
-
-    def filter(
-        self,
-        sequences: (
-            Seq
-            | SeqRecord
-            | list[Seq]
-            | SeqIO.FastaIO.FastaIterator
-            | SeqIO.QualityIO.FastqPhredIterator
-            | Path
-        ),
-        threshold: float = 0.7,
-        filter_ids: list[str] = None,
-        step: int = 1,
-    ):
-        """Filters the sequences"""
-
-        if isinstance(sequences, (Seq, SeqRecord)):
-            sequences = [sequences]
-
-        if self._is_sequence_list(sequences) | self._is_sequence_iterator(sequences):
-            filtered_sequences = {}
-            for sequence in sequences:
-                scores, _ = self.predict(sequence, filter_ids, step=step)
-                for filter_id, score in scores.items():
-                    if score >= threshold:
-                        if filter_id in filtered_sequences:
-                            filtered_sequences[filter_id].append(sequence)
-                        else:
-                            filtered_sequences[filter_id] = [sequence]
-
-            return filtered_sequences
-
-        if isinstance(sequences, Path):
-            return self.filter(get_record_iterator(sequences), threshold, filter_ids)
 
         raise ValueError(
             "Invalid sequence input, must be a Seq object, a list of Seq objects, a"
@@ -315,7 +266,7 @@ class ProbabilisticFilterModel:
 
     def _is_sequence_list(self, sequence_input):
         return isinstance(sequence_input, list) and all(
-            isinstance(seq, (Seq, SeqRecord)) for seq in sequence_input
+            isinstance(seq, (SeqRecord)) for seq in sequence_input
         )
 
     def _is_sequence_iterator(self, sequence_input):

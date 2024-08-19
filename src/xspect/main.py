@@ -7,6 +7,7 @@ from xspect import fastapi
 from xspect.download_filters import download_test_filters
 from xspect.model_management import get_genus_model, get_species_model
 from xspect.train import train_ncbi
+from xspect.file_io import get_records_by_id
 
 
 @click.group()
@@ -46,17 +47,13 @@ def classify(genus, path, meta, step):
 
     if meta:
         genus_filter_model = get_genus_model(genus)
-        filtered_sequences = genus_filter_model.filter(sequence_input)
-        prediction, scores = species_filter_model.predict(
-            filtered_sequences["Acinetobacter"], step=step
-        )
-    else:
-        prediction, scores = species_filter_model.predict(sequence_input, step=step)
-
-    prediction = species_filter_model.display_names[prediction[0]]
-
-    print(prediction)
-    print(scores)
+        filter_res = genus_filter_model.predict(sequence_input)
+        filtered_sequence_ids = filter_res.get_filtered_subsequences(genus, 0.7)
+        print(filtered_sequence_ids)
+        sequence_input = get_records_by_id(sequence_input, filtered_sequence_ids)
+    res = species_filter_model.predict(sequence_input, step=step)
+    print(species_filter_model.display_names[res.prediction])
+    print(res.get_scores())
 
 
 @cli.command()

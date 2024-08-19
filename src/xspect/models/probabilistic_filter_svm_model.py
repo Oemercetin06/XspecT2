@@ -8,9 +8,12 @@ from linecache import getline
 from pathlib import Path
 from sklearn.svm import SVC
 from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 import cobs_index as cobs
 from xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
+from xspect.definitions import fasta_endings, fastq_endings
+from xspect.models.model_result import ModelResult
 
 
 class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
@@ -67,10 +70,13 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
 
         score_list = []
         for file in svm_path.iterdir():
-            if file.suffix not in [".fasta", ".fa", ".fna", ".fastq", ".fq"]:
+            if not file.is_file():
+                continue
+            if file.suffix[1:] not in fasta_endings + fastq_endings:
                 continue
             print(f"Calculating {file.name} scores for SVM training...")
-            scores, _ = super().predict(file, step=svm_step)
+            res = super().predict(file, step=svm_step)
+            scores = res.get_scores()["total"]
             accession = "".join(file.name.split("_")[:2])
             file_header = getline(str(file), 1)
             label_id = file_header.replace("\n", "").replace(">", "")
@@ -94,8 +100,8 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
     def predict(
         self,
         sequence_input: (
-            Seq
-            | list[Seq]
+            SeqRecord
+            | list[SeqRecord]
             | SeqIO.FastaIO.FastaIterator
             | SeqIO.QualityIO.FastqPhredIterator
             | Path
@@ -105,12 +111,14 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
     ) -> dict:
         """Predict the labels of the sequences"""
         # get scores and format them for the SVM
-        scores, _ = super().predict(sequence_input, filter_ids, step=step)
-        svm_scores = dict(sorted(scores.items()))
+        res = super().predict(sequence_input, filter_ids, step=step)
+        svm_scores = dict(sorted(res.get_scores()["total"].items()))
         svm_scores = [list(svm_scores.values())]
 
         svm = self._get_svm(filter_ids)
-        return svm.predict(svm_scores), scores
+        return ModelResult(
+            res.hits, res.num_kmers, prediction=svm.predict(svm_scores)[0]
+        )
 
     def _get_svm(self, id_keys) -> SVC:
         """Get the SVM for the given id keys"""
