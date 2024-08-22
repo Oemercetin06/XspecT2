@@ -1,13 +1,17 @@
 """Project CLI"""
 
 from pathlib import Path
+import datetime
 import click
 import uvicorn
 from xspect import fastapi
 from xspect.download_filters import download_test_filters
-from xspect.model_management import get_genus_model, get_species_model
 from xspect.train import train_ncbi
-from xspect.file_io import get_records_by_id
+from xspect.models.result import (
+    StepType,
+)
+from xspect.definitions import get_xspect_runs_path, fasta_endings, fastq_endings
+from xspect.pipeline import ModelExecution, Pipeline, PipelineStep
 
 
 @click.group()
@@ -25,7 +29,7 @@ def download_filters():
 
 @cli.command()
 @click.argument("genus")
-@click.argument("path", type=click.Path(exists=True, dir_okay=False, file_okay=True))
+@click.argument("path", type=click.Path(exists=True, dir_okay=True, file_okay=True))
 @click.option(
     "-m",
     "--meta/--no-meta",
@@ -39,21 +43,41 @@ def download_filters():
     default=1,
 )
 def classify(genus, path, meta, step):
-    """Classify sample(s) from directory PATH."""
-    click.echo("Classifying sample...")
+    """Classify sample(s) from file or directory PATH."""
+    click.echo("Classifying...")
     click.echo(f"Step: {step}")
-    sequence_input = Path(path)
-    species_filter_model = get_species_model(genus)
 
+    file_paths = []
+    if Path(path).is_dir():
+        file_paths = [
+            f
+            for f in Path(path).iterdir()
+            if f.is_file() and f.suffix[1:] in fasta_endings + fastq_endings
+        ]
+    else:
+        file_paths = [Path(path)]
+
+    # define pipeline
+    pipeline = Pipeline(genus + " classification", "Test Author", "test@example.com")
+    species_execution = ModelExecution(genus + "-species", sparse_sampling_step=step)
     if meta:
-        genus_filter_model = get_genus_model(genus)
-        filter_res = genus_filter_model.predict(sequence_input)
-        filtered_sequence_ids = filter_res.get_filtered_subsequences(genus, 0.7)
-        print(filtered_sequence_ids)
-        sequence_input = get_records_by_id(sequence_input, filtered_sequence_ids)
-    res = species_filter_model.predict(sequence_input, step=step)
-    print(species_filter_model.display_names[res.prediction])
-    print(res.get_scores())
+        species_filtering_step = PipelineStep(
+            StepType.FILTERING, genus, 0.7, species_execution
+        )
+        genus_execution = ModelExecution(genus + "-genus", sparse_sampling_step=step)
+        genus_execution.add_pipeline_step(species_filtering_step)
+        pipeline.add_pipeline_step(genus_execution)
+    else:
+        pipeline.add_pipeline_step(species_execution)
+
+    for idx, file_path in enumerate(file_paths):
+        run = pipeline.run(file_path)
+        time_str = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        save_path = get_xspect_runs_path() / f"run_{time_str}.json"
+        run.save(save_path)
+        print(
+            f"[{idx+1}/{len(file_paths)}] Run finished. Results saved to '{save_path}'."
+        )
 
 
 @cli.command()

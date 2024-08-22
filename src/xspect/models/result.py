@@ -1,5 +1,50 @@
 """ Module for storing the results of XspecT models. """
 
+from enum import Enum
+
+
+def get_last_processing_step(result: "ModelResult") -> "ModelResult":
+    """Get the last subprocessing step of the result. First path only."""
+    last_step = result
+    while last_step.subprocessing_steps:
+        last_step = last_step.subprocessing_steps[-1].result
+    return last_step
+
+
+class StepType(Enum):
+    """Enum for defining the type of a subprocessing step."""
+
+    PREDICTION = 1
+    FILTERING = 2
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
+
+class SubprocessingStep:
+    """Class for storing a subprocessing step of an XspecT model."""
+
+    def __init__(
+        self,
+        subprocessing_type: StepType,
+        label: str,
+        treshold: float,
+        result: "ModelResult",
+    ):
+        self.subprocessing_type = subprocessing_type
+        self.label = label
+        self.treshold = treshold
+        self.result = result
+
+    def to_dict(self) -> dict:
+        """Return the subprocessing step as a dictionary."""
+        return {
+            "subprocessing_type": str(self.subprocessing_type),
+            "label": self.label,
+            "treshold": self.treshold,
+            "result": self.result.to_dict() if self.result else {},
+        }
+
 
 class ModelResult:
     """Class for storing an XspecT model result."""
@@ -7,17 +52,30 @@ class ModelResult:
     def __init__(
         self,
         # we store hits depending on the subsequence as well as on the label
+        model_slug: str,
         hits: dict[str, dict[str, int]],
         num_kmers: dict[str, int],
+        sparse_sampling_step: int = 1,
         prediction: str = None,
     ):
         if "total" in hits:
             raise ValueError(
                 "'total' is a reserved key and cannot be used as a subsequence"
             )
+        self.model_slug = model_slug
         self.hits = hits
         self.num_kmers = num_kmers
+        self.sparse_sampling_step = sparse_sampling_step
         self.prediction = prediction
+        self.subprocessing_steps = []
+
+    def add_subprocessing_step(self, subprocessing_step: SubprocessingStep) -> None:
+        """Add a subprocessing step to the result."""
+        if subprocessing_step.label in self.subprocessing_steps:
+            raise ValueError(
+                f"Subprocessing step {subprocessing_step.label} already exists in the result"
+            )
+        self.subprocessing_steps.append(subprocessing_step)
 
     def get_scores(self) -> dict:
         """Return the scores of the model."""
@@ -70,12 +128,18 @@ class ModelResult:
             if mask
         ]
 
-    def __dict__(self) -> dict:
+    def to_dict(self) -> dict:
         """Return the result as a dictionary."""
         res = {
+            "model_slug": self.model_slug,
+            "sparse_sampling_step": self.sparse_sampling_step,
             "hits": self.hits,
             "scores": self.get_scores(),
             "num_kmers": self.num_kmers,
+            "subprocessing_steps": [
+                subprocessing_step.to_dict()
+                for subprocessing_step in self.subprocessing_steps
+            ],
         }
 
         if self.prediction is not None:

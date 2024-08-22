@@ -2,6 +2,7 @@
 
 from json import loads, dumps
 from pathlib import Path
+from xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
 from xspect.models.probabilistic_single_filter_model import (
     ProbabilisticSingleFilterModel,
 )
@@ -21,6 +22,20 @@ def get_species_model(genus):
     species_model_path = get_xspect_model_path() / (genus.lower() + "-species.json")
     species_filter_model = ProbabilisticFilterSVMModel.load(species_model_path)
     return species_filter_model
+
+
+def get_model_by_slug(model_slug: str):
+    """Get a model by its slug."""
+    model_path = get_xspect_model_path() / (model_slug + ".json")
+    model_metadata = get_model_metadata(model_path)
+    if model_metadata["model_class"] == "ProbabilisticSingleFilterModel":
+        return ProbabilisticSingleFilterModel.load(model_path)
+    elif model_metadata["model_class"] == "ProbabilisticFilterSVMModel":
+        return ProbabilisticFilterSVMModel.load(model_path)
+    elif model_metadata["model_class"] == "ProbabilisticFilterModel":
+        return ProbabilisticFilterModel.load(model_path)
+    else:
+        raise ValueError(f"Model class {model_metadata['model_class']} not recognized.")
 
 
 def get_model_metadata(model: str | Path):

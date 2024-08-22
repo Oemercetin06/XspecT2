@@ -7,13 +7,12 @@ import json
 from linecache import getline
 from pathlib import Path
 from sklearn.svm import SVC
-from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 import cobs_index as cobs
 from xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
 from xspect.definitions import fasta_endings, fastq_endings
-from xspect.models.model_result import ModelResult
+from xspect.models.result import ModelResult
 
 
 class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
@@ -117,7 +116,10 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
 
         svm = self._get_svm(filter_ids)
         return ModelResult(
-            res.hits, res.num_kmers, prediction=svm.predict(svm_scores)[0]
+            self.slug(),
+            res.hits,
+            res.num_kmers,
+            prediction=str(svm.predict(svm_scores)[0]),
         )
 
     def _get_svm(self, id_keys) -> SVC:

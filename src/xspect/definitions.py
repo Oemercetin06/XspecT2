@@ -33,3 +33,10 @@ def get_xspect_upload_path():
     upload_path = get_xspect_root_path() / "uploads"
     upload_path.mkdir(exist_ok=True, parents=True)
     return upload_path
+
+
+def get_xspect_runs_path():
+    """Return the path to the XspecT runs directory."""
+    runs_path = get_xspect_root_path() / "runs"
+    runs_path.mkdir(exist_ok=True, parents=True)
+    return runs_path

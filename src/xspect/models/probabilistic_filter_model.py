@@ -9,7 +9,7 @@ from Bio import SeqIO
 from slugify import slugify
 import cobs_index as cobs
 from xspect.file_io import get_record_iterator
-from xspect.models.model_result import ModelResult
+from xspect.models.result import ModelResult
 
 
 class ProbabilisticFilterModel:
@@ -58,6 +58,7 @@ class ProbabilisticFilterModel:
             "author": self.author,
             "author_email": self.author_email,
             "model_type": self.model_type,
+            "model_class": self.__class__.__name__,
             "display_names": self.display_names,
             "fpr": self.fpr,
             "num_hashes": self.num_hashes,
@@ -169,7 +170,7 @@ class ProbabilisticFilterModel:
                     individual_sequence, step=step
                 )
                 hits[individual_sequence.id] = individual_hits
-            return ModelResult(hits, num_kmers)
+            return ModelResult(self.slug(), hits, num_kmers, sparse_sampling_step=step)
 
         if isinstance(sequence_input, Path):
             return ProbabilisticFilterModel.predict(

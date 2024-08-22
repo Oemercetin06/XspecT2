@@ -1,4 +1,4 @@
-from src.xspect.models.model_result import ModelResult
+from xspect.models.result import ModelResult
 
 
 def test_get_scores():
@@ -9,7 +9,7 @@ def test_get_scores():
         "subsequence2": {"label1": 8, "label2": 3},
     }
     num_kmers = {"subsequence1": 100, "subsequence2": 50}
-    model_result = ModelResult(hits, num_kmers)
+    model_result = ModelResult("test_slug", hits, num_kmers)
 
     # Expected scores
     expected_scores = {

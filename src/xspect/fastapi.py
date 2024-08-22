@@ -1,11 +1,14 @@
 """FastAPI application for XspecT."""
 
+import datetime
+from pathlib import Path
 from shutil import copyfileobj
 from fastapi import FastAPI, UploadFile, BackgroundTasks
-from xspect.definitions import get_xspect_upload_path
+from xspect.definitions import get_xspect_runs_path, get_xspect_upload_path
 from xspect.download_filters import download_test_filters
-from xspect.file_io import get_records_by_id
 import xspect.model_management as mm
+from xspect.models.result import StepType
+from xspect.pipeline import ModelExecution, Pipeline, PipelineStep
 from xspect.train import train_ncbi
 
 app = FastAPI()
@@ -21,17 +24,26 @@ def download_filters():
 def classify(genus: str, file: str, meta: bool = False, step: int = 500):
     """Classify uploaded sample."""
 
-    sequence_input = get_xspect_upload_path() / file
-    species_filter_model = mm.get_species_model(genus)
+    path = get_xspect_upload_path() / file
 
+    pipeline = Pipeline(genus + " classification", "Test Author", "test@example.com")
+    species_execution = ModelExecution(genus + "-species", sparse_sampling_step=step)
     if meta:
-        genus_filter_model = mm.get_genus_model(genus)
-        filter_res = genus_filter_model.predict(sequence_input, step=step)
-        filtered_sequences = filter_res.get_filtered_subsequences(genus, 0.7)
-        sequence_input = get_records_by_id(sequence_input, filtered_sequences)
-    res = species_filter_model.predict(sequence_input, step=step)
+        species_filtering_step = PipelineStep(
+            StepType.FILTERING, genus, 0.7, species_execution
+        )
+        genus_execution = ModelExecution(genus + "-genus", sparse_sampling_step=step)
+        genus_execution.add_pipeline_step(species_filtering_step)
+        pipeline.add_pipeline_step(genus_execution)
+    else:
+        pipeline.add_pipeline_step(species_execution)
 
-    return {"prediction": res.prediction, "scores": res.get_scores()["total"]}
+    run = pipeline.run(Path(path))
+    time_str = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    save_path = get_xspect_runs_path() / f"run_{time_str}.json"
+    run.save(save_path)
+
+    return run.to_dict()
 
 
 @app.post("/train")
