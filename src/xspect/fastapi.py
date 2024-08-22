@@ -27,12 +27,16 @@ def classify(genus: str, file: str, meta: bool = False, step: int = 500):
     path = get_xspect_upload_path() / file
 
     pipeline = Pipeline(genus + " classification", "Test Author", "test@example.com")
-    species_execution = ModelExecution(genus + "-species", sparse_sampling_step=step)
+    species_execution = ModelExecution(
+        genus.lower() + "-species", sparse_sampling_step=step
+    )
     if meta:
         species_filtering_step = PipelineStep(
             StepType.FILTERING, genus, 0.7, species_execution
         )
-        genus_execution = ModelExecution(genus + "-genus", sparse_sampling_step=step)
+        genus_execution = ModelExecution(
+            genus.lower() + "-genus", sparse_sampling_step=step
+        )
         genus_execution.add_pipeline_step(species_filtering_step)
         pipeline.add_pipeline_step(genus_execution)
     else:
