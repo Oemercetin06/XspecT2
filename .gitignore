@@ -175,3 +175,7 @@ saved_options.txt
 files/
 out.gv
 out.png
+
+xspect-data/
+
+.devcontainer/

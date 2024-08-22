@@ -1,26 +1,25 @@
-"""
-
-"""
+""" HTML Scraping for the taxonomy check results from NCBI."""
 
 __author__ = "Berger, Phillip"
 
 import datetime
-import requests
 import pickle
+import sys
 import time
-from pathlib import Path
-import os
-
+import requests
 from loguru import logger
+from xspect.definitions import get_xspect_root_path
 
 
 class TaxonomyCheck:
+    """Class to get the GCFs that passed the taxonomy check from NCBI."""
+
     _main_url = "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/ANI_report_prokaryotes.txt"
     _test_url = "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/"
-    _main_path = Path(os.getcwd()) / "genus_metadata" / "taxonomy_check.txt"
-    _test_path = Path(os.getcwd()) / "genus_metadata" / "tax_check_date.txt"
+    _main_path = get_xspect_root_path() / "taxonomy_check.txt"
+    _test_path = get_xspect_root_path() / "tax_check_date.txt"
     _new_time: list
-    _tax_check_ok = list()
+    _tax_check_ok = []
 
     def __init__(self):
         old_time = self._get_old_tax_date()
@@ -48,7 +47,7 @@ class TaxonomyCheck:
         else:
             logger.error("Nothing was found")
             logger.error("Aborting")
-            exit()
+            sys.exit()
 
     def _get_old_tax_date(self):
         try:
@@ -59,7 +58,7 @@ class TaxonomyCheck:
             return None
 
     def _get_new_tax_date(self):
-        raw_response = requests.get(self._test_url)
+        raw_response = requests.get(self._test_url, timeout=5)
         data = raw_response.text.split("\n")
         for line in data:
             if "ANI_report_prokaryotes.txt" in line:
@@ -69,22 +68,22 @@ class TaxonomyCheck:
                     int(date_parts[0]), int(date_parts[1]), int(date_parts[2])
                 )
                 time_parts = line_parts[-2].split(":")
-                time = datetime.time(int(time_parts[0]), int(time_parts[1]))
-                new_time = [date, time]
+                combined_time = datetime.time(int(time_parts[0]), int(time_parts[1]))
+                new_time = [date, combined_time]
 
                 return new_time
 
         return None
 
     def _update_tax_check(self):
-        raw_response = requests.get(self._main_url)
+        raw_response = requests.get(self._main_url, timeout=5)
         all_tax_checks = raw_response.text.split("\n")[1:-1]
         self._get_gcf_ok(all_tax_checks)
         self._save_time()
         self._save_file()
 
     def _get_gcf_ok(self, all_tax_checks: list):
-        tax_check_ok = list()
+        tax_check_ok = []
         for line in all_tax_checks:
             line_parts = line.split("\t")
             gcf = line_parts[1]
@@ -111,16 +110,5 @@ class TaxonomyCheck:
         return time.asctime(time.localtime()).split()[3]
 
     def ani_gcf(self):
+        """Returns ANI GCFs that passed the taxonomy check."""
         return self._tax_check_ok
-
-
-def main():
-    start = time.perf_counter()
-    tax_check = TaxonomyCheck()
-    end = time.perf_counter()
-    print(f"{end-start:.2f} s\n")
-    print(tax_check.ani_gcf()[:5])
-
-
-if __name__ == "__main__":
-    main()

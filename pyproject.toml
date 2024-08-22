@@ -1,37 +1,30 @@
 [project]
 name = "XspecT"
-version = "0.1.0"
+version = "0.2.0"
 description = "Tool to monitor and characterize pathogens using Bloom filters."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 requires-python = ">=3.10"
 dependencies = [
-    "Flask",
-        "Flask-WTF",
-        "WTForms",
-        "Werkzeug",
-        "biopython",
-        "bitarray",
-        "mmh3",
-        "numpy",
-        "pandas",
-        "requests",
-        "scikit-learn",
-        "Psutil",
-        "Matplotlib",
-        "Pympler",
-        "H5py",
-        "Bio",
-        "wheel",
-        "loguru",
-        "Pympler",
-        "click",
-    ]
-  classifiers = [
-          "Intended Audience :: Developers",
-          "Topic :: Scientific/Engineering :: Bio-Informatics",
-          "License :: OSI Approved :: MIT License",
+  "biopython",
+  "requests",
+  "scikit-learn",
+  "Bio",
+  "loguru",
+  "click",
+  "python-slugify",
+  "cobs-reloaded",
+  "rbloom",
+  "xxhash",
+  "fastapi",
+  "uvicorn",
+  "python-multipart"
   ]
+classifiers = [
+  "Intended Audience :: Developers",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "License :: OSI Approved :: MIT License",
+]
 
 [project.urls]
 Repository = "https://github.com/BIONF/XspecT2.git"
@@ -40,8 +33,16 @@ Repository = "https://github.com/BIONF/XspecT2.git"
 xspect = "xspect.main:cli"
 
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = [
+  "setuptools >= 61.0",
+  "setuptools-scm>=8.0",
+]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["xspect"]
+namespaces = false
 
 [tool.pytest.ini_options]
 pythonpath = [

@@ -3,8 +3,9 @@
 # pylint: disable=line-too-long
 
 import shutil
-import requests
 import os
+from pathlib import Path
+import requests
 import pytest
 
 
@@ -58,3 +59,55 @@ def assembly_file_path(tmp_path, request):
     """Create a temporary directory with requested test assembly and returns the path to the file"""
     file_path = shutil.copy("tests/test_assemblies/" + request.param, tmp_path)
     return file_path
+
+
+@pytest.fixture
+def multiple_assembly_dir_path(tmp_path):
+    """Create a temporary directory with multiple test assemblies and return the path as string"""
+    assemblies = [
+        "GCF_000006945.2_ASM694v2_genomic.fna",
+        "GCF_000018445.1_ASM1844v1_genomic.fna",
+        "GCF_000069245.1_ASM6924v1_genomic.fna",
+    ]
+    for assembly in assemblies:
+        shutil.copy("tests/test_assemblies/" + assembly, tmp_path)
+    return tmp_path.as_posix()
+
+
+@pytest.fixture
+def multiple_assembly_svm_path(tmp_path):
+    """Create a temporary directory with multiple test assemblies and return the path as string"""
+
+    svm_path = Path(tmp_path) / "svm"
+    svm_path.mkdir()
+    assemblies = [
+        "GCF_000006945.2_ASM694v2_genomic.fna",
+        "GCF_000018445.1_ASM1844v1_genomic.fna",
+        "GCF_000069245.1_ASM6924v1_genomic.fna",
+    ]
+    for assembly in assemblies:
+        with open("tests/test_assemblies/" + assembly, "r", encoding="utf-8") as f:
+            with open(svm_path / assembly, "w", encoding="utf-8") as new_file:
+                f.readline()
+                # cobs only considers document names until the first "."
+                new_file.write(">" + assembly.split(".", maxsplit=1)[0] + "\n")
+                shutil.copyfileobj(f, new_file)
+
+    return svm_path.as_posix()
+
+
+@pytest.fixture
+def concatenated_assembly_file_path(tmp_path):
+    """Create a temporary directory with multiple test assemblies and return the path as string"""
+    # two acinetobacter assemblies
+    assemblies = [
+        "GCF_000018445.1_ASM1844v1_genomic.fna",
+        "GCF_000069245.1_ASM6924v1_genomic.fna",
+    ]
+    with open(tmp_path / "concatenated_assembly.fna", "w", encoding="utf-8") as outfile:
+        for assembly in assemblies:
+            with open(
+                "tests/test_assemblies/" + assembly, "r", encoding="utf-8"
+            ) as infile:
+                shutil.copyfileobj(infile, outfile)
+    return (tmp_path / "concatenated_assembly.fna").as_posix()

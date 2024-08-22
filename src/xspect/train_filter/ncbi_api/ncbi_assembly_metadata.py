@@ -1,10 +1,8 @@
-"""
-
-"""
+""" Collects metadata of assemblies from NCBI API """
 
 __author__ = "Berger, Phillip"
 
-from time import sleep, asctime, localtime
+from time import sleep
 
 import requests
 
@@ -12,6 +10,8 @@ from loguru import logger
 
 
 class NCBIAssemblyMetadata:
+    """Class to collect metadata of assemblies from the NCBI API."""
+
     _all_metadata: dict
     _count: int
     _ani_gcf: list
@@ -28,9 +28,9 @@ class NCBIAssemblyMetadata:
 
         self._set_parameters()
 
-        tmp_metadata = dict()
+        tmp_metadata = {}
         for tax_id, curr_metadata in self._all_metadata.items():
-            sleep(1)
+            sleep(2)
             species_name = curr_metadata["sci_name"]
             logger.info("Collecting metadata of {name}", name=species_name)
             accessions = self._make_request(taxon=tax_id)
@@ -73,10 +73,10 @@ class NCBIAssemblyMetadata:
 
     def _make_request(self, taxon: str):
         api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/genome/taxon/{taxon}"
-        accessions = list()
+        accessions = []
         count = 0
         for request_type, parameters in self._parameters.items():
-            raw_response = requests.get(api_url, params=parameters)
+            raw_response = requests.get(api_url, params=parameters, timeout=5)
             response = raw_response.json()
             if response:
                 try:
@@ -95,7 +95,6 @@ class NCBIAssemblyMetadata:
                         else:
                             break
                 except KeyError:
-                    pass
                     logger.debug(
                         "While requesting: {type} an error response was given",
                         type=request_type,
@@ -107,12 +106,5 @@ class NCBIAssemblyMetadata:
         return accessions
 
     def get_all_metadata(self):
+        """Returns all metadata of the assemblies."""
         return self._all_metadata_complete
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()
