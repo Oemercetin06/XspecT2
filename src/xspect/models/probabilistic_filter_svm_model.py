@@ -107,7 +107,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         ),
         filter_ids: list[str] = None,
         step: int = 1,
-    ) -> dict:
+    ) -> ModelResult:
         """Predict the labels of the sequences"""
         # get scores and format them for the SVM
         res = super().predict(sequence_input, filter_ids, step=step)
@@ -119,6 +119,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             self.slug(),
             res.hits,
             res.num_kmers,
+            sparse_sampling_step=step,
             prediction=str(svm.predict(svm_scores)[0]),
         )
 
