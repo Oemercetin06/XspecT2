@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import datetime
+import uuid
 import click
 import uvicorn
 from xspect import fastapi
@@ -77,7 +78,7 @@ def classify(genus, path, meta, step):
     for idx, file_path in enumerate(file_paths):
         run = pipeline.run(file_path)
         time_str = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        save_path = get_xspect_runs_path() / f"run_{time_str}.json"
+        save_path = get_xspect_runs_path() / f"run_{time_str}_{uuid.uuid4()}.json"
         run.save(save_path)
         print(
             f"[{idx+1}/{len(file_paths)}] Run finished. Results saved to '{save_path}'."
