@@ -65,8 +65,11 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
     ) -> None:
         """Fit the SVM to the sequences and labels"""
 
+        # Since the SVM works with score data, we need to train
+        # the underlying data structure for score generation first
         super().fit(dir_path, display_names=display_names)
 
+        # calculate scores for SVM training
         score_list = []
         for file in svm_path.iterdir():
             if not file.is_file():

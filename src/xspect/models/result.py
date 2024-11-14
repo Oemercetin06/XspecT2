@@ -5,10 +5,11 @@ from enum import Enum
 
 def get_last_processing_step(result: "ModelResult") -> "ModelResult":
     """Get the last subprocessing step of the result. First path only."""
-    last_step = result
-    while last_step.subprocessing_steps:
-        last_step = last_step.subprocessing_steps[-1].result
-    return last_step
+
+    # traverse result tree to get last step
+    while result.subprocessing_steps:
+        result = result.subprocessing_steps[-1].result
+    return result
 
 
 class StepType(Enum):
@@ -82,9 +83,9 @@ class ModelResult:
         scores = {
             subsequence: {
                 label: round(hits / self.num_kmers[subsequence], 2)
-                for label, hits in subseuqence_hits.items()
+                for label, hits in subsequence_hits.items()
             }
-            for subsequence, subseuqence_hits in self.hits.items()
+            for subsequence, subsequence_hits in self.hits.items()
         }
 
         # calculate total scores

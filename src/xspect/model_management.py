@@ -30,12 +30,11 @@ def get_model_by_slug(model_slug: str):
     model_metadata = get_model_metadata(model_path)
     if model_metadata["model_class"] == "ProbabilisticSingleFilterModel":
         return ProbabilisticSingleFilterModel.load(model_path)
-    elif model_metadata["model_class"] == "ProbabilisticFilterSVMModel":
+    if model_metadata["model_class"] == "ProbabilisticFilterSVMModel":
         return ProbabilisticFilterSVMModel.load(model_path)
-    elif model_metadata["model_class"] == "ProbabilisticFilterModel":
+    if model_metadata["model_class"] == "ProbabilisticFilterModel":
         return ProbabilisticFilterModel.load(model_path)
-    else:
-        raise ValueError(f"Model class {model_metadata['model_class']} not recognized.")
+    raise ValueError(f"Model class {model_metadata['model_class']} not recognized.")
 
 
 def get_model_metadata(model: str | Path):

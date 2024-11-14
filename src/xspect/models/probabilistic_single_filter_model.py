@@ -1,4 +1,4 @@
-"""Probabilistic filter SVM model for sequence data"""
+"""Base probabilistic filter model for sequence data"""
 
 # pylint: disable=no-name-in-module, too-many-instance-attributes
 
@@ -14,7 +14,7 @@ from xspect.file_io import get_record_iterator
 
 
 class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
-    """Probabilistic filter SVM model for sequence data"""
+    """Base probabilistic filter model for sequence data"""
 
     def __init__(
         self,
@@ -25,7 +25,6 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
         model_type: str,
         base_path: Path,
         fpr: float = 0.01,
-        num_hashes: int = 7,
     ) -> None:
         super().__init__(
             k=k,
@@ -35,12 +34,12 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
             model_type=model_type,
             base_path=base_path,
             fpr=fpr,
-            num_hashes=num_hashes,
+            num_hashes=1,
         )
         self.bf = None
 
     def fit(self, file_path: Path, display_name: str) -> None:
-        """Fit the SVM to the sequences and labels"""
+        """Fit the cobs classic index to the sequences and labels"""
         # estimate number of kmers
         total_length = 0
         for record in get_record_iterator(file_path):
@@ -89,7 +88,6 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
                 model_json["model_type"],
                 path.parent,
                 fpr=model_json["fpr"],
-                num_hashes=model_json["num_hashes"],
             )
             model.display_names = model_json["display_names"]
             bloom_path = model.base_path / model.slug() / "filter.bloom"
