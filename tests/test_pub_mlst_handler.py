@@ -26,4 +26,4 @@ def test_chosen_download(monkeypatch):
     inputs = iter(["2","1","no"]) # Simulate input: [species, scheme, repeat]
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
     handler.download_alleles(True)
-    assert handler.scheme_list == ["http://rest.pubmlst.org/db/pubmlst_abaumannii_seqdef/schemes/1"]
+    assert handler.scheme_list == ["https://rest.pubmlst.org/db/pubmlst_abaumannii_seqdef/schemes/1"]

@@ -67,7 +67,6 @@ class PubMLSTHandler:
         if choice: # pick an own scheme if not Oxford or Pasteur
             self.choose_schemes() # changes the scheme_list attribute
 
-        print("Download starting... (May take a while)")
         for scheme in self.scheme_list:
             scheme_json = requests.get(scheme).json()
             # We only want the name and the respective featured loci of a scheme
@@ -88,7 +87,6 @@ class PubMLSTHandler:
 
                 alleles = requests.get(f"{locus_url}/alleles_fasta").text
                 create_fasta_files(locus_path,alleles)
-        print("Download finished")
 
     def assign_strain_type_by_db(self):
         """Sends an API-POST-Request to the database for MLST without bloom filters"""

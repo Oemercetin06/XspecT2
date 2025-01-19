@@ -31,7 +31,7 @@ def test_model_initialization(filter_model,):
     assert filter_model.k == 21
     assert filter_model.model_display_name == "Test Filter"
     assert filter_model.model_type == "Strain"
-    assert filter_model.fpr == 0.0001
+    assert filter_model.fpr == 0.001
 
 def test_model_save(trained_filter_model):
     """Test the save method of the ProbabilisticFilterMlstSchemeModel class."""
@@ -96,8 +96,15 @@ def test_model_load(trained_filter_model):
         # Important: size can be greater, because the database is updated regularly
         assert loaded_model.loci.get(locus) >= size
 
-def test_sequence_splitter(trained_filter_model):
-    seq = "AGCTATTTCGCTGATGTCGACTGATCAAAAAGCCGGCGCGCTTTCGTATAGGCTAGCTACGACATACGATCGATCA"
-    res = trained_filter_model.sequence_splitter(seq, 4)
-    assert len(res) == 4
+def test_sequence_splitter():
+    model = ProbabilisticFilterMlstSchemeModel(
+        k=4,
+        model_display_name="Test Filter",
+        base_path=get_xspect_model_path()
+    )
+    # len(seq) = 80; len(substring) = 200//10 = 20
+    # k = 4 means each substring (except first the one) starts 3 (k - 1) base pairs earlier
+    seq = "AGCTATTTCGCTGATGTCGACTGATCAAAAAGCCGGCGCGCTTTCGTATAGGCTAGCTACGACATACGATCGATCACTGA"
+    res = model.sequence_splitter(seq,200)
+    assert len(res) == 5
 

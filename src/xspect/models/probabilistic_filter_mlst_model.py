@@ -19,7 +19,7 @@ class ProbabilisticFilterMlstSchemeModel:
             k: int,
             model_display_name: str,
             base_path: Path,
-            fpr: float = 0.0001,
+            fpr: float = 0.001,
     ) -> None:
         if k < 1:
             raise ValueError("Invalid k value, must be greater than 0")
@@ -34,6 +34,7 @@ class ProbabilisticFilterMlstSchemeModel:
         self.loci = {}
         self.scheme_path = ""
         self.cobs_path = ""
+        self.avg_locus_bp_size = []
         self.indices = []
 
     def to_dict(self) -> dict:
@@ -45,6 +46,7 @@ class ProbabilisticFilterMlstSchemeModel:
             "fpr": self.fpr,
             "scheme_path": str(self.scheme_path),
             "cobs_path": str(self.cobs_path),
+            "average_locus_base_pair_size": self.avg_locus_bp_size,
             "loci": self.loci,
         }
 
@@ -69,6 +71,12 @@ class ProbabilisticFilterMlstSchemeModel:
             self.loci[locus] = sum(
                 (1 for _ in locus_path.iterdir() if not str(_).endswith("cache"))
             )
+
+            # determine the avg base pair size of alleles
+            fasta_file = next(locus_path.glob("*.fasta"), None)
+            with open(fasta_file, "r") as handle:
+                record = next(SeqIO.parse(handle, "fasta"))
+            self.avg_locus_bp_size.append(len(record.seq))
 
             # COBS only accepts strings as paths
             doclist = DocumentList(str(locus_path))
@@ -110,6 +118,7 @@ class ProbabilisticFilterMlstSchemeModel:
             )
             model.scheme_path = model_json["scheme_path"]
             model.cobs_path = model_json["cobs_path"]
+            model.avg_locus_bp_size = model_json["average_locus_base_pair_size"]
             model.loci = model_json["loci"]
 
             for entry in sorted(json_path.parent.iterdir()):
@@ -120,7 +129,7 @@ class ProbabilisticFilterMlstSchemeModel:
                 model.indices.append(cobs_index.Search(str(entry), False))
             return model
 
-    def calculate_hits(self, path:Path, sequence: Seq, step: int = 1) -> list[dict]:
+    def calculate_hits(self, path: Path, sequence: Seq, step: int = 1) -> list[dict]:
         """Calculates the hits for a sequence"""
         if not isinstance(sequence, Seq):
             raise ValueError(
@@ -137,24 +146,21 @@ class ProbabilisticFilterMlstSchemeModel:
         for entry in sorted(path.iterdir()):
             if str(entry).endswith(".json"):
                 continue
-            file_name = str(entry).split("/")[-1] # file_name = locus
-            scheme_path_list.append(file_name.split(".")[0]) # without the file ending
+            file_name = str(entry).split("/")[-1]  # file_name = locus
+            scheme_path_list.append(file_name.split(".")[0])  # without the file ending
 
         result_dict = {}; highest_results = {}; counter = 0
-        # split the sequence in parts based on base pair size
+        # split the sequence in parts based on sequence length
         if len(sequence) >= 10000:
-            if 100000 <= len(sequence) < 10000000:
-                split_sequence = self.sequence_splitter(str(sequence), 100)
-            elif len(sequence) <= 10000000:
-                split_sequence = self.sequence_splitter(str(sequence), 1000)
-            else: # between 10000 and 100000
-                split_sequence = self.sequence_splitter(str(sequence), 10)
-
             for index in self.indices:
                 cobs_results = []
+                allele_len = self.avg_locus_bp_size[counter]
+                split_sequence = self.sequence_splitter(str(sequence), allele_len)
                 for split in split_sequence:
                     res = index.search(split, step=step)
-                    cobs_results.append(self.get_highest_cobs_result(res))
+                    split_result = self.get_cobs_result(res)
+                    if not split_result: continue
+                    cobs_results.append(split_result)
 
                 all_counts = defaultdict(int)
                 for result in cobs_results:
@@ -165,15 +171,15 @@ class ProbabilisticFilterMlstSchemeModel:
                 first_key = next(iter(sorted_counts))
                 highest_result = sorted_counts[first_key]
                 result_dict[scheme_path_list[counter]] = sorted_counts
-                highest_results[scheme_path_list[counter]] = {first_key:highest_result}
+                highest_results[scheme_path_list[counter]] = {first_key: highest_result}
                 counter += 1
         else:
             for index in self.indices:
-                res = index.search(str(sequence), step=step) # COBS can't handle Seq-Objects
+                res = index.search(str(sequence), step=step)  # COBS can't handle Seq-Objects
                 result_dict[scheme_path_list[counter]] = self.get_cobs_result(res)
                 highest_results[scheme_path_list[counter]] = self.get_highest_cobs_result(res)
                 counter += 1
-        return [{"Strain type" : highest_results},{"All results" : result_dict}]
+        return [{"Strain type": highest_results}, {"All results": result_dict}]
 
     def predict(
         self,
@@ -215,41 +221,49 @@ class ProbabilisticFilterMlstSchemeModel:
             " SeqIO FastaIterator, or a SeqIO FastqPhredIterator"
         )
 
-    def get_highest_cobs_result(self,cobs_result: cobs_index.SearchResult) -> dict:
+    def get_highest_cobs_result(self, cobs_result: cobs_index.SearchResult) -> dict:
         """Returns the first entry in a COBS search result."""
+        # counter = 1
+        # dictio = {}
         for individual_result in cobs_result:
             # COBS already sorts the result in descending order
             # The first doc_name has the highest result which is needed to determine the allele
             return {individual_result.doc_name: individual_result.score}
 
-    def get_cobs_result(self,cobs_result: cobs_index.SearchResult) -> dict:
+    def get_cobs_result(self, cobs_result: cobs_index.SearchResult) -> dict:
         """Returns all entries in a COBS search result."""
         return {
             individual_result.doc_name: individual_result.score
             for individual_result in cobs_result
+            if individual_result.score > 50
         }
 
-    def sequence_splitter(self, input_sequence, split_size:int) -> list[str]:
+    def sequence_splitter(self, input_sequence: str, allele_len: int) -> list[str]:
         """Returns an equally divided sequence in form of a list."""
-        # An input sequence will have 400000 or more base pairs.
-        if split_size > 10000:
-            raise ValueError("There can be at most 10000 parts due to performance issues.")
-        substring_length = len(input_sequence) // split_size
-        remainder = len(input_sequence) % split_size
-        substring_list = []
-        start = 0
+        # An input sequence will have 10000 or more base pairs.
+        sequence_len = len(input_sequence)
 
-        for part in range(split_size):
-            # If there is a remainder than it will be distributed to the first entries.
-            end = start + substring_length + (1 if part < remainder else 0)
-            substring_list.append(input_sequence[start:end])
-            start = end - (self.k - 1) # To not lose kmers while dividing
+        if sequence_len < 100000:
+            substring_length = allele_len // 10
+        elif 100000 <= sequence_len < 1000000:
+            substring_length = allele_len
+        elif 1000000 <= sequence_len < 10000000:
+            substring_length = allele_len * 10
+        else:
+            substring_length = allele_len * 100
+
+        substring_list = []; start = 0
+
+        while start + substring_length <= sequence_len:
+            substring_list.append(input_sequence[start:start + substring_length])
+            start += substring_length - self.k + 1  # To not lose kmers when dividing
 
         # The remaining string is either appended to the list or added to the last entry.
         if start < len(input_sequence):
             remaining_substring = input_sequence[start:]
-            # A substring needs to be at least of size k for cobs.
+            # A substring needs to be at least of size k for COBS.
             if len(remaining_substring) < self.k:
                 substring_list[-1] += remaining_substring
-            else: substring_list.append(remaining_substring)
+            else:
+                substring_list.append(remaining_substring)
         return substring_list
