@@ -1,5 +1,5 @@
-from src.xspect.definitions import get_xspect_mlst_path
-from src.xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
+from xspect.definitions import get_xspect_mlst_path
+from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
 
 handler = PubMLSTHandler()
 

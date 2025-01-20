@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
-from src.xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
+from xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
 
 
 @pytest.fixture

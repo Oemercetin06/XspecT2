@@ -18,9 +18,9 @@ from xspect.definitions import (
     get_xspect_model_path,
 )
 from xspect.pipeline import ModelExecution, Pipeline, PipelineStep
-from src.xspect.mlst_feature.mlst_helper import pick_scheme, pick_scheme_from_models_dir
-from src.xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
-from src.xspect.models.probabilistic_filter_mlst_model import (
+from xspect.mlst_feature.mlst_helper import pick_scheme, pick_scheme_from_models_dir
+from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
+from xspect.models.probabilistic_filter_mlst_model import (
     ProbabilisticFilterMlstSchemeModel,
 )
 

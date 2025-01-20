@@ -4,14 +4,14 @@ __author__ = "Cetin, Oemer"
 
 import requests
 import json
-from src.xspect.mlst_feature.mlst_helper import (
+from xspect.mlst_feature.mlst_helper import (
     create_fasta_files,
     pick_species_number_from_db,
     pick_scheme_number_from_db,
     pick_scheme,
     scheme_list_to_dict,
 )
-from src.xspect.definitions import get_xspect_mlst_path, get_xspect_upload_path
+from xspect.definitions import get_xspect_mlst_path, get_xspect_upload_path
 
 
 class PubMLSTHandler:

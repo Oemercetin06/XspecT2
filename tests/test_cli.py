@@ -3,7 +3,7 @@
 import json
 import pytest
 from click.testing import CliRunner
-from src.xspect.main import cli
+from xspect.main import cli
 
 
 @pytest.mark.parametrize(

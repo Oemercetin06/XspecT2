@@ -10,8 +10,8 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from cobs_index import DocumentList
 from collections import defaultdict
-from src.xspect.file_io import get_record_iterator
-from src.xspect.mlst_feature.mlst_helper import MlstResult
+from xspect.file_io import get_record_iterator
+from xspect.mlst_feature.mlst_helper import MlstResult
 
 
 class ProbabilisticFilterMlstSchemeModel:

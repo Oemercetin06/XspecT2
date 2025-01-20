@@ -3,7 +3,7 @@ Training script tests
 """
 
 import pytest
-from src.xspect import train
+from xspect import train
 
 
 def test_invalid_taxonomy_check():

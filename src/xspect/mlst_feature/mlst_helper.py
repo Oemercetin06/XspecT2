@@ -7,7 +7,7 @@ import json
 from io import StringIO
 from pathlib import Path
 from Bio import SeqIO
-from src.xspect.definitions import get_xspect_model_path, get_xspect_runs_path
+from xspect.definitions import get_xspect_model_path, get_xspect_runs_path
 
 
 def create_fasta_files(locus_path: Path, fasta_batch: str):

@@ -5,7 +5,7 @@
 from pathlib import Path
 import pytest
 from Bio.Seq import Seq
-from src.xspect.models.probabilistic_single_filter_model import (
+from xspect.models.probabilistic_single_filter_model import (
     ProbabilisticSingleFilterModel,
 )
 
