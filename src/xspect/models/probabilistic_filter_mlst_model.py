@@ -1,4 +1,5 @@
 """Probabilistic filter MLST model for sequence data"""
+
 __author__ = "Cetin, Oemer"
 
 import cobs_index
@@ -12,14 +13,16 @@ from collections import defaultdict
 from src.xspect.file_io import get_record_iterator
 from src.xspect.mlst_feature.mlst_helper import MlstResult
 
+
 class ProbabilisticFilterMlstSchemeModel:
     """Probabilistic filter MLST scheme model for sequence data"""
+
     def __init__(
-            self,
-            k: int,
-            model_display_name: str,
-            base_path: Path,
-            fpr: float = 0.001,
+        self,
+        k: int,
+        model_display_name: str,
+        base_path: Path,
+        fpr: float = 0.001,
     ) -> None:
         if k < 1:
             raise ValueError("Invalid k value, must be greater than 0")
@@ -50,17 +53,19 @@ class ProbabilisticFilterMlstSchemeModel:
             "loci": self.loci,
         }
 
-    def get_cobs_index_path(self, scheme:str, locus:str) -> Path:
+    def get_cobs_index_path(self, scheme: str, locus: str) -> Path:
         """Returns the path to the cobs index"""
         # To differentiate from genus and species models
         cobs_path = self.base_path / f"{scheme}"
         cobs_path.mkdir(exist_ok=True, parents=True)
         return cobs_path / f"{locus}.cobs_compact"
 
-    def fit(self, scheme_path:Path) -> None:
+    def fit(self, scheme_path: Path) -> None:
         """Trains a COBS structure for every locus with all its alleles"""
         if not scheme_path.exists():
-            raise ValueError("Scheme not found. Please make sure to download the schemes prior!")
+            raise ValueError(
+                "Scheme not found. Please make sure to download the schemes prior!"
+            )
 
         scheme = str(scheme_path).split("/")[-1]
         cobs_path = ""
@@ -87,15 +92,18 @@ class ProbabilisticFilterMlstSchemeModel:
 
             # Creates COBS data structure for each locus
             cobs_path = self.get_cobs_index_path(scheme, locus)
-            cobs_index.compact_construct_list(doclist,str(cobs_path),index_params)
+            cobs_index.compact_construct_list(doclist, str(cobs_path), index_params)
             # Saves COBS-file inside the "indices" attribute
             self.indices.append(cobs_index.Search(str(cobs_path)))
 
-        self.scheme_path = scheme_path; self.cobs_path = cobs_path.parent
+        self.scheme_path = scheme_path
+        self.cobs_path = cobs_path.parent
 
     def save(self) -> None:
         """Saves the model to disk"""
-        scheme = str(self.scheme_path).split("/")[-1] # [-1] -> contains the scheme name
+        scheme = str(self.scheme_path).split("/")[
+            -1
+        ]  # [-1] -> contains the scheme name
         json_path = self.base_path / scheme / f"{scheme}.json"
         json_object = json.dumps(self.to_dict(), indent=4)
 
@@ -124,7 +132,7 @@ class ProbabilisticFilterMlstSchemeModel:
             for entry in sorted(json_path.parent.iterdir()):
                 if not entry.exists():
                     raise FileNotFoundError(f"Index file not found at {entry}")
-                if str(entry).endswith(".json"): # only COBS-files
+                if str(entry).endswith(".json"):  # only COBS-files
                     continue
                 model.indices.append(cobs_index.Search(str(entry), False))
             return model
@@ -132,9 +140,7 @@ class ProbabilisticFilterMlstSchemeModel:
     def calculate_hits(self, path: Path, sequence: Seq, step: int = 1) -> list[dict]:
         """Calculates the hits for a sequence"""
         if not isinstance(sequence, Seq):
-            raise ValueError(
-                "Invalid sequence, must be a Bio.Seq object"
-            )
+            raise ValueError("Invalid sequence, must be a Bio.Seq object")
 
         if not len(sequence) > self.k:
             raise ValueError("Invalid sequence, must be longer than k")
@@ -149,7 +155,9 @@ class ProbabilisticFilterMlstSchemeModel:
             file_name = str(entry).split("/")[-1]  # file_name = locus
             scheme_path_list.append(file_name.split(".")[0])  # without the file ending
 
-        result_dict = {}; highest_results = {}; counter = 0
+        result_dict = {}
+        highest_results = {}
+        counter = 0
         # split the sequence in parts based on sequence length
         if len(sequence) >= 10000:
             for index in self.indices:
@@ -159,7 +167,8 @@ class ProbabilisticFilterMlstSchemeModel:
                 for split in split_sequence:
                     res = index.search(split, step=step)
                     split_result = self.get_cobs_result(res)
-                    if not split_result: continue
+                    if not split_result:
+                        continue
                     cobs_results.append(split_result)
 
                 all_counts = defaultdict(int)
@@ -167,7 +176,9 @@ class ProbabilisticFilterMlstSchemeModel:
                     for name, value in result.items():
                         all_counts[name] += value
 
-                sorted_counts = dict(sorted(all_counts.items(), key=lambda item: -item[1]))
+                sorted_counts = dict(
+                    sorted(all_counts.items(), key=lambda item: -item[1])
+                )
                 first_key = next(iter(sorted_counts))
                 highest_result = sorted_counts[first_key]
                 result_dict[scheme_path_list[counter]] = sorted_counts
@@ -175,15 +186,19 @@ class ProbabilisticFilterMlstSchemeModel:
                 counter += 1
         else:
             for index in self.indices:
-                res = index.search(str(sequence), step=step)  # COBS can't handle Seq-Objects
+                res = index.search(
+                    str(sequence), step=step
+                )  # COBS can't handle Seq-Objects
                 result_dict[scheme_path_list[counter]] = self.get_cobs_result(res)
-                highest_results[scheme_path_list[counter]] = self.get_highest_cobs_result(res)
+                highest_results[scheme_path_list[counter]] = (
+                    self.get_highest_cobs_result(res)
+                )
                 counter += 1
         return [{"Strain type": highest_results}, {"All results": result_dict}]
 
     def predict(
         self,
-        cobs_path:Path,
+        cobs_path: Path,
         sequence_input: (
             SeqRecord
             | list[SeqRecord]
@@ -191,14 +206,16 @@ class ProbabilisticFilterMlstSchemeModel:
             | SeqIO.QualityIO.FastqPhredIterator
             | Path
         ),
-        step:int = 1
+        step: int = 1,
     ) -> MlstResult:
         """Returns scores for the sequence(s) based on the filters in the model"""
         if isinstance(sequence_input, SeqRecord):
             if sequence_input.id == "<unknown id>":
                 sequence_input.id = "test"
-            hits = {sequence_input.id: self.calculate_hits(cobs_path, sequence_input.seq)}
-            return MlstResult(self.model_display_name,step,hits)
+            hits = {
+                sequence_input.id: self.calculate_hits(cobs_path, sequence_input.seq)
+            }
+            return MlstResult(self.model_display_name, step, hits)
 
         if isinstance(sequence_input, Path):
             return ProbabilisticFilterMlstSchemeModel.predict(
@@ -207,12 +224,12 @@ class ProbabilisticFilterMlstSchemeModel:
 
         if isinstance(
             sequence_input,
-            (SeqIO.FastaIO.FastaIterator, SeqIO.QualityIO.FastqPhredIterator)
+            (SeqIO.FastaIO.FastaIterator, SeqIO.QualityIO.FastqPhredIterator),
         ):
             hits = {}
             # individual_seq is a SeqRecord-Object
             for individual_seq in sequence_input:
-                individual_hits = self.calculate_hits(cobs_path,individual_seq.seq)
+                individual_hits = self.calculate_hits(cobs_path, individual_seq.seq)
                 hits[individual_seq.id] = individual_hits
             return MlstResult(self.model_display_name, step, hits)
 
@@ -252,10 +269,11 @@ class ProbabilisticFilterMlstSchemeModel:
         else:
             substring_length = allele_len * 100
 
-        substring_list = []; start = 0
+        substring_list = []
+        start = 0
 
         while start + substring_length <= sequence_len:
-            substring_list.append(input_sequence[start:start + substring_length])
+            substring_list.append(input_sequence[start : start + substring_length])
             start += substring_length - self.k + 1  # To not lose kmers when dividing
 
         # The remaining string is either appended to the list or added to the last entry.

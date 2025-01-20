@@ -9,17 +9,20 @@ from pathlib import Path
 from Bio import SeqIO
 from src.xspect.definitions import get_xspect_model_path, get_xspect_runs_path
 
-def create_fasta_files(locus_path:Path, fasta_batch:str):
+
+def create_fasta_files(locus_path: Path, fasta_batch: str):
     """Create Fasta-Files for every allele of a locus."""
     # fasta_batch = full string of a fasta file containing every allele sequence of a locus
     for record in SeqIO.parse(StringIO(fasta_batch), "fasta"):
-        number = record.id.split("_")[-1] # example id = Oxf_cpn60_263
+        number = record.id.split("_")[-1]  # example id = Oxf_cpn60_263
         output_fasta_file = locus_path / f"Allele_ID_{number}.fasta"
-        if output_fasta_file.exists(): continue # Ignore existing ones
-        with (open(output_fasta_file, "w") as allele):
+        if output_fasta_file.exists():
+            continue  # Ignore existing ones
+        with open(output_fasta_file, "w") as allele:
             SeqIO.write(record, allele, "fasta")
 
-def pick_species_number_from_db(available_species:dict) -> str:
+
+def pick_species_number_from_db(available_species: dict) -> str:
     """Returns the chosen species from all available ones in the database."""
     # The "database" string can look like this: pubmlst_abaumannii_seqdef
     for counter, database in available_species.items():
@@ -32,11 +35,16 @@ def pick_species_number_from_db(available_species:dict) -> str:
                 chosen_species = available_species.get(int(choice))
                 return chosen_species
             else:
-                print("Wrong input! Try again with a number that is available in the list above.")
+                print(
+                    "Wrong input! Try again with a number that is available in the list above."
+                )
         except ValueError:
-            print("Wrong input! Try again with a number that is available in the list above.")
+            print(
+                "Wrong input! Try again with a number that is available in the list above."
+            )
 
-def pick_scheme_number_from_db(available_schemes:dict) -> str:
+
+def pick_scheme_number_from_db(available_schemes: dict) -> str:
     """Returns the chosen schemes from all available ones of a species."""
     # List all available schemes of a species database
     for counter, scheme in available_schemes.items():
@@ -49,23 +57,31 @@ def pick_scheme_number_from_db(available_schemes:dict) -> str:
                 chosen_scheme = available_schemes.get(int(choice))[1]
                 return chosen_scheme
             else:
-                print("Wrong input! Try again with a number that is available in the above list.")
+                print(
+                    "Wrong input! Try again with a number that is available in the above list."
+                )
         except ValueError:
-            print("Wrong input! Try again with a number that is available in the above list.")
+            print(
+                "Wrong input! Try again with a number that is available in the above list."
+            )
 
-def scheme_list_to_dict(scheme_list:list[str]):
+
+def scheme_list_to_dict(scheme_list: list[str]):
     """Converts the scheme list attribute into a dictionary with a number as the key."""
     return dict(zip(range(1, len(scheme_list) + 1), scheme_list))
 
+
 def pick_scheme_from_models_dir() -> Path:
     """Returns the chosen scheme from models that have been fitted prior."""
-    schemes = {}; counter = 1
+    schemes = {}
+    counter = 1
     for entry in sorted((get_xspect_model_path() / "MLST").iterdir()):
         schemes[counter] = entry
         counter += 1
     return pick_scheme(schemes)
 
-def pick_scheme(available_schemes:dict) -> Path:
+
+def pick_scheme(available_schemes: dict) -> Path:
     """Returns the chosen scheme from the scheme list."""
     if not available_schemes:
         raise ValueError("No scheme has been chosen for download yet!")
@@ -92,17 +108,23 @@ def pick_scheme(available_schemes:dict) -> Path:
                 chosen_scheme = available_schemes.get(int(choice))
                 return chosen_scheme
             else:
-                print("Wrong input! Try again with a number that is available in the above list.")
+                print(
+                    "Wrong input! Try again with a number that is available in the above list."
+                )
         except ValueError:
-            print("Wrong input! Try again with a number that is available in the above list.")
+            print(
+                "Wrong input! Try again with a number that is available in the above list."
+            )
+
 
 class MlstResult:
     """Class for storing mlst results."""
+
     def __init__(
-            self,
-            scheme_model:str,
-            steps:int,
-            hits: dict[str,list[dict]],
+        self,
+        scheme_model: str,
+        steps: int,
+        hits: dict[str, list[dict]],
     ):
         self.scheme_model = scheme_model
         self.steps = steps
@@ -110,22 +132,19 @@ class MlstResult:
 
     def get_results(self) -> dict:
         """Stores the result of a prediction in a dictionary."""
-        results = {
-            seq_id: result
-            for seq_id, result in self.hits.items()
-        }
+        results = {seq_id: result for seq_id, result in self.hits.items()}
         return results
 
     def to_dict(self) -> dict:
         """Converts all attributes into one dictionary."""
         result = {
-            "Scheme":self.scheme_model,
-            "Steps":self.steps,
-            "Results": self.get_results()
+            "Scheme": self.scheme_model,
+            "Steps": self.steps,
+            "Results": self.get_results(),
         }
         return result
 
-    def save(self, display:str, file_path:Path) -> None:
+    def save(self, display: str, file_path: Path) -> None:
         """Saves the result inside the "runs" directory"""
         file_name = str(file_path).split("/")[-1]
         json_path = get_xspect_runs_path() / "MLST" / f"{file_name}-{display}.json"
