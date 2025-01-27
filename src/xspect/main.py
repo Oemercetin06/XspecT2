@@ -6,7 +6,7 @@ import uuid
 import click
 import uvicorn
 from xspect import fastapi
-from xspect.download_filters import download_test_filters
+from xspect.download_models import download_test_models
 from xspect.train import train_ncbi
 from xspect.models.result import (
     StepType,
@@ -32,10 +32,10 @@ def cli():
 
 
 @cli.command()
-def download_filters():
-    """Download filters."""
-    click.echo("Downloading filters, this may take a while...")
-    download_test_filters("https://xspect2.s3.eu-central-1.amazonaws.com/models.zip")
+def download_models():
+    """Download models."""
+    click.echo("Downloading models, this may take a while...")
+    download_test_models("https://xspect2.s3.eu-central-1.amazonaws.com/models.zip")
 
 
 @cli.command()

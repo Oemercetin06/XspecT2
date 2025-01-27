@@ -7,8 +7,8 @@ import requests
 from xspect.definitions import get_xspect_model_path, get_xspect_tmp_path
 
 
-def download_test_filters(url):
-    """Download filters."""
+def download_test_models(url):
+    """Download models."""
 
     download_path = get_xspect_tmp_path() / "models.zip"
     extract_path = get_xspect_tmp_path() / "extracted_models"
