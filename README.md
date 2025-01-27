@@ -6,7 +6,7 @@
 <img src="/docs/img/logo.png" height="50%" width="50%">
 
 <!-- start intro -->
-XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or sub-type level using [Bloom Filters] and a [Support Vector Machine]. It also identifies existing [blaOxa-genes] and provides a list of relevant research papers for further information.
+XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or MLST level using [Bloom Filters] and a [Support Vector Machine].
 <br/><br/>
 
 XspecT utilizes the uniqueness of kmers and compares extracted kmers from the input-data to a reference database. Bloom Filter ensure a fast lookup in this process. For a final prediction the results are classified using a Support Vector Machine. 
@@ -31,14 +31,14 @@ pip install xspect
 Please note that Windows and Alpine Linux is currently not supported.
 
 ## Usage
-### Get the Bloomfilters
-To download basic pre-trained filters, you can use the built-in command:
+### Get the models
+To download basic pre-trained models, you can use the built-in command:
 ```
-xspect download-filters
+xspect download-models
 ```
-Additional species filters can be trained using:
+Additional species models can be trained using:
 ```
-xspect train you-ncbi-genus-name
+xspect train-species you-ncbi-genus-name
 ```
 
 ### How to run the web app
@@ -50,7 +50,7 @@ xspect api
 ### How to use the XspecT command line interface
 Run xspect with the configuration you want to run it with as arguments.
 ```
-xspect classify your-genus path/to/your/input-set
+xspect classify-species your-genus path/to/your/input-set
 ```
 For further instructions on how to use the command line interface, please refer to the [documentation] or execute:
 ```
