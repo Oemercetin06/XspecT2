@@ -8,6 +8,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 from slugify import slugify
 import cobs_index as cobs
+from xspect.definitions import fasta_endings, fastq_endings
 from xspect.file_io import get_record_iterator
 from xspect.models.result import ModelResult
 
@@ -64,10 +65,6 @@ class ProbabilisticFilterModel:
             "num_hashes": self.num_hashes,
         }
 
-    def __dict__(self) -> dict:
-        """Returns a dictionary representation of the model"""
-        return self.to_dict()
-
     def slug(self) -> str:
         """Returns a slug representation of the model"""
         return slugify(self.model_display_name + "-" + str(self.model_type))
@@ -89,13 +86,7 @@ class ProbabilisticFilterModel:
 
         doclist = cobs.DocumentList()
         for file in dir_path.iterdir():
-            if file.is_file() and file.suffix in [
-                ".fasta",
-                ".fna",
-                ".fa",
-                ".fastq",
-                ".fq",
-            ]:
+            if file.is_file() and file.suffix[1:] in fasta_endings + fastq_endings:
                 # cobs only uses the file name to the first "." as the document name
                 if file.name in display_names:
                     self.display_names[file.name.split(".")[0]] = display_names[

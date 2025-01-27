@@ -40,7 +40,7 @@ def check_user_input(user_input: str):
         rank = metadata["rank"]
         lineage = metadata["lineage"]
         bacteria_id = 2
-        if not sci_name == user_input and not tax_id == user_input:
+        if user_input not in (sci_name, tax_id):
             print(
                 f"{get_current_time()}| The given genus: {user_input} was found as"
                 f" genus: {sci_name} ID: {tax_id}"
@@ -58,38 +58,6 @@ def check_user_input(user_input: str):
             return str(sci_name)
         print(f"{get_current_time()}| {user_input} is rank {rank} and not genus.")
         sys.exit()
-
-
-def copy_custom_data(bf_path: str, svm_path: str, dir_name: str):
-    """
-
-    :param bf_path:
-    :param svm_path:
-    :param dir_name:
-    :return:
-    """
-    path = Path(os.getcwd()) / "genus_metadata" / dir_name
-    new_bf_path = path / "concatenate"
-    new_svm_path = path / "training_data"
-
-    # Make the new directories.
-    path.mkdir(exist_ok=True)
-    new_bf_path.mkdir(exist_ok=True)
-    new_svm_path.mkdir(exist_ok=True)
-
-    # Move bloomfilter files.
-    bf_files = os.listdir(bf_path)
-    for file in bf_files:
-        file_path = Path(bf_path) / file
-        new_file_path = new_bf_path / file
-        shutil.copy2(file_path, new_file_path)
-
-    # Move svm files.
-    svm_files = os.listdir(svm_path)
-    for file in svm_files:
-        file_path = Path(svm_path) / file
-        new_file_path = new_svm_path / file
-        shutil.copy2(file_path, new_file_path)
 
 
 def set_logger(dir_name: str):

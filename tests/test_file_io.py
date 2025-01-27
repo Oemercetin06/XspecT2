@@ -4,7 +4,7 @@ File IO module tests.
 
 import os
 from pathlib import Path
-from src.xspect.file_io import (
+from xspect.file_io import (
     concatenate_meta,
 )
 

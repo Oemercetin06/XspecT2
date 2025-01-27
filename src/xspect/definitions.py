@@ -40,3 +40,10 @@ def get_xspect_runs_path():
     runs_path = get_xspect_root_path() / "runs"
     runs_path.mkdir(exist_ok=True, parents=True)
     return runs_path
+
+
+def get_xspect_mlst_path():
+    """Return the path to the XspecT runs directory."""
+    mlst_path = get_xspect_root_path() / "mlst"
+    mlst_path.mkdir(exist_ok=True, parents=True)
+    return mlst_path

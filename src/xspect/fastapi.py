@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import copyfileobj
 from fastapi import FastAPI, UploadFile, BackgroundTasks
 from xspect.definitions import get_xspect_runs_path, get_xspect_upload_path
-from xspect.download_filters import download_test_filters
+from xspect.download_models import download_test_models
 import xspect.model_management as mm
 from xspect.models.result import StepType
 from xspect.pipeline import ModelExecution, Pipeline, PipelineStep
@@ -17,7 +17,7 @@ app = FastAPI()
 @app.get("/download-filters")
 def download_filters():
     """Download filters."""
-    download_test_filters("https://xspect2.s3.eu-central-1.amazonaws.com/models.zip")
+    download_test_models("https://xspect2.s3.eu-central-1.amazonaws.com/models.zip")
 
 
 @app.get("/classify")

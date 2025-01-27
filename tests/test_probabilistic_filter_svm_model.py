@@ -6,7 +6,7 @@ from linecache import getline
 from pathlib import Path
 from csv import DictReader
 import pytest
-from src.xspect.models.probabilistic_filter_svm_model import ProbabilisticFilterSVMModel
+from xspect.models.probabilistic_filter_svm_model import ProbabilisticFilterSVMModel
 
 
 @pytest.fixture

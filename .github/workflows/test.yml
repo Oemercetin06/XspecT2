@@ -13,9 +13,9 @@ jobs:
           run: |
             python -m pip install --upgrade pip
             pip install '.[test]'
-        - name: Download filters
+        - name: Download models
           run: |
-            xspect download-filters
+            xspect download-models
         - name: Test with pytest
           run: |
             pytest --cov
