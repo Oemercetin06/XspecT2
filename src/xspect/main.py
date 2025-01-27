@@ -53,7 +53,7 @@ def download_models():
     help="Sparse sampling step size (e. g. only every 500th kmer for step=500).",
     default=1,
 )
-def classify(genus, path, meta, step):
+def classify_species(genus, path, meta, step):
     """Classify sample(s) from file or directory PATH."""
     click.echo("Classifying...")
     click.echo(f"Step: {step}")
@@ -115,7 +115,7 @@ def classify(genus, path, meta, step):
     help="SVM Sparse sampling step size (e. g. only every 500th kmer for step=500).",
     default=1,
 )
-def train(genus, bf_assembly_path, svm_assembly_path, svm_step):
+def train_species(genus, bf_assembly_path, svm_assembly_path, svm_step):
     """Train model."""
 
     if bf_assembly_path or svm_assembly_path:
@@ -136,7 +136,7 @@ def train(genus, bf_assembly_path, svm_assembly_path, svm_step):
     help="Choose your own schemes."
     "Default setting is Oxford and Pasteur scheme of A.baumannii.",
 )
-def mlst_train(choose_schemes):
+def train_mlst(choose_schemes):
     """Download alleles and train bloom filters."""
     click.echo("Updating alleles")
     handler = PubMLSTHandler()
@@ -161,8 +161,8 @@ def mlst_train(choose_schemes):
     help="Path to FASTA-file for mlst identification.",
     type=click.Path(exists=True, dir_okay=True, file_okay=True),
 )
-def mlst_classify(path):
-    """Download alleles and train bloom filters."""
+def classify_mlst(path):
+    """MLST classify a sample."""
     click.echo("Classifying...")
     path = Path(path)
     scheme_path = pick_scheme_from_models_dir()
