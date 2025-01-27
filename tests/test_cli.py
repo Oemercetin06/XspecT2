@@ -26,7 +26,7 @@ from xspect.main import cli
 def test_species_assignment(assembly_file_path, genus, species):
     """Test the species assignment"""
     runner = CliRunner()
-    result = runner.invoke(cli, ["classify", genus, assembly_file_path])
+    result = runner.invoke(cli, ["classify-species", genus, assembly_file_path])
 
     run_path = result.output.strip().split("'")[1]
     with open(run_path, encoding="utf-8") as f:
@@ -48,7 +48,7 @@ def test_species_assignment(assembly_file_path, genus, species):
 def test_metagenome_mode(assembly_file_path, genus, species):
     """Test the metagenome mode"""
     runner = CliRunner()
-    result = runner.invoke(cli, ["classify", "-m", genus, assembly_file_path])
+    result = runner.invoke(cli, ["classify-species", "-m", genus, assembly_file_path])
 
     run_path = result.output.strip().split("'")[1]
     with open(run_path, encoding="utf-8") as f:
