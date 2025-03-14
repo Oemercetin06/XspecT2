@@ -1,4 +1,4 @@
-""" Tests for the ProbabilisticFilterSVMModel class. """
+"""Tests for the ProbabilisticFilterSVMModel class."""
 
 # pylint: disable=redefined-outer-name
 

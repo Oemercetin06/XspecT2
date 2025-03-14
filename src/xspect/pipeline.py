@@ -1,4 +1,4 @@
-""" Module for defining the Pipeline class. """
+"""Module for defining the Pipeline class."""
 
 import json
 from pathlib import Path
