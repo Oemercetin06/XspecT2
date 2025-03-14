@@ -1,4 +1,4 @@
-""" Module for extracting and concatenating assemblies. """
+"""Module for extracting and concatenating assemblies."""
 
 __author__ = "Berger, Phillip"
 

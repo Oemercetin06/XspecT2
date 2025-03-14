@@ -1,4 +1,4 @@
-""" Module for utility functions used in other modules regarding MLST. """
+"""Module for utility functions used in other modules regarding MLST."""
 
 __author__ = "Cetin, Oemer"
 

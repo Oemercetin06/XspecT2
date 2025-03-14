@@ -1,4 +1,4 @@
-""" Module for storing the results of XspecT models. """
+"""Module for storing the results of XspecT models."""
 
 from enum import Enum
 

@@ -1,4 +1,4 @@
-""" Module with XspecT global run class, which summarizes individual model results. """
+"""Module with XspecT global run class, which summarizes individual model results."""
 
 import json
 from pathlib import Path

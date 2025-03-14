@@ -22,7 +22,6 @@ from xspect.train_filter.ncbi_api import (
 )
 from xspect.train_filter import (
     create_svm,
-    html_scrap,
     extract_and_concatenate,
 )
 
@@ -136,14 +135,10 @@ def train_ncbi(genus: str, svm_step: int = 1):
     children_ids = ncbi_children_tree.NCBIChildrenTree(genus).children_ids()
     species_dict = ncbi_taxon_metadata.NCBITaxonMetadata(children_ids).get_metadata()
 
-    # Get all gcf accessions that have Taxonomy check result OK.
-    logger.info("Checking ANI data for updates")
-    ani_gcf = html_scrap.TaxonomyCheck().ani_gcf()
-
     # Look for up to 8 assembly accessions per species.
     logger.info("Getting assembly metadata")
     all_metadata = ncbi_assembly_metadata.NCBIAssemblyMetadata(
-        all_metadata=species_dict, ani_gcf=ani_gcf, count=8, contig_n50=10000
+        all_metadata=species_dict, count=8, contig_n50=10000
     )
     all_metadata = all_metadata.get_all_metadata()
 

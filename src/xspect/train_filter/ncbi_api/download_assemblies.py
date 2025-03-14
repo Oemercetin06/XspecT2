@@ -23,9 +23,9 @@ def download_assemblies(accessions, dir_name, target_folder, zip_file_name):
     """
 
     path = get_xspect_tmp_path() / dir_name / target_folder / zip_file_name
-    api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/genome/accession/{','.join(accessions)}/download"
+    api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{','.join(accessions)}/download"
     parameters = {"include_annotation_type": "GENOME_FASTA", "filename": zip_file_name}
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    genome_download = requests.get(api_url, params=parameters, timeout=20)
+    genome_download = requests.get(api_url, params=parameters, timeout=30)
     with open(path, "wb") as f:
         f.write(genome_download.content)

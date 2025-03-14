@@ -24,7 +24,7 @@ class NCBIChildrenTree:
 
     def _request_tree(self):
         """Make the request for the children tree at the NCBI Datasets API."""
-        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/taxonomy/taxon/{self._taxon}/filtered_subtree"
+        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/taxonomy/taxon/{self._taxon}/filtered_subtree"
         raw_response = requests.get(api_url, timeout=5)
         self._response = raw_response.json()["edges"]
         self._parent_taxon_id = str(self._response["1"]["visible_children"][0])

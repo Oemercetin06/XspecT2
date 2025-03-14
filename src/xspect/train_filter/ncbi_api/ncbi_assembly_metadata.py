@@ -1,4 +1,4 @@
-""" Collects metadata of assemblies from NCBI API """
+"""Collects metadata of assemblies from NCBI API"""
 
 __author__ = "Berger, Phillip"
 
@@ -14,16 +14,14 @@ class NCBIAssemblyMetadata:
 
     _all_metadata: dict
     _count: int
-    _ani_gcf: list
     _parameters: dict
     _accessions: list[str]
     _contig_n50: int
     _all_metadata_complete: dict
 
-    def __init__(self, all_metadata: dict, ani_gcf: list, count=8, contig_n50=10000):
+    def __init__(self, all_metadata: dict, count=8, contig_n50=10000):
         self._all_metadata = all_metadata
         self._count = count
-        self._ani_gcf = ani_gcf
         self._contig_n50 = contig_n50
 
         self._set_parameters()
@@ -72,7 +70,7 @@ class NCBIAssemblyMetadata:
         }
 
     def _make_request(self, taxon: str):
-        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/genome/taxon/{taxon}"
+        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/taxon/{taxon}/dataset_report"
         accessions = []
         count = 0
         for request_type, parameters in self._parameters.items():
@@ -80,17 +78,19 @@ class NCBIAssemblyMetadata:
             response = raw_response.json()
             if response:
                 try:
-                    assemblies = response["assemblies"]
-                    for assembly in assemblies:
-                        curr_assembly = assembly["assembly"]
-                        curr_accession = curr_assembly["assembly_accession"]
-                        curr_contig_n50 = curr_assembly["contig_n50"]
+                    reports = response["reports"]
+                    for report in reports:
+                        accession = report["accession"]
+                        contig_n50 = report["assembly_stats"]["contig_n50"]
+                        taxonomy_check_status = report["average_nucleotide_identity"][
+                            "taxonomy_check_status"
+                        ]
                         if count < self._count:
                             if (
-                                curr_accession in self._ani_gcf
-                                and curr_contig_n50 > self._contig_n50
+                                taxonomy_check_status == "OK"
+                                and contig_n50 > self._contig_n50
                             ):
-                                accessions.append(curr_accession)
+                                accessions.append(accession)
                                 count += 1
                         else:
                             break
