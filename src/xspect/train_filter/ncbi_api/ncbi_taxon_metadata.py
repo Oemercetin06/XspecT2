@@ -1,4 +1,4 @@
-""" This module is used to retrieve metadata from the NCBI taxonomy database. """
+"""This module is used to retrieve metadata from the NCBI taxonomy database."""
 
 __author__ = "Berger, Phillip"
 
@@ -21,7 +21,7 @@ class NCBITaxonMetadata:
         self._collect_all_metadata()
 
     def _request_metadata(self):
-        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v1/taxonomy/taxon/{str(self._taxon)}"
+        api_url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/taxonomy/taxon/{str(self._taxon)}"
         raw_response = requests.get(api_url, timeout=5)
         self._response = raw_response.json()["taxonomy_nodes"]
 
