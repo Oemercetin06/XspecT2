@@ -2,7 +2,6 @@
 
 # pylint: disable=redefined-outer-name
 
-from linecache import getline
 from pathlib import Path
 from csv import DictReader
 import pytest
@@ -44,7 +43,11 @@ def test_fit(filter_model, multiple_assembly_dir_path, multiple_assembly_svm_pat
 
     with open(scores_file, "r", encoding="utf-8") as f:
         reader = DictReader(f)
+
+        num_rows = 0
+
         for row in reader:
+            num_rows += 1
             label_id = row["label_id"]
             assert row[label_id] == "1.0"
 
@@ -53,17 +56,17 @@ def test_fit(filter_model, multiple_assembly_dir_path, multiple_assembly_svm_pat
                 if key not in ["label_id", "file", label_id]:
                     assert float(value) < 1
 
+        assert num_rows == 3
+
 
 def test_predict(trained_filter_model, multiple_assembly_svm_path):
     """Test the predict method of the ProbabilisticFilterSVMModel class."""
-    for file in Path(multiple_assembly_svm_path).iterdir():
+    for file in Path(multiple_assembly_svm_path).glob("**/*"):
         if file.suffix not in [".fasta", ".fa", ".fna", ".fastq", ".fq"]:
             continue
         res = trained_filter_model.predict(file, step=500)
         prediction = res.prediction
-        file_header = getline(str(file), 1)
-        label_id = file_header.replace("\n", "").replace(">", "")
-        assert prediction == label_id
+        assert prediction == file.parent.name
 
 
 def test_set_svm_params(filter_model):

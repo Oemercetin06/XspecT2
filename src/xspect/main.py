@@ -7,7 +7,7 @@ import click
 import uvicorn
 from xspect import fastapi
 from xspect.download_models import download_test_models
-from xspect.train import train_ncbi
+from xspect.train import train_from_directory, train_from_ncbi
 from xspect.models.result import (
     StepType,
 )
@@ -35,7 +35,7 @@ def cli():
 def download_models():
     """Download models."""
     click.echo("Downloading models, this may take a while...")
-    download_test_models("https://xspect2.s3.eu-central-1.amazonaws.com/models.zip")
+    download_test_models("https://assets.adrianromberg.com/xspect-models.zip")
 
 
 @cli.command()
@@ -98,15 +98,9 @@ def classify_species(genus, path, meta, step):
 @cli.command()
 @click.argument("genus")
 @click.option(
-    "-bf-path",
-    "--bf-assembly-path",
-    help="Path to assembly directory for Bloom filter training.",
-    type=click.Path(exists=True, dir_okay=True, file_okay=False),
-)
-@click.option(
-    "-svm-path",
-    "--svm-assembly-path",
-    help="Path to assembly directory for SVM training.",
+    "-i",
+    "--input-path",
+    help="Path to data directory for model training.",
     type=click.Path(exists=True, dir_okay=True, file_okay=False),
 )
 @click.option(
@@ -115,17 +109,41 @@ def classify_species(genus, path, meta, step):
     help="SVM Sparse sampling step size (e. g. only every 500th kmer for step=500).",
     default=1,
 )
-def train_species(genus, bf_assembly_path, svm_assembly_path, svm_step):
+@click.option(
+    "-meta",
+    "--meta",
+    help="Train a metagenome model.",
+    default=True,
+)
+@click.option(
+    "--author",
+    help="Author of the model.",
+    default=None,
+)
+@click.option(
+    "--author-email",
+    help="Email of the author.",
+    default=None,
+)
+def train_species(genus, input_path, svm_step, meta, author, author_email):
     """Train model."""
 
-    if bf_assembly_path or svm_assembly_path:
-        raise NotImplementedError(
-            "Training with specific assembly paths is not yet implemented."
+    if input_path:
+        train_from_directory(
+            genus,
+            Path(input_path),
+            meta=meta,
+            svm_step=svm_step,
+            author=author,
+            author_email=author_email,
         )
-    try:
-        train_ncbi(genus, svm_step=svm_step)
-    except ValueError as e:
-        raise click.ClickException(str(e)) from e
+    else:
+        try:
+            train_from_ncbi(
+                genus, svm_step=svm_step, author=author, author_email=author_email
+            )
+        except ValueError as e:
+            raise click.ClickException(str(e)) from e
 
 
 @cli.command()

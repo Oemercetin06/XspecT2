@@ -9,7 +9,7 @@ from xspect.download_models import download_test_models
 import xspect.model_management as mm
 from xspect.models.result import StepType
 from xspect.pipeline import ModelExecution, Pipeline, PipelineStep
-from xspect.train import train_ncbi
+from xspect.train import train_from_ncbi
 
 app = FastAPI()
 
@@ -53,7 +53,7 @@ def classify(genus: str, file: str, meta: bool = False, step: int = 500):
 @app.post("/train")
 def train(genus: str, background_tasks: BackgroundTasks, svm_steps: int = 1):
     """Train NCBI model."""
-    background_tasks.add_task(train_ncbi, genus, svm_steps)
+    background_tasks.add_task(train_from_ncbi, genus, svm_steps)
 
     return {"message": "Training started."}
 

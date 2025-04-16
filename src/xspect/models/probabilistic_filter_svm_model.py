@@ -4,7 +4,6 @@
 
 import csv
 import json
-from linecache import getline
 from pathlib import Path
 from sklearn.svm import SVC
 from Bio.SeqRecord import SeqRecord
@@ -30,6 +29,8 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         c: float,
         fpr: float = 0.01,
         num_hashes: int = 7,
+        training_accessions: dict[str, list[str]] = None,
+        svm_accessions: dict[str, list[str]] = None,
     ) -> None:
         super().__init__(
             k=k,
@@ -40,14 +41,17 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             base_path=base_path,
             fpr=fpr,
             num_hashes=num_hashes,
+            training_accessions=training_accessions,
         )
         self.kernel = kernel
         self.c = c
+        self.svm_accessions = svm_accessions
 
     def to_dict(self) -> dict:
         return super().to_dict() | {
             "kernel": self.kernel,
             "C": self.c,
+            "svm_accessions": self.svm_accessions,
         }
 
     def set_svm_params(self, kernel: str, c: float) -> None:
@@ -62,32 +66,41 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         svm_path: Path,
         display_names: dict = None,
         svm_step: int = 1,
+        training_accessions: list[str] = None,
+        svm_accessions: list[str] = None,
     ) -> None:
         """Fit the SVM to the sequences and labels"""
 
         # Since the SVM works with score data, we need to train
         # the underlying data structure for score generation first
-        super().fit(dir_path, display_names=display_names)
+        super().fit(
+            dir_path,
+            display_names=display_names,
+            training_accessions=training_accessions,
+        )
+
+        self.svm_accessions = svm_accessions
 
         # calculate scores for SVM training
         score_list = []
-        for file in svm_path.iterdir():
-            if not file.is_file():
-                continue
-            if file.suffix[1:] not in fasta_endings + fastq_endings:
-                continue
-            print(f"Calculating {file.name} scores for SVM training...")
-            res = super().predict(file, step=svm_step)
-            scores = res.get_scores()["total"]
-            accession = "".join(file.name.split("_")[:2])
-            file_header = getline(str(file), 1)
-            label_id = file_header.replace("\n", "").replace(">", "")
 
-            # format scores for csv
-            scores = dict(sorted(scores.items()))
-            scores = ",".join([str(score) for score in scores.values()])
-            scores = f"{accession},{scores},{label_id}"
-            score_list.append(scores)
+        for species_folder in svm_path.iterdir():
+            if not species_folder.is_dir():
+                continue
+            for file in species_folder.iterdir():
+                if file.suffix[1:] not in fasta_endings + fastq_endings:
+                    continue
+                print(f"Calculating {file.name} scores for SVM training...")
+                res = super().predict(file, step=svm_step)
+                scores = res.get_scores()["total"]
+                accession = file.stem
+                label_id = species_folder.name
+
+                # format scores for csv
+                scores = dict(sorted(scores.items()))
+                scores = ",".join([str(score) for score in scores.values()])
+                scores = f"{accession},{scores},{label_id}"
+                score_list.append(scores)
 
         # csv header
         keys = list(self.display_names.keys())
@@ -162,6 +175,8 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
                 model_json["C"],
                 fpr=model_json["fpr"],
                 num_hashes=model_json["num_hashes"],
+                training_accessions=model_json["training_accessions"],
+                svm_accessions=model_json["svm_accessions"],
             )
             model.display_names = model_json["display_names"]
 
