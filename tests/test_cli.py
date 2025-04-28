@@ -26,12 +26,24 @@ from xspect.main import cli
 def test_species_assignment(assembly_file_path, genus, species):
     """Test the species assignment"""
     runner = CliRunner()
-    result = runner.invoke(cli, ["classify-species", genus, assembly_file_path])
+    result = runner.invoke(
+        cli,
+        [
+            "classify",
+            "species",
+            "-g",
+            genus,
+            "-i",
+            assembly_file_path,
+            "-o",
+            "out.json",
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
 
-    run_path = result.output.strip().split("'")[1]
-    with open(run_path, encoding="utf-8") as f:
+    with open("out.json", encoding="utf-8") as f:
         result_content = json.load(f)
-        assert result_content["results"][0]["prediction"] == species
+        assert result_content["prediction"] == species
 
 
 @pytest.mark.parametrize(
@@ -48,14 +60,34 @@ def test_species_assignment(assembly_file_path, genus, species):
 def test_metagenome_mode(assembly_file_path, genus, species):
     """Test the metagenome mode"""
     runner = CliRunner()
-    result = runner.invoke(cli, ["classify-species", "-m", genus, assembly_file_path])
-
-    run_path = result.output.strip().split("'")[1]
-    with open(run_path, encoding="utf-8") as f:
+    result = runner.invoke(
+        cli,
+        [
+            "filter",
+            "genus",
+            "-g",
+            genus,
+            "-i",
+            assembly_file_path,
+            "-o",
+            "filtered.fna",
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
+    result = runner.invoke(
+        cli,
+        [
+            "classify",
+            "species",
+            "-g",
+            genus,
+            "-i",
+            "filtered.fna",
+            "-o",
+            "out.json",
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
+    with open("out.json", encoding="utf-8") as f:
         result_content = json.load(f)
-        assert (
-            result_content["results"][0]["subprocessing_steps"][0]["result"][
-                "prediction"
-            ]
-            == species
-        )
+        assert result_content["prediction"] == species
