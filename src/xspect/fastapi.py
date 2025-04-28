@@ -1,14 +1,13 @@
 """FastAPI application for XspecT."""
 
-import datetime
+from uuid import uuid4
 from pathlib import Path
 from shutil import copyfileobj
 from fastapi import FastAPI, UploadFile, BackgroundTasks
 from xspect.definitions import get_xspect_runs_path, get_xspect_upload_path
 from xspect.download_models import download_test_models
+from xspect.file_io import filter_sequences
 import xspect.model_management as mm
-from xspect.models.result import StepType
-from xspect.pipeline import ModelExecution, Pipeline, PipelineStep
 from xspect.train import train_from_ncbi
 
 app = FastAPI()
@@ -17,37 +16,35 @@ app = FastAPI()
 @app.get("/download-filters")
 def download_filters():
     """Download filters."""
-    download_test_models("https://xspect2.s3.eu-central-1.amazonaws.com/models.zip")
+    download_test_models("http://assets.adrianromberg.com/xspect-models.zip")
 
 
 @app.get("/classify")
 def classify(genus: str, file: str, meta: bool = False, step: int = 500):
     """Classify uploaded sample."""
 
-    path = get_xspect_upload_path() / file
+    input_path = get_xspect_upload_path() / file
 
-    pipeline = Pipeline(genus + " classification", "Test Author", "test@example.com")
-    species_execution = ModelExecution(
-        genus.lower() + "-species", sparse_sampling_step=step
-    )
+    uuid = str(uuid4())
+
     if meta:
-        species_filtering_step = PipelineStep(
-            StepType.FILTERING, genus, 0.7, species_execution
+        genus_model = mm.get_genus_model(genus)
+        genus_result = genus_model.predict(input_path, step=step)
+        included_ids = genus_result.get_filtered_subsequence_labels(genus)
+        if not included_ids:
+            return {"message": "No sequences found for the given genus."}
+        filtered_path = get_xspect_runs_path() / f"filtered_{uuid}.fasta"
+        filter_sequences(
+            Path(input_path),
+            Path(filtered_path),
+            included_ids=included_ids,
         )
-        genus_execution = ModelExecution(
-            genus.lower() + "-genus", sparse_sampling_step=step
-        )
-        genus_execution.add_pipeline_step(species_filtering_step)
-        pipeline.add_pipeline_step(genus_execution)
-    else:
-        pipeline.add_pipeline_step(species_execution)
+        input_path = filtered_path
 
-    run = pipeline.run(Path(path))
-    time_str = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    save_path = get_xspect_runs_path() / f"run_{time_str}.json"
-    run.save(save_path)
-
-    return run.to_dict()
+    species_model = mm.get_species_model(genus)
+    species_result = species_model.predict(input_path, step=step)
+    species_result.save(get_xspect_runs_path() / f"result_{uuid}.json")
+    return species_result.to_dict()
 
 
 @app.post("/train")
