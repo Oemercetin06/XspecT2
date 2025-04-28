@@ -25,6 +25,7 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
         model_type: str,
         base_path: Path,
         fpr: float = 0.01,
+        training_accessions: list[str] = None,
     ) -> None:
         super().__init__(
             k=k,
@@ -35,11 +36,16 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
             base_path=base_path,
             fpr=fpr,
             num_hashes=1,
+            training_accessions=training_accessions,
         )
         self.bf = None
 
-    def fit(self, file_path: Path, display_name: str) -> None:
+    def fit(
+        self, file_path: Path, display_name: str, training_accessions: list[str] = None
+    ) -> None:
         """Fit the cobs classic index to the sequences and labels"""
+        self.training_accessions = training_accessions
+
         # estimate number of kmers
         total_length = 0
         for record in get_record_iterator(file_path):
@@ -88,6 +94,7 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
                 model_json["model_type"],
                 path.parent,
                 fpr=model_json["fpr"],
+                training_accessions=model_json["training_accessions"],
             )
             model.display_names = model_json["display_names"]
             bloom_path = model.base_path / model.slug() / "filter.bloom"

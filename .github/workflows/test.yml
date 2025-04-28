@@ -15,7 +15,7 @@ jobs:
             pip install '.[test]'
         - name: Download models
           run: |
-            xspect download-models
+            xspect models download
         - name: Test with pytest
           run: |
             pytest --cov

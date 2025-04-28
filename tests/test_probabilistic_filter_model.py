@@ -54,9 +54,9 @@ def test_fit(filter_model, multiple_assembly_dir_path):
 def test_fit_with_display_names(filter_model, multiple_assembly_dir_path):
     """Test the fit method of the ProbabilisticFilterModel class with display names."""
     display_names = {
-        "GCF_000006945.2_ASM694v2_genomic.fna": "Salmonella enterica",
-        "GCF_000018445.1_ASM1844v1_genomic.fna": "Acinetobacter baumannii ACICU",
-        "GCF_000069245.1_ASM6924v1_genomic.fna": "Acinetobacter baumannii AYE",
+        "GCF_000006945.2_ASM694v2_genomic": "Salmonella enterica",
+        "GCF_000018445.1_ASM1844v1_genomic": "Acinetobacter baumannii ACICU",
+        "GCF_000069245.1_ASM6924v1_genomic": "Acinetobacter baumannii AYE",
     }
     # cobs only uses the names until the first "." internally
     expected_display_names = {

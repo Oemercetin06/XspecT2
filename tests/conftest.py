@@ -86,13 +86,9 @@ def multiple_assembly_svm_path(tmp_path):
         "GCF_000069245.1_ASM6924v1_genomic.fna",
     ]
     for assembly in assemblies:
-        with open("tests/test_assemblies/" + assembly, "r", encoding="utf-8") as f:
-            with open(svm_path / assembly, "w", encoding="utf-8") as new_file:
-                f.readline()
-                # cobs only considers document names until the first "."
-                new_file.write(">" + assembly.split(".", maxsplit=1)[0] + "\n")
-                shutil.copyfileobj(f, new_file)
-
+        output_path = svm_path / assembly.split(".", maxsplit=1)[0] / assembly
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy("tests/test_assemblies/" + assembly, output_path)
     return svm_path.as_posix()
 
 

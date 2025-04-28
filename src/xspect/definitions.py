@@ -21,13 +21,6 @@ def get_xspect_model_path():
     return model_path
 
 
-def get_xspect_tmp_path():
-    """Return the path to the XspecT temporary files."""
-    tmp_path = get_xspect_root_path() / "tmp"
-    tmp_path.mkdir(exist_ok=True, parents=True)
-    return tmp_path
-
-
 def get_xspect_upload_path():
     """Return the path to the XspecT upload directory."""
     upload_path = get_xspect_root_path() / "uploads"

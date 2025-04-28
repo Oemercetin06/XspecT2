@@ -1,27 +1,25 @@
 """Project CLI"""
 
 from pathlib import Path
-import datetime
-import uuid
+from uuid import uuid4
 import click
 import uvicorn
 from xspect import fastapi
 from xspect.download_models import download_test_models
-from xspect.train import train_ncbi
-from xspect.models.result import (
-    StepType,
-)
+from xspect.file_io import filter_sequences
+from xspect.train import train_from_directory, train_from_ncbi
 from xspect.definitions import (
-    get_xspect_runs_path,
-    fasta_endings,
-    fastq_endings,
     get_xspect_model_path,
 )
-from xspect.pipeline import ModelExecution, Pipeline, PipelineStep
 from xspect.mlst_feature.mlst_helper import pick_scheme, pick_scheme_from_models_dir
 from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
 from xspect.models.probabilistic_filter_mlst_model import (
     ProbabilisticFilterMlstSchemeModel,
+)
+from xspect.model_management import (
+    get_genus_model,
+    get_models,
+    get_species_model,
 )
 
 
@@ -32,103 +30,133 @@ def cli():
 
 
 @cli.command()
-def download_models():
+def web():
+    """Open the XspecT web application."""
+    uvicorn.run(fastapi.app, host="0.0.0.0", port=8000)
+
+
+# # # # # # # # # # # # # # #
+# Model management commands #
+# # # # # # # # # # # # # # #
+@cli.group()
+def models():
+    """Model management commands."""
+    pass
+
+
+@models.command(
+    help="Download models from the internet.",
+)
+def download():
     """Download models."""
     click.echo("Downloading models, this may take a while...")
-    download_test_models("https://xspect2.s3.eu-central-1.amazonaws.com/models.zip")
+    download_test_models("http://assets.adrianromberg.com/xspect-models.zip")
 
 
-@cli.command()
-@click.argument("genus")
-@click.argument("path", type=click.Path(exists=True, dir_okay=True, file_okay=True))
+@models.command(
+    name="list",
+    help="List all models in the model directory.",
+)
+def list_models():
+    """List models."""
+    available_models = get_models()
+    if not available_models:
+        click.echo("No models found.")
+        return
+    # todo: make this machine readable
+    click.echo("Models found:")
+    click.echo("--------------")
+    for model_type, names in available_models.items():
+        if not names:
+            continue
+        click.echo(f"  {model_type}:")
+        for name in names:
+            click.echo(f"    - {name}")
+
+
+@models.group()
+def train():
+    """Train models."""
+    pass
+
+
+@train.command(
+    name="ncbi",
+    help="Train a species and a genus model based on NCBI data.",
+)
+@click.option("-g", "--genus", "model_genus", prompt=True)
+@click.option("--svm_steps", type=int, default=1)
 @click.option(
-    "-m",
-    "--meta/--no-meta",
-    help="Metagenome classification.",
-    default=False,
+    "--author",
+    help="Author of the model.",
+    default=None,
 )
 @click.option(
-    "-s",
-    "--step",
-    help="Sparse sampling step size (e. g. only every 500th kmer for step=500).",
-    default=1,
+    "--author-email",
+    help="Email of the author.",
+    default=None,
 )
-def classify_species(genus, path, meta, step):
-    """Classify sample(s) from file or directory PATH."""
-    click.echo("Classifying...")
-    click.echo(f"Step: {step}")
-
-    file_paths = []
-    if Path(path).is_dir():
-        file_paths = [
-            f
-            for f in Path(path).iterdir()
-            if f.is_file() and f.suffix[1:] in fasta_endings + fastq_endings
-        ]
-    else:
-        file_paths = [Path(path)]
-
-    # define pipeline
-    pipeline = Pipeline(genus + " classification", "Test Author", "test@example.com")
-    species_execution = ModelExecution(
-        genus.lower() + "-species", sparse_sampling_step=step
-    )
-    if meta:
-        species_filtering_step = PipelineStep(
-            StepType.FILTERING, genus, 0.7, species_execution
-        )
-        genus_execution = ModelExecution(
-            genus.lower() + "-genus", sparse_sampling_step=step
-        )
-        genus_execution.add_pipeline_step(species_filtering_step)
-        pipeline.add_pipeline_step(genus_execution)
-    else:
-        pipeline.add_pipeline_step(species_execution)
-
-    for idx, file_path in enumerate(file_paths):
-        run = pipeline.run(file_path)
-        time_str = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        save_path = get_xspect_runs_path() / f"run_{time_str}_{uuid.uuid4()}.json"
-        run.save(save_path)
-        print(
-            f"[{idx+1}/{len(file_paths)}] Run finished. Results saved to '{save_path}'."
-        )
+def train_ncbi(model_genus, svm_steps, author, author_email):
+    """Train a species and a genus model based on NCBI data."""
+    click.echo(f"Training {model_genus} species and genus metagenome model.")
+    try:
+        train_from_ncbi(model_genus, svm_steps, author, author_email)
+    except ValueError as e:
+        click.echo(f"Error: {e}")
+        return
+    click.echo(f"Training of {model_genus} model finished.")
 
 
-@cli.command()
-@click.argument("genus")
+@train.command(
+    name="directory",
+    help="Train a species (and possibly a genus) model based on local data.",
+)
+@click.option("-g", "--genus", "model_genus", prompt=True)
 @click.option(
-    "-bf-path",
-    "--bf-assembly-path",
-    help="Path to assembly directory for Bloom filter training.",
-    type=click.Path(exists=True, dir_okay=True, file_okay=False),
+    "-i",
+    "--input-path",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    prompt=True,
 )
 @click.option(
-    "-svm-path",
-    "--svm-assembly-path",
-    help="Path to assembly directory for SVM training.",
-    type=click.Path(exists=True, dir_okay=True, file_okay=False),
+    "--meta",
+    is_flag=True,
+    help="Train a metagenome model for the genus.",
+    default=True,
 )
 @click.option(
-    "-s",
-    "--svm-step",
+    "--svm-steps",
+    type=int,
     help="SVM Sparse sampling step size (e. g. only every 500th kmer for step=500).",
     default=1,
 )
-def train_species(genus, bf_assembly_path, svm_assembly_path, svm_step):
-    """Train model."""
+@click.option(
+    "--author",
+    help="Author of the model.",
+    default=None,
+)
+@click.option(
+    "--author-email",
+    help="Email of the author.",
+    default=None,
+)
+def train_directory(model_genus, input_path, svm_steps, meta, author, author_email):
+    """Train a model based on data from a directory for a given genus."""
+    click.echo(f"Training {model_genus} model with {svm_steps} SVM steps.")
+    train_from_directory(
+        model_genus,
+        Path(input_path),
+        svm_step=svm_steps,
+        meta=meta,
+        author=author,
+        author_email=author_email,
+    )
 
-    if bf_assembly_path or svm_assembly_path:
-        raise NotImplementedError(
-            "Training with specific assembly paths is not yet implemented."
-        )
-    try:
-        train_ncbi(genus, svm_step=svm_step)
-    except ValueError as e:
-        raise click.ClickException(str(e)) from e
 
-
-@cli.command()
+@train.command(
+    name="mlst",
+    help="Train a MLST model based on PubMLST data.",
+)
 @click.option(
     "-c",
     "--choose_schemes",
@@ -154,27 +182,234 @@ def train_mlst(choose_schemes):
     click.echo(f"Saved at {model.cobs_path}")
 
 
-@cli.command()
+# # # # # # # # # # # # # # #
+# Classification commands   #
+# # # # # # # # # # # # # # #
+@cli.group(
+    name="classify",
+    help="Classify sequences using XspecT models.",
+)
+def classify_seqs():
+    """Classification commands."""
+    pass
+
+
+@classify_seqs.command()
 @click.option(
-    "-p",
-    "--path",
+    "-g",
+    "--genus",
+    "model_genus",
+    help="Genus of the model to classify.",
+    type=click.Choice(get_models().get("Genus"), None),
+    prompt=True,
+)
+@click.option(
+    "-i",
+    "--input-path",
+    help="Path to FASTA or FASTQ file for classification.",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    prompt=True,
+)
+@click.option(
+    "-o",
+    "--output-path",
+    help="Path to the output file.",
+    type=click.Path(dir_okay=True, file_okay=True),
+    default=Path(".") / f"result_{uuid4()}.json",
+)
+def genus(model_genus, input_path, output_path):
+    """Classify samples using a genus model."""
+    click.echo("Classifying...")
+    genus_model = get_genus_model(model_genus)
+    result = genus_model.predict(Path(input_path))
+    result.save(output_path)
+    click.echo(f"Result saved as {output_path}.")
+
+
+@classify_seqs.command()
+@click.option(
+    "-g",
+    "--genus",
+    "model_genus",
+    help="Genus of the model to classify.",
+    type=click.Choice(get_models().get("Species"), None),
+    prompt=True,
+)
+@click.option(
+    "-i",
+    "--input-path",
+    help="Path to FASTA or FASTQ file for classification.",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    prompt=True,
+)
+@click.option(
+    "-o",
+    "--output-path",
+    help="Path to the output file.",
+    type=click.Path(dir_okay=True, file_okay=True),
+    default=Path(".") / f"result_{uuid4()}.json",
+)
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step size (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
+def species(model_genus, input_path, output_path, sparse_sampling_step):
+    """Classify samples using a species model."""
+    click.echo("Classifying...")
+    species_model = get_species_model(model_genus)
+    result = species_model.predict(Path(input_path), step=sparse_sampling_step)
+    result.save(output_path)
+    click.echo(f"Result saved as {output_path}.")
+
+
+@classify_seqs.command(
+    name="mlst",
+    help="Classify samples using a MLST model.",
+)
+@click.option(
+    "-i",
+    "--input-path",
     help="Path to FASTA-file for mlst identification.",
     type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    prompt=True,
 )
-def classify_mlst(path):
+@click.option(
+    "-o",
+    "--output-path",
+    help="Path to the output file.",
+    type=click.Path(dir_okay=True, file_okay=True),
+    default=Path(".") / f"result_{uuid4()}.json",
+)
+def classify_mlst(input_path, output_path):
     """MLST classify a sample."""
     click.echo("Classifying...")
-    path = Path(path)
+    input_path = Path(input_path)
     scheme_path = pick_scheme_from_models_dir()
     model = ProbabilisticFilterMlstSchemeModel.load(scheme_path)
-    model.predict(scheme_path, path).save(model.model_display_name, path)
-    click.echo(f"Run saved at {get_xspect_runs_path()}.")
+    result = model.predict(scheme_path, input_path)
+    result.save(output_path)
+    click.echo(f"Result saved as {output_path}.")
 
 
-@cli.command()
-def api():
-    """Open the XspecT FastAPI."""
-    uvicorn.run(fastapi.app, host="0.0.0.0", port=8000)
+# # # # # # # # # # # # # # #
+# Filtering commands        #
+# # # # # # # # # # # # # # #
+@cli.group(
+    name="filter",
+    help="Filter sequences using XspecT models.",
+)
+def filter_seqs():
+    """Filter commands."""
+    pass
+
+
+@filter_seqs.command(
+    name="genus",
+    help="Filter sequences using a genus model.",
+)
+@click.option(
+    "-g",
+    "--genus",
+    "model_genus",
+    help="Genus of the model to use for filtering.",
+    type=click.Choice(get_models().get("Species"), None),
+    prompt=True,
+)
+@click.option(
+    "-i",
+    "--input-path",
+    help="Path to FASTA or FASTQ file for classification.",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    prompt=True,
+)
+@click.option(
+    "-o",
+    "--output-path",
+    help="Path to the output file.",
+    type=click.Path(dir_okay=True, file_okay=True),
+    prompt=True,
+)
+@click.option(
+    "--threshold",
+    type=float,
+    help="Threshold for filtering (default: 0.7).",
+    default=0.7,
+)
+def filter_genus(model_genus, input_path, output_path, threshold):
+    """Filter samples using a genus model."""
+    click.echo("Filtering...")
+    genus_model = get_genus_model(model_genus)
+    result = genus_model.predict(Path(input_path))
+    included_ids = result.get_filtered_subsequence_labels(model_genus, threshold)
+    if not included_ids:
+        click.echo("No sequences found for the given genus.")
+        return
+
+    filter_sequences(
+        Path(input_path),
+        Path(output_path),
+        included_ids=included_ids,
+    )
+    click.echo(f"Filtered sequences saved at {output_path}.")
+
+
+@filter_seqs.command(
+    name="species",
+    help="Filter sequences using a species model.",
+)
+@click.option(
+    "-g",
+    "--genus",
+    "model_genus",
+    help="Genus of the model to use for filtering.",
+    type=click.Choice(get_models().get("Species"), None),
+    prompt=True,
+)
+@click.option(
+    # todo: this should be a choice of the species in the model w/ display names
+    "-s",
+    "--species",
+    "model_species",
+    help="Species of the model to filter for.",
+    prompt=True,
+)
+@click.option(
+    "-i",
+    "--input-path",
+    help="Path to FASTA or FASTQ file for classification.",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    prompt=True,
+)
+@click.option(
+    "-o",
+    "--output-path",
+    help="Path to the output file.",
+    type=click.Path(dir_okay=True, file_okay=True),
+    prompt=True,
+)
+@click.option(
+    "--threshold",
+    type=float,
+    help="Threshold for filtering (default: 0.7).",
+    default=0.7,
+)
+def filter_species(model_genus, model_species, input_path, output_path, threshold):
+    """Filter a sample using the species model."""
+    click.echo("Filtering...")
+    species_model = get_species_model(model_genus)
+    result = species_model.predict(Path(input_path))
+    included_ids = result.get_filtered_subsequence_labels(model_species, threshold)
+    if not included_ids:
+        click.echo("No sequences found for the given species.")
+        return
+    filter_sequences(
+        Path(input_path),
+        Path(output_path),
+        included_ids=included_ids,
+    )
+    click.echo(f"Filtered sequences saved at {output_path}.")
 
 
 if __name__ == "__main__":

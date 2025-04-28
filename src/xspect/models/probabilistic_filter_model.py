@@ -26,6 +26,7 @@ class ProbabilisticFilterModel:
         base_path: Path,
         fpr: float = 0.01,
         num_hashes: int = 7,
+        training_accessions: dict[str, list[str]] = None,
     ) -> None:
         if k < 1:
             raise ValueError("Invalid k value, must be greater than 0")
@@ -46,6 +47,7 @@ class ProbabilisticFilterModel:
         self.fpr = fpr
         self.num_hashes = num_hashes
         self.index = None
+        self.training_accessions = training_accessions
 
     def get_cobs_index_path(self) -> Path:
         """Returns the path to the cobs index"""
@@ -63,13 +65,19 @@ class ProbabilisticFilterModel:
             "display_names": self.display_names,
             "fpr": self.fpr,
             "num_hashes": self.num_hashes,
+            "training_accessions": self.training_accessions,
         }
 
     def slug(self) -> str:
         """Returns a slug representation of the model"""
         return slugify(self.model_display_name + "-" + str(self.model_type))
 
-    def fit(self, dir_path: Path, display_names: dict = None) -> None:
+    def fit(
+        self,
+        dir_path: Path,
+        display_names: dict = None,
+        training_accessions: dict[str, list[str]] = None,
+    ) -> None:
         """Adds filters to the model"""
 
         if display_names is None:
@@ -84,16 +92,18 @@ class ProbabilisticFilterModel:
         if not dir_path.is_dir():
             raise ValueError("Directory path must be a directory")
 
+        self.training_accessions = training_accessions
+
         doclist = cobs.DocumentList()
         for file in dir_path.iterdir():
             if file.is_file() and file.suffix[1:] in fasta_endings + fastq_endings:
                 # cobs only uses the file name to the first "." as the document name
-                if file.name in display_names:
-                    self.display_names[file.name.split(".")[0]] = display_names[
-                        file.name
+                if file.stem in display_names:
+                    self.display_names[file.stem.split(".")[0]] = display_names[
+                        file.stem
                     ]
                 else:
-                    self.display_names[file.name.split(".")[0]] = file.stem
+                    self.display_names[file.stem.split(".")[0]] = file.stem
                 doclist.add(str(file))
 
         if len(doclist) == 0:
@@ -200,6 +210,7 @@ class ProbabilisticFilterModel:
                 path.parent,
                 model_json["fpr"],
                 model_json["num_hashes"],
+                model_json["training_accessions"],
             )
             model.display_names = model_json["display_names"]
 
