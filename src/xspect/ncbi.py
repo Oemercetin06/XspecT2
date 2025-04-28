@@ -41,7 +41,7 @@ class NCBIHandler:
         self.base_url = "https://api.ncbi.nlm.nih.gov/datasets/v2"
         self.last_request_time = 0
         self.min_interval = (
-            1 / 5 if not api_key else 1 / 10
+            1 / 10 if api_key else 1 / 5
         )  # NCBI allows 10 requests per second with if an API key, otherwise 5 requests per second
 
     def _enforce_rate_limit(self):
@@ -58,7 +58,7 @@ class NCBIHandler:
         self.last_request_time = now  # Update last request time
 
     def _make_request(self, endpoint: str, timeout: int = 5) -> dict:
-        """Make a request to the NCBI Datasets API, limiting to 5 requests per second.
+        """Make a request to the NCBI Datasets API.
 
         Args:
             endpoint (str): The endpoint to make the request to.
@@ -70,7 +70,12 @@ class NCBIHandler:
         self._enforce_rate_limit()
 
         endpoint = endpoint if endpoint.startswith("/") else "/" + endpoint
-        response = requests.get(self.base_url + endpoint, timeout=timeout)
+        headers = {}
+        if self.api_key:
+            headers["api-key"] = self.api_key
+        response = requests.get(
+            self.base_url + endpoint, headers=headers, timeout=timeout
+        )
         if response.status_code != 200:
             response.raise_for_status()
 

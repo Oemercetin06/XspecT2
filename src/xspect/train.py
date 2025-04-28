@@ -167,7 +167,11 @@ def train_from_directory(
             genus_model.fit(
                 meta_fasta,
                 display_name,
-                training_accessions=sum(training_accessions.values(), []),
+                training_accessions=(
+                    sum(training_accessions.values(), [])
+                    if training_accessions
+                    else None
+                ),
             )
             genus_model.save()
 

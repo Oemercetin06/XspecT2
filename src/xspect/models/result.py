@@ -1,50 +1,7 @@
 """Module for storing the results of XspecT models."""
 
-from enum import Enum
-
-
-def get_last_processing_step(result: "ModelResult") -> "ModelResult":
-    """Get the last subprocessing step of the result. First path only."""
-
-    # traverse result tree to get last step
-    while result.subprocessing_steps:
-        result = result.subprocessing_steps[-1].result
-    return result
-
-
-class StepType(Enum):
-    """Enum for defining the type of a subprocessing step."""
-
-    PREDICTION = 1
-    FILTERING = 2
-
-    def __str__(self) -> str:
-        return self.name.lower()
-
-
-class SubprocessingStep:
-    """Class for storing a subprocessing step of an XspecT model."""
-
-    def __init__(
-        self,
-        subprocessing_type: StepType,
-        label: str,
-        treshold: float,
-        result: "ModelResult",
-    ):
-        self.subprocessing_type = subprocessing_type
-        self.label = label
-        self.treshold = treshold
-        self.result = result
-
-    def to_dict(self) -> dict:
-        """Return the subprocessing step as a dictionary."""
-        return {
-            "subprocessing_type": str(self.subprocessing_type),
-            "label": self.label,
-            "treshold": self.treshold,
-            "result": self.result.to_dict() if self.result else {},
-        }
+from json import dumps
+from pathlib import Path
 
 
 class ModelResult:
@@ -58,6 +15,7 @@ class ModelResult:
         num_kmers: dict[str, int],
         sparse_sampling_step: int = 1,
         prediction: str = None,
+        input_source: str = None,
     ):
         if "total" in hits:
             raise ValueError(
@@ -68,15 +26,7 @@ class ModelResult:
         self.num_kmers = num_kmers
         self.sparse_sampling_step = sparse_sampling_step
         self.prediction = prediction
-        self.subprocessing_steps = []
-
-    def add_subprocessing_step(self, subprocessing_step: SubprocessingStep) -> None:
-        """Add a subprocessing step to the result."""
-        if subprocessing_step.label in self.subprocessing_steps:
-            raise ValueError(
-                f"Subprocessing step {subprocessing_step.label} already exists in the result"
-            )
-        self.subprocessing_steps.append(subprocessing_step)
+        self.input_source = input_source
 
     def get_scores(self) -> dict:
         """Return the scores of the model."""
@@ -119,8 +69,10 @@ class ModelResult:
             for subsequence, score in scores.items()
         }
 
-    def get_filtered_subsequences(self, label: str, filter_threshold: 0.7) -> list[str]:
-        """Return the filtered subsequences."""
+    def get_filtered_subsequence_labels(
+        self, label: str, filter_threshold: float = 0.7
+    ) -> list[str]:
+        """Return the labels of filtered subsequences."""
         return [
             subsequence
             for subsequence, mask in self.get_filter_mask(
@@ -137,13 +89,15 @@ class ModelResult:
             "hits": self.hits,
             "scores": self.get_scores(),
             "num_kmers": self.num_kmers,
-            "subprocessing_steps": [
-                subprocessing_step.to_dict()
-                for subprocessing_step in self.subprocessing_steps
-            ],
+            "input_source": self.input_source,
         }
 
         if self.prediction is not None:
             res["prediction"] = self.prediction
 
         return res
+
+    def save(self, path: Path) -> None:
+        """Save the result as a JSON file."""
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(dumps(self.to_dict(), indent=4))

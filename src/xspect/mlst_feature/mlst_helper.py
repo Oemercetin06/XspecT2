@@ -144,12 +144,10 @@ class MlstResult:
         }
         return result
 
-    def save(self, display: str, file_path: Path) -> None:
-        """Saves the result inside the "runs" directory"""
-        file_name = str(file_path).split("/")[-1]
-        json_path = get_xspect_runs_path() / "MLST" / f"{file_name}-{display}.json"
-        json_path.parent.mkdir(exist_ok=True, parents=True)
+    def save(self, output_path: Path) -> None:
+        """Saves the result as a JSON file."""
+        output_path.parent.mkdir(exist_ok=True, parents=True)
         json_object = json.dumps(self.to_dict(), indent=4)
 
-        with open(json_path, "w", encoding="utf-8") as file:
+        with open(output_path, "w", encoding="utf-8") as file:
             file.write(json_object)

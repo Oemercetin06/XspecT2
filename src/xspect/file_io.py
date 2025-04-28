@@ -147,3 +147,25 @@ def get_ncbi_dataset_accession_paths(
             assembly_path = data_path / assembly["files"][0]["filePath"]
             accession_paths[accession] = assembly_path
     return accession_paths
+
+
+def filter_sequences(
+    input_file: Path,
+    output_file: Path,
+    included_ids: list[str],
+):
+    """Filter sequences by IDs from an input file and save them to an output file.
+
+    Args:
+        input_file (Path): Path to the input file.
+        output_file (Path): Path to the output file.
+        included_ids (list[str], optional): List of IDs to include. If None, no output file is created.
+    """
+    if not included_ids:
+        print("No IDs provided, no output file will be created.")
+        return
+
+    with open(output_file, "w", encoding="utf-8") as out_f:
+        for record in get_record_iterator(input_file):
+            if record.id in included_ids:
+                SeqIO.write(record, out_f, "fasta")

@@ -1,30 +1,22 @@
 # XspecT - Acinetobacter Species Assignment Tool
+<!-- start intro -->
 ![Test](https://github.com/bionf/xspect2/actions/workflows/test.yml/badge.svg)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<img src="/docs/img/logo.png" height="50%" width="50%">
+XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or MLST level using [kmer indices] and a [Support Vector Machine].
 
-<!-- start intro -->
-XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or MLST level using [Bloom Filters] and a [Support Vector Machine].
-<br/><br/>
+XspecT utilizes the uniqueness of kmers and compares extracted kmers from the input-data to a reference database. Bloom Filter ensure a fast lookup in this process. For a final prediction, the results are classified using a Support Vector Machine.
 
-XspecT utilizes the uniqueness of kmers and compares extracted kmers from the input-data to a reference database. Bloom Filter ensure a fast lookup in this process. For a final prediction the results are classified using a Support Vector Machine. 
-<br/>
+The tool is available as a web-based application and as a command line interface.
 
-Local extensions of the reference database are supported.
-<br/>
-
-The tool is available as a web-based application and a smaller command line interface.
-
-[Bloom Filters]: https://en.wikipedia.org/wiki/Bloom_filter
+[kmer indices]: https://arxiv.org/abs/1905.09624
 [Support Vector Machine]: https://en.wikipedia.org/wiki/Support-vector_machine
-[blaOxa-genes]: https://en.wikipedia.org/wiki/Beta-lactamase#OXA_beta-lactamases_(class_D)
 <!-- end intro -->
 
 <!-- start quickstart -->
 ## Installation
-To install Xspect, please download the lastest 64 bit Python version and install the package using pip:
+To install XspecT, please download the lastest 64 bit Python version and install the package using pip:
 ```
 pip install xspect
 ```
@@ -34,23 +26,23 @@ Please note that Windows and Alpine Linux is currently not supported.
 ### Get the models
 To download basic pre-trained models, you can use the built-in command:
 ```
-xspect download-models
+xspect models download
 ```
 Additional species models can be trained using:
 ```
-xspect train-species you-ncbi-genus-name
+xspect models train ncbi
 ```
 
 ### How to run the web app
 To run the web app, install and run [XspecT Web](https://github.com/aromberg/xspect-web). Additionally, run XspecT in API mode:
 ```
-xspect api
+xspect web
 ```
 
 ### How to use the XspecT command line interface
-Run xspect with the configuration you want to run it with as arguments.
+Run XspecT with the configuration you want to run it with as arguments.
 ```
-xspect classify-species your-genus path/to/your/input-set
+xspect classify species
 ```
 For further instructions on how to use the command line interface, please refer to the [documentation] or execute:
 ```

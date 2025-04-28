@@ -85,3 +85,9 @@ def get_models():
             model_metadata["model_display_name"]
         )
     return model_dict
+
+
+def get_model_display_names(model_slug: str):
+    """Get the display names included in a model."""
+    model_metadata = get_model_metadata(model_slug)
+    return list(model_metadata["display_names"].values())
