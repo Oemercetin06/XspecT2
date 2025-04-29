@@ -159,3 +159,32 @@ def test_filter_species(assembly_file_path, tmpdir):
     )
     assert result.exit_code == 0, f"Error: {result.output}"
     assert Path(str(tmpdir) + "/species_filtered.fna").exists()
+
+
+def test_filter_species_max_scoring(mixed_species_assembly_file_path, tmpdir):
+    """Test filtering by species"""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "filter",
+            "species",
+            "-g",
+            "Acinetobacter",
+            "-s",
+            "calcoaceticus",
+            "-i",
+            mixed_species_assembly_file_path,
+            "-o",
+            str(tmpdir) + "/mixed_species_filtered.fna",
+            "--threshold",
+            "-1",
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
+    assert Path(str(tmpdir) + "/mixed_species_filtered.fna").exists()
+
+    with open(str(tmpdir) + "/mixed_species_filtered.fna", encoding="utf-8") as f:
+        filtered_content = f.read()
+        assert "Acinetobacter calcoaceticus" in filtered_content
+        assert "Acinetobacter baumannii" not in filtered_content

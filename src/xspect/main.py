@@ -339,6 +339,7 @@ def filter_seqs():
     type=float,
     help="Threshold for filtering (default: 0.7).",
     default=0.7,
+    prompt=True,
 )
 def filter_genus(model_genus, input_path, output_path, threshold):
     """Filter samples using a genus model."""
@@ -393,8 +394,9 @@ def filter_genus(model_genus, input_path, output_path, threshold):
 @click.option(
     "--threshold",
     type=float,
-    help="Threshold for filtering (default: 0.7).",
+    help="Threshold for filtering (default: 0.7). Use -1 to filter for the highest scoring species.",
     default=0.7,
+    prompt=True,
 )
 def filter_species(model_genus, model_species, input_path, output_path, threshold):
     """Filter a sample using the species model."""

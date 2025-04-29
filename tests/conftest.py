@@ -15,6 +15,7 @@ def pytest_sessionstart():
         "GCF_000006945.2_ASM694v2_genomic.fna": "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GCF_000006945.2/download?include_annotation_type=GENOME_FASTA",
         "GCF_000018445.1_ASM1844v1_genomic.fna": "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GCF_000018445.1/download?include_annotation_type=GENOME_FASTA",
         "GCF_000069245.1_ASM6924v1_genomic.fna": "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GCF_000069245.1/download?include_annotation_type=GENOME_FASTA",
+        "GCA_900444805.1_58932_B01_genomic.fna": "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GCA_900444805.1/download?include_annotation_type=GENOME_FASTA",
     }
     if not os.path.exists("tests/test_assemblies"):
         os.makedirs("tests/test_assemblies")
@@ -107,3 +108,22 @@ def concatenated_assembly_file_path(tmp_path):
             ) as infile:
                 shutil.copyfileobj(infile, outfile)
     return (tmp_path / "concatenated_assembly.fna").as_posix()
+
+
+@pytest.fixture
+def mixed_species_assembly_file_path(tmp_path):
+    """Create a temporary directory a fasta file which contains two mixed species assemblies"""
+    # two acinetobacter assemblies
+    assemblies = [
+        "GCF_000018445.1_ASM1844v1_genomic.fna",
+        "GCA_900444805.1_58932_B01_genomic.fna",
+    ]
+    with open(
+        tmp_path / "mixed_species_assembly.fna", "w", encoding="utf-8"
+    ) as outfile:
+        for assembly in assemblies:
+            with open(
+                "tests/test_assemblies/" + assembly, "r", encoding="utf-8"
+            ) as infile:
+                shutil.copyfileobj(infile, outfile)
+    return (tmp_path / "mixed_species_assembly.fna").as_posix()
