@@ -58,16 +58,28 @@ class ModelResult:
         return total_hits
 
     def get_filter_mask(self, label: str, filter_threshold: float) -> dict[str, bool]:
-        """Return a mask for filtered subsequences."""
-        if filter_threshold < 0 or filter_threshold > 1:
+        """Return a mask for filtered subsequences.
+
+        The mask is a dictionary with subsequence names as keys and boolean values
+        indicating whether the subsequence is above the filter threshold for the given label.
+        A value of -1 for filter_threshold indicates that the subsequence with the maximum score
+        for the given label should be returned.
+        """
+        if filter_threshold < 0 and not filter_threshold == -1 or filter_threshold > 1:
             raise ValueError("The filter threshold must be between 0 and 1.")
 
         scores = self.get_scores()
         scores.pop("total")
-        return {
-            subsequence: score[label] >= filter_threshold
-            for subsequence, score in scores.items()
-        }
+        if not filter_threshold == -1:
+            return {
+                subsequence: score[label] >= filter_threshold
+                for subsequence, score in scores.items()
+            }
+        else:
+            return {
+                subsequence: score[label] == max(score.values())
+                for subsequence, score in scores.items()
+            }
 
     def get_filtered_subsequence_labels(
         self, label: str, filter_threshold: float = 0.7

@@ -18,6 +18,7 @@ from xspect.models.probabilistic_filter_mlst_model import (
 )
 from xspect.model_management import (
     get_genus_model,
+    get_model_metadata,
     get_models,
     get_species_model,
 )
@@ -41,7 +42,6 @@ def web():
 @cli.group()
 def models():
     """Model management commands."""
-    pass
 
 
 @models.command(
@@ -77,7 +77,6 @@ def list_models():
 @models.group()
 def train():
     """Train models."""
-    pass
 
 
 @train.command(
@@ -191,10 +190,12 @@ def train_mlst(choose_schemes):
 )
 def classify_seqs():
     """Classification commands."""
-    pass
 
 
-@classify_seqs.command()
+@classify_seqs.command(
+    name="genus",
+    help="Classify samples using a genus model.",
+)
 @click.option(
     "-g",
     "--genus",
@@ -217,7 +218,7 @@ def classify_seqs():
     type=click.Path(dir_okay=True, file_okay=True),
     default=Path(".") / f"result_{uuid4()}.json",
 )
-def genus(model_genus, input_path, output_path):
+def classify_genus(model_genus, input_path, output_path):
     """Classify samples using a genus model."""
     click.echo("Classifying...")
     genus_model = get_genus_model(model_genus)
@@ -226,7 +227,10 @@ def genus(model_genus, input_path, output_path):
     click.echo(f"Result saved as {output_path}.")
 
 
-@classify_seqs.command()
+@classify_seqs.command(
+    name="species",
+    help="Classify samples using a species model.",
+)
 @click.option(
     "-g",
     "--genus",
@@ -252,10 +256,10 @@ def genus(model_genus, input_path, output_path):
 @click.option(
     "--sparse-sampling-step",
     type=int,
-    help="Sparse sampling step size (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
     default=1,
 )
-def species(model_genus, input_path, output_path, sparse_sampling_step):
+def classify_species(model_genus, input_path, output_path, sparse_sampling_step):
     """Classify samples using a species model."""
     click.echo("Classifying...")
     species_model = get_species_model(model_genus)
@@ -302,7 +306,6 @@ def classify_mlst(input_path, output_path):
 )
 def filter_seqs():
     """Filter commands."""
-    pass
 
 
 @filter_seqs.command(
@@ -336,6 +339,7 @@ def filter_seqs():
     type=float,
     help="Threshold for filtering (default: 0.7).",
     default=0.7,
+    prompt=True,
 )
 def filter_genus(model_genus, input_path, output_path, threshold):
     """Filter samples using a genus model."""
@@ -368,12 +372,10 @@ def filter_genus(model_genus, input_path, output_path, threshold):
     prompt=True,
 )
 @click.option(
-    # todo: this should be a choice of the species in the model w/ display names
     "-s",
     "--species",
     "model_species",
     help="Species of the model to filter for.",
-    prompt=True,
 )
 @click.option(
     "-i",
@@ -392,11 +394,36 @@ def filter_genus(model_genus, input_path, output_path, threshold):
 @click.option(
     "--threshold",
     type=float,
-    help="Threshold for filtering (default: 0.7).",
+    help="Threshold for filtering (default: 0.7). Use -1 to filter for the highest scoring species.",
     default=0.7,
+    prompt=True,
 )
 def filter_species(model_genus, model_species, input_path, output_path, threshold):
     """Filter a sample using the species model."""
+
+    available_species = get_model_metadata(f"{model_genus}-species")["display_names"]
+    available_species = {
+        id: name.replace(f"{model_genus} ", "")
+        for id, name in available_species.items()
+    }
+    if not model_species:
+        sorted_available_species = sorted(available_species.values())
+        model_species = click.prompt(
+            f"Please enter the species name: {model_genus}",
+            type=click.Choice(sorted_available_species, case_sensitive=False),
+        )
+    if model_species not in available_species.values():
+        raise click.BadParameter(
+            f"Species '{model_species}' not found in the {model_genus} species model."
+        )
+
+    # get the species ID from the name
+    model_species = [
+        id
+        for id, name in available_species.items()
+        if name.lower() == model_species.lower()
+    ][0]
+
     click.echo("Filtering...")
     species_model = get_species_model(model_genus)
     result = species_model.predict(Path(input_path))
