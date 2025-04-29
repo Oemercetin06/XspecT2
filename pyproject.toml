@@ -51,4 +51,4 @@ pythonpath = [
 
 [project.optional-dependencies]
 docs = ["sphinx", "furo", "myst-parser", "sphinx-copybutton", "sphinx-autobuild"]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-cov", "httpx"]
