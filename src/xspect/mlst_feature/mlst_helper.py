@@ -7,11 +7,21 @@ import json
 from io import StringIO
 from pathlib import Path
 from Bio import SeqIO
-from xspect.definitions import get_xspect_model_path, get_xspect_runs_path
+from xspect.definitions import get_xspect_model_path
 
+def create_fasta_files(locus_path: Path, fasta_batch: str) -> None:
+    """
+    Create Fasta-Files for every allele of a locus.
 
-def create_fasta_files(locus_path: Path, fasta_batch: str):
-    """Create Fasta-Files for every allele of a locus."""
+    This function creates a fasta file for each record in the batch-string of a locus.
+    The batch originates from an API-GET-request to PubMLST.
+    The files are named after the record ID.
+    If a fasta file already exists, it will be skipped.
+
+    Args:
+        locus_path (Path): The directory where the fasta-files will be saved.
+        fasta_batch (str): A string containing every record of a locus from PubMLST.
+    """
     # fasta_batch = full string of a fasta file containing every allele sequence of a locus
     for record in SeqIO.parse(StringIO(fasta_batch), "fasta"):
         number = record.id.split("_")[-1]  # example id = Oxf_cpn60_263
@@ -23,7 +33,21 @@ def create_fasta_files(locus_path: Path, fasta_batch: str):
 
 
 def pick_species_number_from_db(available_species: dict) -> str:
-    """Returns the chosen species from all available ones in the database."""
+    """
+    Get the chosen species from all available ones in the database.
+
+    This function lists all available species of PubMLST.
+    The user is then asked to pick a species by its associated number.
+
+    Args:
+        available_species (dict): A dictionary storing all available species.
+
+    Returns:
+        str: The name of the chosen species.
+
+    Raises:
+        ValueError: If the user input is not valid.
+    """
     # The "database" string can look like this: pubmlst_abaumannii_seqdef
     for counter, database in available_species.items():
         print(str(counter) + ":" + database.split("_")[1])
@@ -45,7 +69,21 @@ def pick_species_number_from_db(available_species: dict) -> str:
 
 
 def pick_scheme_number_from_db(available_schemes: dict) -> str:
-    """Returns the chosen schemes from all available ones of a species."""
+    """
+    Get the chosen scheme from all available ones of a species.
+
+    This function lists all available schemes of a species.
+    The user is then asked to pick a scheme by its associated number.
+
+    Args:
+        available_schemes (dict): A dictionary storing all available schemes.
+
+    Returns:
+        str: The name of the chosen scheme.
+
+    Raises:
+        ValueError: If the user input is not valid.
+    """
     # List all available schemes of a species database
     for counter, scheme in available_schemes.items():
         print(str(counter) + ":" + scheme[0])
@@ -67,12 +105,28 @@ def pick_scheme_number_from_db(available_schemes: dict) -> str:
 
 
 def scheme_list_to_dict(scheme_list: list[str]):
-    """Converts the scheme list attribute into a dictionary with a number as the key."""
+    """
+    Converts the scheme list into a dictionary.
+
+    Args:
+        scheme_list (list[str]): A list storing all chosen schemes.
+
+    Returns:
+        dict: The converted dictionary.
+    """
     return dict(zip(range(1, len(scheme_list) + 1), scheme_list))
 
 
 def pick_scheme_from_models_dir() -> Path:
-    """Returns the chosen scheme from models that have been fitted prior."""
+    """
+    Get the chosen scheme from models that have been fitted prior.
+
+    This function creates a dictionary containing all trained models.
+    The dictionary is used as an argument for the "pick_scheme" function.
+
+    Returns:
+        Path: The path to the chosen model (trained).
+    """
     schemes = {}
     counter = 1
     for entry in sorted((get_xspect_model_path() / "MLST").iterdir()):
@@ -82,7 +136,21 @@ def pick_scheme_from_models_dir() -> Path:
 
 
 def pick_scheme(available_schemes: dict) -> Path:
-    """Returns the chosen scheme from the scheme list."""
+    """
+    Get the chosen scheme from the scheme dictionary.
+
+    This function lists all available schemes of a species that have been downloaded.
+    The user is then asked to pick a scheme by its associated number.
+
+    Args:
+        available_schemes (dict): A dictionary storing all available schemes.
+
+    Returns:
+        Path: The path to the chosen model (trained).
+
+    Raises:
+        ValueError: If the user input is not valid or if no scheme was downloaded prior.
+    """
     if not available_schemes:
         raise ValueError("No scheme has been chosen for download yet!")
 
@@ -118,7 +186,7 @@ def pick_scheme(available_schemes: dict) -> Path:
 
 
 class MlstResult:
-    """Class for storing mlst results."""
+    """Class for storing MLST results."""
 
     def __init__(
         self,
@@ -126,17 +194,28 @@ class MlstResult:
         steps: int,
         hits: dict[str, list[dict]],
     ):
+        """Initialise an MlstResult object."""
         self.scheme_model = scheme_model
         self.steps = steps
         self.hits = hits
 
     def get_results(self) -> dict:
-        """Stores the result of a prediction in a dictionary."""
+        """
+        Stores the result of a prediction in a dictionary.
+
+        Returns:
+            dict: The result dictionary with s sequence ID as key and the Strain type as value.
+        """
         results = {seq_id: result for seq_id, result in self.hits.items()}
         return results
 
     def to_dict(self) -> dict:
-        """Converts all attributes into one dictionary."""
+        """
+        Converts all attributes into one dictionary.
+
+        Returns:
+            dict: The dictionary containing all metadata of a run.
+        """
         result = {
             "Scheme": self.scheme_model,
             "Steps": self.steps,
@@ -144,8 +223,17 @@ class MlstResult:
         }
         return result
 
-    def save(self, output_path: Path) -> None:
-        """Saves the result as a JSON file."""
+    def save(self, output_path: Path|str) -> None:
+        """
+        Saves the result as a JSON file.
+
+        Args:
+            output_path (Path,str): The path where the results are saved.
+        """
+
+        if isinstance(output_path,str):
+            output_path = Path(output_path)
+
         output_path.parent.mkdir(exist_ok=True, parents=True)
         json_object = json.dumps(self.to_dict(), indent=4)
 
