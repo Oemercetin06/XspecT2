@@ -6,7 +6,7 @@ from xspect.ncbi import NCBIHandler, AssemblyLevel, AssemblySource
 # pylint: disable=redefined-outer-name
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ncbi_handler():
     """Fixture for the NCBI class."""
     return NCBIHandler()

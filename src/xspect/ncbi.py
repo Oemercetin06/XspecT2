@@ -55,14 +55,14 @@ class NCBIHandler:
         elapsed_time = now - self.last_request_time
         if elapsed_time < self.min_interval:
             time.sleep(self.min_interval - elapsed_time)
-        self.last_request_time = now  # Update last request time
+        self.last_request_time = now
 
-    def _make_request(self, endpoint: str, timeout: int = 5) -> dict:
+    def _make_request(self, endpoint: str, timeout: int = 10) -> dict:
         """Make a request to the NCBI Datasets API.
 
         Args:
             endpoint (str): The endpoint to make the request to.
-            timeout (int, optional): The timeout for the request in seconds. Defaults to 5.
+            timeout (int, optional): The timeout for the request in seconds. Defaults to 10.
 
         Returns:
             dict: The response from the API.
