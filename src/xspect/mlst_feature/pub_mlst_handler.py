@@ -20,6 +20,7 @@ class PubMLSTHandler:
     base_url = "http://rest.pubmlst.org/db"
 
     def __init__(self):
+        """Initialise a PubMLSTHandler object."""
         # Default values: Oxford (1) and Pasteur (2) schemes of A.baumannii species
         self.scheme_list = [
             self.base_url + "/pubmlst_abaumannii_seqdef/schemes/1",
@@ -28,11 +29,21 @@ class PubMLSTHandler:
         self.scheme_paths = []
 
     def get_scheme_paths(self) -> dict:
-        """Returns the scheme paths in a dictionary"""
+        """
+        Get the scheme paths in a dictionary.
+
+        Returns:
+            dict: A dictionary containing the scheme paths.
+        """
         return scheme_list_to_dict(self.scheme_paths)
 
     def choose_schemes(self) -> None:
-        """Changes the scheme list attribute to feature other schemes from some species"""
+        """
+        Changes the scheme list attribute to feature other schemes from another species.
+
+        This function lets the user pick schemes to download all alleles that belong to it.
+        The scheme has to be available in the database.
+        """
         available_species = {}
         available_schemes = {}
         chosen_schemes = []
@@ -70,8 +81,17 @@ class PubMLSTHandler:
                 break
         self.scheme_list = chosen_schemes
 
-    def download_alleles(self, choice: False):
-        """Downloads every allele FASTA-file from all loci of the scheme list attribute"""
+    def download_alleles(self, choice: False) -> None:
+        """
+        Downloads every allele FASTA-file from all loci of the scheme list attribute.
+
+        This function sends API-GET requests to PubMLST.
+        It downloads all alleles based on the scheme_list attribute.
+        The default schemes are the Oxford and Pasteur schemes of A.baumannii
+
+        Args:
+            choice (bool): The decision to download different schemes, defaults to False.
+        """
         if choice:  # pick an own scheme if not Oxford or Pasteur
             self.choose_schemes()  # changes the scheme_list attribute
 
@@ -98,8 +118,14 @@ class PubMLSTHandler:
                 alleles = requests.get(f"{locus_url}/alleles_fasta").text
                 create_fasta_files(locus_path, alleles)
 
-    def assign_strain_type_by_db(self):
-        """Sends an API-POST-Request to the database for MLST without bloom filters"""
+    def assign_strain_type_by_db(self) -> None:
+        """
+        Sends an API-POST-Request to the database for MLST without bloom filters.
+
+        This function sends API-POST requests to PubMLST.
+        It is a different way to determine strain types based on a BLAST-Search.
+        This function is only used for testing and comparing results.
+        """
         scheme_url = (
             str(pick_scheme(scheme_list_to_dict(self.scheme_list))) + "/sequence"
         )

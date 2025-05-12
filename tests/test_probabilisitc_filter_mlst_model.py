@@ -114,8 +114,9 @@ def test_sequence_splitter():
     model = ProbabilisticFilterMlstSchemeModel(
         k=4, model_display_name="Test Filter", base_path=get_xspect_model_path()
     )
-    # len(seq) = 80; len(substring) = 200//10 = 20
-    # k = 4 means each substring (except first the one) starts 3 (k - 1) base pairs earlier
+    # len(seq) = 80; len(substring) = 20
+    # k = 4 means each substring (except the first one) starts 3 (k - 1) base pairs earlier
     seq = "AGCTATTTCGCTGATGTCGACTGATCAAAAAGCCGGCGCGCTTTCGTATAGGCTAGCTACGACATACGATCGATCACTGA"
-    res = model.sequence_splitter(seq, 200)
+    res = model.sequence_splitter(seq, 20)
+    # Does not assert 4 because of 3 additional base pairs when sliced (Last slice has 12 base pairs)
     assert len(res) == 5
