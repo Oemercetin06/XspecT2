@@ -174,7 +174,9 @@ class ProbabilisticFilterMlstSchemeModel:
                 model.indices.append(cobs_index.Search(str(entry), False))
             return model
 
-    def calculate_hits(self, cobs_path: Path, sequence: Seq, step: int = 1) -> list[dict]:
+    def calculate_hits(
+        self, cobs_path: Path, sequence: Seq, step: int = 1
+    ) -> list[dict]:
         """
         Calculates the hits for a sequence.
 
@@ -223,7 +225,7 @@ class ProbabilisticFilterMlstSchemeModel:
                 split_sequence = self.sequence_splitter(str(sequence), allele_len)
                 for split in split_sequence:
                     res = index.search(split, step=step)
-                    split_result = self.get_cobs_result(res,True)
+                    split_result = self.get_cobs_result(res, True)
                     if not split_result:
                         continue
                     cobs_results.append(split_result)
@@ -244,14 +246,18 @@ class ProbabilisticFilterMlstSchemeModel:
                     first_key = next(iter(sorted_counts))
                     highest_result = sorted_counts[first_key]
                     result_dict[scheme_path_list[counter]] = sorted_counts
-                    highest_results[scheme_path_list[counter]] = {first_key: highest_result}
+                    highest_results[scheme_path_list[counter]] = {
+                        first_key: highest_result
+                    }
                 counter += 1
         else:
             for index in self.indices:
                 res = index.search(
                     str(sequence), step=step
                 )  # COBS can't handle Seq-Objects
-                result_dict[scheme_path_list[counter]] = self.get_cobs_result(res,False)
+                result_dict[scheme_path_list[counter]] = self.get_cobs_result(
+                    res, False
+                )
                 first_key, highest_result = next(
                     iter(result_dict[scheme_path_list[counter]].items())
                 )
@@ -260,7 +266,9 @@ class ProbabilisticFilterMlstSchemeModel:
         # check if the strain type has sufficient amount of kmer hits
         is_valid = self.has_sufficient_score(highest_results, self.avg_locus_bp_size)
         if not is_valid:
-            highest_results["Attention:"] = "This strain type is not reliable due to low kmer hit rates!"
+            highest_results["Attention:"] = (
+                "This strain type is not reliable due to low kmer hit rates!"
+            )
         return [{"Strain type": highest_results}, {"All results": result_dict}]
 
     def predict(
@@ -319,11 +327,8 @@ class ProbabilisticFilterMlstSchemeModel:
         )
 
     def get_cobs_result(
-            self,
-            cobs_result: cobs_index.SearchResult,
-            kmer_threshold: bool
+        self, cobs_result: cobs_index.SearchResult, kmer_threshold: bool
     ) -> dict:
-
         """
         Get every entry in a COBS search result.
 
@@ -338,7 +343,6 @@ class ProbabilisticFilterMlstSchemeModel:
             individual_result.doc_name: individual_result.score
             for individual_result in cobs_result
             if not kmer_threshold or individual_result.score > 50
-
         }
 
     def sequence_splitter(self, input_sequence: str, allele_len: int) -> list[str]:
@@ -387,7 +391,9 @@ class ProbabilisticFilterMlstSchemeModel:
                 substring_list.append(remaining_substring)
         return substring_list
 
-    def has_sufficient_score(self, highest_results: dict, locus_size: list[int]) -> bool:
+    def has_sufficient_score(
+        self, highest_results: dict, locus_size: list[int]
+    ) -> bool:
         """
         Checks if at least one locus in highest_results has a score >= 0.5 * avg base pair size.
 

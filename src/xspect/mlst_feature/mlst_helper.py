@@ -9,6 +9,7 @@ from pathlib import Path
 from Bio import SeqIO
 from xspect.definitions import get_xspect_model_path
 
+
 def create_fasta_files(locus_path: Path, fasta_batch: str) -> None:
     """
     Create Fasta-Files for every allele of a locus.
@@ -223,7 +224,7 @@ class MlstResult:
         }
         return result
 
-    def save(self, output_path: Path|str) -> None:
+    def save(self, output_path: Path | str) -> None:
         """
         Saves the result as a JSON file.
 
@@ -231,7 +232,7 @@ class MlstResult:
             output_path (Path,str): The path where the results are saved.
         """
 
-        if isinstance(output_path,str):
+        if isinstance(output_path, str):
             output_path = Path(output_path)
 
         output_path.parent.mkdir(exist_ok=True, parents=True)
