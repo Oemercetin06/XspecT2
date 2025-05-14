@@ -2,8 +2,8 @@
 
 from enum import Enum
 from pathlib import Path
-import requests
 import time
+import requests
 
 # pylint: disable=line-too-long
 
@@ -57,7 +57,7 @@ class NCBIHandler:
             time.sleep(self.min_interval - elapsed_time)
         self.last_request_time = now
 
-    def _make_request(self, endpoint: str, timeout: int = 10) -> dict:
+    def _make_request(self, endpoint: str, timeout: int = 15) -> dict:
         """Make a request to the NCBI Datasets API.
 
         Args:
@@ -255,7 +255,7 @@ class NCBIHandler:
 
         self._enforce_rate_limit()
 
-        response = requests.get(self.base_url + endpoint, stream=True, timeout=5)
+        response = requests.get(self.base_url + endpoint, stream=True, timeout=15)
         if response.status_code != 200:
             response.raise_for_status()
 
