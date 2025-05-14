@@ -201,7 +201,7 @@ def classify_seqs():
     "--genus",
     "model_genus",
     help="Genus of the model to classify.",
-    type=click.Choice(get_models().get("Genus"), None),
+    type=click.Choice(get_models().get("Genus", [])),
     prompt=True,
 )
 @click.option(
@@ -236,7 +236,7 @@ def classify_genus(model_genus, input_path, output_path):
     "--genus",
     "model_genus",
     help="Genus of the model to classify.",
-    type=click.Choice(get_models().get("Species"), None),
+    type=click.Choice(get_models().get("Species", [])),
     prompt=True,
 )
 @click.option(
@@ -317,7 +317,7 @@ def filter_seqs():
     "--genus",
     "model_genus",
     help="Genus of the model to use for filtering.",
-    type=click.Choice(get_models().get("Species"), None),
+    type=click.Choice(get_models().get("Species", [])),
     prompt=True,
 )
 @click.option(
@@ -368,7 +368,7 @@ def filter_genus(model_genus, input_path, output_path, threshold):
     "--genus",
     "model_genus",
     help="Genus of the model to use for filtering.",
-    type=click.Choice(get_models().get("Species"), None),
+    type=click.Choice(get_models().get("Species", [])),
     prompt=True,
 )
 @click.option(
