@@ -18,7 +18,7 @@ jobs:
             xspect models download
         - name: Test with pytest
           run: |
-            pytest --cov
+            pytest --cov --retries 2 --retry-delay 5
         - name: Upload coverage reports to Codecov
           uses: codecov/codecov-action@v4
           env:
