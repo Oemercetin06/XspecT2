@@ -3,6 +3,7 @@
 from uuid import uuid4
 import json
 from shutil import copyfileobj
+import importlib.resources as pkg_resources
 from fastapi import APIRouter, FastAPI, HTTPException, UploadFile, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from xspect.definitions import get_xspect_runs_path, get_xspect_upload_path
@@ -13,7 +14,11 @@ from xspect import classify, filter_sequences
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
-app.mount("/xspect-web", StaticFiles(directory="src/xspect-web/dist"), name="static")
+app.mount(
+    "/xspect-web",
+    StaticFiles(directory=str(pkg_resources.files("xspect") / "xspect-web" / "dist")),
+    name="static",
+)
 router = APIRouter()
 
 

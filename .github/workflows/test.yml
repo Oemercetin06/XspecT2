@@ -2,9 +2,20 @@ name: test
 on: [push]
 jobs:
   pytest:
+    name: Run pytest
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v4
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: "23"
+        - name: Build dist
+          run: |
+            cd src/xspect/xspect-web
+            npm install
+            npx vite build
+            cd ../../..
         - name: Set up Python
           uses: actions/setup-python@v4
           with:
