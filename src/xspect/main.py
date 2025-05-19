@@ -4,7 +4,8 @@ from pathlib import Path
 from uuid import uuid4
 import click
 import uvicorn
-from xspect import fastapi
+from xspect import classify
+from xspect.web import app
 from xspect.download_models import download_test_models
 from xspect.file_io import filter_sequences
 from xspect.train import train_from_directory, train_from_ncbi
@@ -33,7 +34,7 @@ def cli():
 @cli.command()
 def web():
     """Open the XspecT web application."""
-    uvicorn.run(fastapi.app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 # # # # # # # # # # # # # # #
@@ -50,7 +51,7 @@ def models():
 def download():
     """Download models."""
     click.echo("Downloading models, this may take a while...")
-    download_test_models("http://assets.adrianromberg.com/xspect-models.zip")
+    download_test_models("http://assets.adrianromberg.com/ake/xspect-models.zip")
 
 
 @models.command(
@@ -221,9 +222,7 @@ def classify_seqs():
 def classify_genus(model_genus, input_path, output_path):
     """Classify samples using a genus model."""
     click.echo("Classifying...")
-    genus_model = get_genus_model(model_genus)
-    result = genus_model.predict(Path(input_path))
-    result.save(output_path)
+    classify.classify_genus(model_genus, Path(input_path), Path(output_path))
     click.echo(f"Result saved as {output_path}.")
 
 
@@ -262,9 +261,9 @@ def classify_genus(model_genus, input_path, output_path):
 def classify_species(model_genus, input_path, output_path, sparse_sampling_step):
     """Classify samples using a species model."""
     click.echo("Classifying...")
-    species_model = get_species_model(model_genus)
-    result = species_model.predict(Path(input_path), step=sparse_sampling_step)
-    result.save(output_path)
+    classify.classify_species(
+        model_genus, Path(input_path), Path(output_path), sparse_sampling_step
+    )
     click.echo(f"Result saved as {output_path}.")
 
 
@@ -289,11 +288,7 @@ def classify_species(model_genus, input_path, output_path, sparse_sampling_step)
 def classify_mlst(input_path, output_path):
     """MLST classify a sample."""
     click.echo("Classifying...")
-    input_path = Path(input_path)
-    scheme_path = pick_scheme_from_models_dir()
-    model = ProbabilisticFilterMlstSchemeModel.load(scheme_path)
-    result = model.predict(scheme_path, input_path)
-    result.save(output_path)
+    classify.classify_mlst(Path(input_path), Path(output_path))
     click.echo(f"Result saved as {output_path}.")
 
 
