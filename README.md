@@ -20,7 +20,7 @@ To install XspecT, please download the lastest 64 bit Python version and install
 ```
 pip install xspect
 ```
-Please note that Windows and Alpine Linux is currently not supported.
+Please note that Windows and Alpine Linux are currently not supported.
 
 ## Usage
 ### Get the models
