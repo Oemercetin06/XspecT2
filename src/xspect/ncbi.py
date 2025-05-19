@@ -229,7 +229,9 @@ class NCBIHandler:
                 == "OK"
             ]
         except (IndexError, KeyError, TypeError):
-            print(f"Could not get accessions for taxon with ID: {taxon_id}. Skipping.")
+            print(
+                f"Could not get {assembly_level.value} accessions for taxon with ID: {taxon_id}. Skipping."
+            )
             return []
         return accessions[:count]  # Limit to count
 
