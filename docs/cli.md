@@ -8,50 +8,111 @@ After installing XspecT, a list of available commands can be viewed by running:
 xspect --help
 ```
 
-## Model downloads
+In general, XspecT commands will prompt you for parameters if they are not provided. However, you can also provide them directly in the command line, for example when using scripts or tools such as Slurm. Simply run the command with the `--help` option to see all available parameters.
 
-A basic set of pre-trained models (Acinetobacter and Salonella) can be downloaded using the following command:
+## Model Management
+
+At its core, XspecT uses models to classify and filter samples. These models are based on kmer indices trained on publicly availabel genomes as well as, possibly, a support vector machine (SVM) classifier.
+
+To manage models, the `xspect models` command can be used. This command allows you to download, train, and view available models.
+
+### Viewing Available Models
+
+To view a list of available models, run:
 
 ```bash
-xspect download-models
+xspect models list
+```
+This will show a list of all available models, separated by their type (species, genus, MLST).
+
+### Downloading Models
+
+To download a basic set of pre-trained models (Acinetobacter and Salonella), run:
+
+```bash
+xspect models download
 ```
 
-For the moment, it is not possible to specify exactly which models should be downloaded.
+### Model Training
+
+Models can be trained based on data from NCBI, which is automatically downloaded and processed by XspecT.
+
+To train a model with NCBI data, run the following command:
+
+```bash
+xspect models train ncbi
+```
+
+If you would like to train models with manually curated data from a directory, you can use:
+
+```bash
+xspect models train directory
+```
+
+Your directory should have the following structure:
+```
+your-directory/
+├── cobs
+│   ├── species1
+│   │   ├── genome1.fna
+│   │   ├── genome2.fna
+│   │   └── ...
+│   ├── species2
+│   │   ├── genome1.fna
+│   │   ├── genome2.fna
+│   │   └── ...
+│   └── ...
+├── svm
+│   ├── species1
+│   │   ├── genome1.fna
+│   │   ├── genome2.fna
+│   │   └── ...
+│   ├── species2
+│   │   ├── genome1.fna
+│   │   ├── genome2.fna
+│   │   └── ...
+│   └── ...
+```
+
+To train models for MLST classifications, run:
+
+```bash
+xspect models train mlst
+```
 
 ## Classification
 
-To classify samples, the command
+To classify samples, the command `xspect classify` can be used. This command will classify the sample based on the models available in your XspecT installation.
+
+### Genus Classification
+
+To classify a sample based on its genus, run the following command:
 
 ```bash
-xspect classify-species GENUS PATH
+xspect classify genus
 ```
 
-can be used, when `GENUS` refers to the NCBI genus name of your sample and `PATH` refers to the path to your sample *directory*. This command will classify the species of your sample within the given genus.
+XspecT will prompt you for the genus and path to your sample directory.
 
-The following options are available:
+### Species Classification
+
+To classify a sample based on its species, run the following command:
 
 ```bash
--m, --meta / --no-meta  Metagenome classification.
--s, --step INTEGER      Sparse sampling step size (e. g. only every 500th
-                        kmer for step=500).
---help                  Show this message and exit.
+xspect classify species
 ```
 
-To speed up the analysis, only every nth kmer can be considered ("sparse sampling"). For example, to only consider every 10th kmer, run:
+XspecT will prompt you for the genus and path to your sample directory.
 
+### Sparse Sampling
+XspecT uses a kmer-based approach to classify samples. This means that the entire sample is analyzed, which can be time-consuming for large samples. To speed up the analysis, you can use the `--sparse-sampling-step` option to only consider every nth kmer:
+
+**Example**:
 ```bash
-xspect classify-species -s 10 Acinetobacter path
+xspect classify species --sparse-sampling-step 10 Acinetobacter path
 ```
 
-### Metagenome Mode
-
-To analyze a sample in metagenome mode, the `-m`/`--meta` (`--no-meta`) option can be used:
-
-```bash
-xspect classify-species -m Acinetobacter path
-```
-
-Compared to normal XspecT species classification, this mode first identifies reads belonging to the given genus and continues classification only with the resulting reads, It is thus more suitable for metagenomic samples as the resulting runtime is decreased.
+This will only consider every 10th kmer in the sample.
 
 ### MLST Classification
 
@@ -61,20 +122,25 @@ Samples can also be classified based on Multi-locus sequence type schemas. To ML
 xspect classify-mlst -p path
 ```
 
-## Model Training
+## Filtering
+XspecT can also be used to filter samples based on their classification results. This is useful when analyzing metagenome samples, for example when looking at genomic bycatch.
 
-Models can be trained based on data from NCBI, which is automatically downloaded and processed by XspecT.
+To filter samples, the command `xspect filter` can be used. This command will filter the samples based on the specified criteria.
 
-To train a model, run the following command:
+### Filtering by Genus
 
-```bash
-xspect train-species your-ncbi-genus
-```
-
-`you-ncbi-genus` can be a genus name from NCBI or an NCBI taxonomy ID.
-
-To train models for MLST classifications, run:
+To filter samples by genus, run the following command:
 
 ```bash
-xspect train-mlst
+xspect filter genus
 ```
+XspecT will prompt you for the genus and path to your sample directory, as well as for a threshold to use for filtering.
+
+### Filtering by Species
+To filter samples by species, run the following command:
+
+```bash
+xspect filter species
+```
+
+You will be prompted for the genus and path to your sample directory, as well for the species to filter by and for a threshold to use for filtering. Next to normal threshold-based filtering, you can also enter a threshold of `-1` to only include contigs if the selected species is the maximum scoring species.

@@ -48,5 +48,5 @@ For further instructions on how to use the command line interface, please refer 
 ```
 xspect --help
 ```
-[documentation]: https://bionf.github.io/XspecT2/cli.html
+[documentation]: https://bionf.github.io/XspecT2/cli/index.html
 <!-- end quickstart -->
