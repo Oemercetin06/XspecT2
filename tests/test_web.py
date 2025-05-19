@@ -4,9 +4,12 @@ Tests for the FastAPI module.
 
 # pylint: disable=redefined-outer-name
 
+import json
+import time
 import pytest
 from fastapi.testclient import TestClient
-from xspect.fastapi import app
+from xspect.definitions import get_xspect_runs_path
+from xspect.web import app
 from xspect.model_management import get_model_metadata
 from pathlib import Path
 
@@ -23,7 +26,7 @@ def client_with_uploaded_file(client, request):
     assembly_file_path = Path(request.param)
     with open(assembly_file_path, "rb") as f:
         response = client.post(
-            "/upload-file",
+            "/api/upload-file",
             files={"file": (assembly_file_path.name, f)},
         )
     return client
@@ -31,7 +34,7 @@ def client_with_uploaded_file(client, request):
 
 def test_list_models(client):
     """Test the /list-models endpoint."""
-    response = client.get("/list-models")
+    response = client.get("/api/list-models")
     assert response.status_code == 200
     assert "Genus" in response.json()
     assert "Species" in response.json()
@@ -40,7 +43,7 @@ def test_list_models(client):
 def test_get_model_metadata(client):
     """Test the /model-metadata endpoint."""
     response = client.get(
-        "/model-metadata", params={"model_slug": "acinetobacter-species"}
+        "/api/model-metadata", params={"model_slug": "acinetobacter-species"}
     )
     assert response.status_code == 200
     response_json = response.json()
@@ -51,7 +54,7 @@ def test_get_model_metadata(client):
 def test_post_model_metadata(client):
     """Test the /model-metadata endpoint."""
     response = client.post(
-        "/model-metadata",
+        "/api/model-metadata",
         params={
             "model_slug": "acinetobacter-species",
             "author": "Test Author",
@@ -69,7 +72,7 @@ def test_post_model_metadata(client):
 def test_post_model_display_name(client):
     """Test the /model-display-name endpoint."""
     response = client.post(
-        "/model-display-name",
+        "/api/model-display-name",
         params={
             "model_slug": "acinetobacter-species",
             "filter_id": "470",
@@ -95,15 +98,25 @@ def test_post_model_display_name(client):
 )
 def test_classify(client_with_uploaded_file, assembly_file_path):
     """Test the /classify endpoint."""
-    response = client_with_uploaded_file.get(
-        "/classify",
+    response = client_with_uploaded_file.post(
+        "/api/classify",
         params={
-            "genus": "acinetobacter",
+            "classification_type": "Species",
+            "model": "Acinetobacter",
             "file": Path(assembly_file_path).name,
             "step": 1,
-            "included_ids": ["470"],
         },
     )
     assert response.status_code == 200
-    response_json = response.json()
-    assert response_json["prediction"] == "470"
+    uuid = response.json()["uuid"]
+    result_file_path = Path(get_xspect_runs_path()) / f"result_{uuid}.json"
+
+    # wait for background task to finish. Check every 5 seconds for 1 minute
+    for _ in range(12):
+        if result_file_path.exists():
+            break
+        time.sleep(5)
+
+    assert result_file_path.exists()
+    result = json.loads(result_file_path.read_text())
+    assert result["prediction"] == "470"
