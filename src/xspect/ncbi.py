@@ -2,8 +2,8 @@
 
 from enum import Enum
 from pathlib import Path
-import requests
 import time
+import requests
 
 # pylint: disable=line-too-long
 
@@ -55,14 +55,14 @@ class NCBIHandler:
         elapsed_time = now - self.last_request_time
         if elapsed_time < self.min_interval:
             time.sleep(self.min_interval - elapsed_time)
-        self.last_request_time = now  # Update last request time
+        self.last_request_time = now
 
-    def _make_request(self, endpoint: str, timeout: int = 5) -> dict:
+    def _make_request(self, endpoint: str, timeout: int = 15) -> dict:
         """Make a request to the NCBI Datasets API.
 
         Args:
             endpoint (str): The endpoint to make the request to.
-            timeout (int, optional): The timeout for the request in seconds. Defaults to 5.
+            timeout (int, optional): The timeout for the request in seconds. Defaults to 10.
 
         Returns:
             dict: The response from the API.
@@ -229,7 +229,9 @@ class NCBIHandler:
                 == "OK"
             ]
         except (IndexError, KeyError, TypeError):
-            print(f"Could not get accessions for taxon with ID: {taxon_id}. Skipping.")
+            print(
+                f"Could not get {assembly_level.value} accessions for taxon with ID: {taxon_id}. Skipping."
+            )
             return []
         return accessions[:count]  # Limit to count
 
@@ -255,7 +257,7 @@ class NCBIHandler:
 
         self._enforce_rate_limit()
 
-        response = requests.get(self.base_url + endpoint, stream=True, timeout=5)
+        response = requests.get(self.base_url + endpoint, stream=True, timeout=15)
         if response.status_code != 200:
             response.raise_for_status()
 

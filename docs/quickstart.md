@@ -1,6 +1,6 @@
 # Quickstart
-
-:::{include} ../README.md
-:start-after: <!-- start quickstart -->
-:end-before: <!-- end quickstart -->
-:::
+{%
+    include-markdown "../README.md"
+    start="<!-- start quickstart -->"
+    end="<!-- end quickstart -->"
+%}

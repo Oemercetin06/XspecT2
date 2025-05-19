@@ -56,6 +56,7 @@ class ProbabilisticFilterModel:
     def to_dict(self) -> dict:
         """Returns a dictionary representation of the model"""
         return {
+            "model_slug": self.slug(),
             "k": self.k,
             "model_display_name": self.model_display_name,
             "author": self.author,

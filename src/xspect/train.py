@@ -243,11 +243,19 @@ def train_from_ncbi(
         cobs_dir.mkdir(parents=True, exist_ok=True)
         svm_dir.mkdir(parents=True, exist_ok=True)
 
-        ncbi_handler.download_assemblies(
-            accessions=sum(accessions.values(), []), output_dir=tmp_dir
-        )
-        extract_zip(tmp_dir, tmp_dir)
-        accession_paths = get_ncbi_dataset_accession_paths(tmp_dir / "ncbi_dataset")
+        # download assemblies
+        all_accessions = sum(accessions.values(), [])
+        batch_size = 100
+        accession_paths = {}
+        for i in range(0, len(all_accessions), batch_size):
+            batch = all_accessions[i : i + batch_size]
+            ncbi_handler.download_assemblies(accessions=batch, output_dir=tmp_dir)
+            extract_zip(
+                tmp_dir / "ncbi_dataset.zip", tmp_dir / f"batch-{i}-{i+batch_size}"
+            )
+            accession_paths.update(
+                get_ncbi_dataset_accession_paths(tmp_dir / f"batch-{i}-{i+batch_size}")
+            )
 
         # select accessions
         cobs_accessions = {}

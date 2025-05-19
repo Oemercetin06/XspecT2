@@ -20,17 +20,11 @@ def delete_zip_files(dir_path):
 
 
 def extract_zip(zip_path: Path, unzipped_path: Path):
-    """Extracts all files from a directory with zip files."""
-    # Make new directory.
+    """Extracts all files from a zip file."""
     unzipped_path.mkdir(parents=True, exist_ok=True)
 
-    file_names = os.listdir(zip_path)
-    for file in file_names:
-        file_path = zip_path / file
-        if zipfile.is_zipfile(file_path):
-            with zipfile.ZipFile(file_path) as item:
-                directory = unzipped_path / file.replace(".zip", "")
-                item.extractall(directory)
+    with zipfile.ZipFile(zip_path) as item:
+        item.extractall(unzipped_path)
 
 
 def concatenate_meta(path: Path, genus: str):

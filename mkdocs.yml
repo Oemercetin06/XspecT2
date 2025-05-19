@@ -1,0 +1,19 @@
+site_name: XspecT Documentation
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - content.code.copy
+plugins:
+  - include-markdown
+  - search
+repo_url: https://github.com/BIONF/XspecT2
+markdown_extensions:
+  - attr_list
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - CLI: cli.md
+  - "Web App": web.md
+  - "Understanding XspecT": understanding.md
+  - Contributing: contributing.md

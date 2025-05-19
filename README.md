@@ -20,7 +20,7 @@ To install XspecT, please download the lastest 64 bit Python version and install
 ```
 pip install xspect
 ```
-Please note that Windows and Alpine Linux is currently not supported.
+Please note that Windows and Alpine Linux are currently not supported.
 
 ## Usage
 ### Get the models
@@ -48,5 +48,5 @@ For further instructions on how to use the command line interface, please refer 
 ```
 xspect --help
 ```
-[documentation]: https://bionf.github.io/XspecT2/cli.html
+[documentation]: https://bionf.github.io/XspecT2/cli/index.html
 <!-- end quickstart -->

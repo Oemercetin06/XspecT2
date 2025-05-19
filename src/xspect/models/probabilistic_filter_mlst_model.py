@@ -24,6 +24,7 @@ class ProbabilisticFilterMlstSchemeModel:
         base_path: Path,
         fpr: float = 0.001,
     ) -> None:
+        """Initialise a ProbabilisticFilterMlstSchemeModel object."""
         if k < 1:
             raise ValueError("Invalid k value, must be greater than 0")
         if not isinstance(base_path, Path):
@@ -41,7 +42,12 @@ class ProbabilisticFilterMlstSchemeModel:
         self.indices = []
 
     def to_dict(self) -> dict:
-        """Returns a dictionary representation of the model"""
+        """
+        Returns a dictionary representation of the model.
+
+        Returns:
+            dict: The dictionary containing all metadata of an object.
+        """
         return {
             "k": self.k,
             "model_display_name": self.model_display_name,
@@ -54,14 +60,37 @@ class ProbabilisticFilterMlstSchemeModel:
         }
 
     def get_cobs_index_path(self, scheme: str, locus: str) -> Path:
-        """Returns the path to the cobs index"""
+        """
+        Get the path to the cobs indices.
+
+        This function creates a directory based on the scheme name, if it does not exist.
+        A COBS-Index file is created for every locus in a scheme.
+
+        Args:
+            scheme (str): The name of the scheme.
+            locus (str): The name of the locus.
+
+        Returns:
+            Path: The path to the COBS indices.
+        """
         # To differentiate from genus and species models
         cobs_path = self.base_path / f"{scheme}"
         cobs_path.mkdir(exist_ok=True, parents=True)
         return cobs_path / f"{locus}.cobs_compact"
 
     def fit(self, scheme_path: Path) -> None:
-        """Trains a COBS structure for every locus with all its alleles"""
+        """
+        Trains a COBS structure for every locus with all its alleles.
+
+        This function creates COBS-indices.
+        Many attributes of an object are set in this function.
+
+        Args:
+            scheme_path (Path): The path to the scheme directory with all loci.
+
+        Raises:
+            ValueError: If the scheme alleles have not been downloaded prior.
+        """
         if not scheme_path.exists():
             raise ValueError(
                 "Scheme not found. Please make sure to download the schemes prior!"
@@ -112,7 +141,15 @@ class ProbabilisticFilterMlstSchemeModel:
 
     @staticmethod
     def load(scheme_path: Path) -> "ProbabilisticFilterMlstSchemeModel":
-        """Loads the model from a JSON-file"""
+        """
+        Loads the model from a JSON-file.
+
+        Args:
+            scheme_path (Path): The path of the scheme model.
+
+        Returns:
+            ProbabilisticFilterMlstSchemeModel: A trained model from the disk in JSON format.
+        """
         scheme_name = str(scheme_path).split("/")[-1]
         json_path = scheme_path / f"{scheme_name}.json"
         with open(json_path, "r", encoding="utf-8") as file:
@@ -137,8 +174,30 @@ class ProbabilisticFilterMlstSchemeModel:
                 model.indices.append(cobs_index.Search(str(entry), False))
             return model
 
-    def calculate_hits(self, path: Path, sequence: Seq, step: int = 1) -> list[dict]:
-        """Calculates the hits for a sequence"""
+    def calculate_hits(
+        self, cobs_path: Path, sequence: Seq, step: int = 1
+    ) -> list[dict]:
+        """
+        Calculates the hits for a sequence.
+
+        This function has two ways of identifying strain types.
+        Sequences with a length of up to 10000 base pairs are handled without preprocessing.
+        Sequences with a length >= 10000 base pairs are divided into substrings.
+        The results of each substring are added up to find the strain type.
+
+        Args:
+            cobs_path (Path): The path of the COBS-structure directory.
+            sequence (Seq): The input sequence for classification.
+            step (int, optional): The amount of kmers that are passed; defaults to one.
+
+        Returns:
+            list[dict]: The results of the prediction.
+
+        Raises:
+            ValueError: If the model has not been trained.
+            ValueError: If the sequence is shorter than k.
+            ValueError: If the sequence is not a Seq-object.
+        """
         if not isinstance(sequence, Seq):
             raise ValueError("Invalid sequence, must be a Bio.Seq object")
 
@@ -149,7 +208,7 @@ class ProbabilisticFilterMlstSchemeModel:
             raise ValueError("The Model has not been trained yet")
 
         scheme_path_list = []
-        for entry in sorted(path.iterdir()):
+        for entry in sorted(cobs_path.iterdir()):
             if str(entry).endswith(".json"):
                 continue
             file_name = str(entry).split("/")[-1]  # file_name = locus
@@ -166,11 +225,12 @@ class ProbabilisticFilterMlstSchemeModel:
                 split_sequence = self.sequence_splitter(str(sequence), allele_len)
                 for split in split_sequence:
                     res = index.search(split, step=step)
-                    split_result = self.get_cobs_result(res)
+                    split_result = self.get_cobs_result(res, True)
                     if not split_result:
                         continue
                     cobs_results.append(split_result)
 
+                # add all split results of an Allele id into one
                 all_counts = defaultdict(int)
                 for result in cobs_results:
                     for name, value in result.items():
@@ -179,21 +239,36 @@ class ProbabilisticFilterMlstSchemeModel:
                 sorted_counts = dict(
                     sorted(all_counts.items(), key=lambda item: -item[1])
                 )
-                first_key = next(iter(sorted_counts))
-                highest_result = sorted_counts[first_key]
-                result_dict[scheme_path_list[counter]] = sorted_counts
-                highest_results[scheme_path_list[counter]] = {first_key: highest_result}
+                if not sorted_counts:
+                    result_dict = "A Strain type could not be detected because of no kmer matches!"
+                    highest_results[scheme_path_list[counter]] = {"N/A": 0}
+                else:
+                    first_key = next(iter(sorted_counts))
+                    highest_result = sorted_counts[first_key]
+                    result_dict[scheme_path_list[counter]] = sorted_counts
+                    highest_results[scheme_path_list[counter]] = {
+                        first_key: highest_result
+                    }
                 counter += 1
         else:
             for index in self.indices:
                 res = index.search(
                     str(sequence), step=step
                 )  # COBS can't handle Seq-Objects
-                result_dict[scheme_path_list[counter]] = self.get_cobs_result(res)
-                highest_results[scheme_path_list[counter]] = (
-                    self.get_highest_cobs_result(res)
+                result_dict[scheme_path_list[counter]] = self.get_cobs_result(
+                    res, False
                 )
+                first_key, highest_result = next(
+                    iter(result_dict[scheme_path_list[counter]].items())
+                )
+                highest_results[scheme_path_list[counter]] = {first_key: highest_result}
                 counter += 1
+        # check if the strain type has sufficient amount of kmer hits
+        is_valid = self.has_sufficient_score(highest_results, self.avg_locus_bp_size)
+        if not is_valid:
+            highest_results["Attention:"] = (
+                "This strain type is not reliable due to low kmer hit rates!"
+            )
         return [{"Strain type": highest_results}, {"All results": result_dict}]
 
     def predict(
@@ -208,7 +283,20 @@ class ProbabilisticFilterMlstSchemeModel:
         ),
         step: int = 1,
     ) -> MlstResult:
-        """Returns scores for the sequence(s) based on the filters in the model"""
+        """
+        Get scores for the sequence(s) based on the filters in the model.
+
+        Args:
+            cobs_path (Path): The path of the COBS-structure directory.
+            sequence_input (Seq): The input sequence for classification
+            step (int, optional): The amount of kmers that are passed; defaults to one
+
+        Returns:
+            MlstResult: The results of the prediction.
+
+        Raises:
+            ValueError: If the sequence input is invalid.
+        """
         if isinstance(sequence_input, SeqRecord):
             if sequence_input.id == "<unknown id>":
                 sequence_input.id = "test"
@@ -238,31 +326,48 @@ class ProbabilisticFilterMlstSchemeModel:
             " SeqIO FastaIterator, or a SeqIO FastqPhredIterator"
         )
 
-    def get_highest_cobs_result(self, cobs_result: cobs_index.SearchResult) -> dict:
-        """Returns the first entry in a COBS search result."""
-        # counter = 1
-        # dictio = {}
-        for individual_result in cobs_result:
-            # COBS already sorts the result in descending order
-            # The first doc_name has the highest result which is needed to determine the allele
-            return {individual_result.doc_name: individual_result.score}
+    def get_cobs_result(
+        self, cobs_result: cobs_index.SearchResult, kmer_threshold: bool
+    ) -> dict:
+        """
+        Get every entry in a COBS search result.
 
-    def get_cobs_result(self, cobs_result: cobs_index.SearchResult) -> dict:
-        """Returns all entries in a COBS search result."""
+        Args:
+            cobs_result (SearchResult): The result of the prediction.
+            kmer_threshold (bool): Applying a kmer threshold to mitigate false positives
+
+        Returns:
+            dict: A dictionary storing the allele id of locus as key and the score as value.
+        """
         return {
             individual_result.doc_name: individual_result.score
             for individual_result in cobs_result
-            if individual_result.score > 50
+            if not kmer_threshold or individual_result.score > 50
         }
 
     def sequence_splitter(self, input_sequence: str, allele_len: int) -> list[str]:
-        """Returns an equally divided sequence in form of a list."""
+        """
+        Get an equally divided sequence in form of a list.
+
+        This function is splitting very long sequences into substrings.
+        The split is based on sequence and allele length.
+        Measures have been taken to not lose kmers while splitting.
+
+        Args:
+            input_sequence (str): The sequence of interest.
+            allele_len (int): The average length of an allele.
+
+        Returns:
+            list[str]: A list containing all substrings of a sequence greater than 10000 bp.
+
+        Raises:
+            ValueError: If the sequence input is invalid.
+        """
+
         # An input sequence will have 10000 or more base pairs.
         sequence_len = len(input_sequence)
 
-        if sequence_len < 100000:
-            substring_length = allele_len // 10
-        elif 100000 <= sequence_len < 1000000:
+        if sequence_len < 1000000:
             substring_length = allele_len
         elif 1000000 <= sequence_len < 10000000:
             substring_length = allele_len * 10
@@ -285,3 +390,26 @@ class ProbabilisticFilterMlstSchemeModel:
             else:
                 substring_list.append(remaining_substring)
         return substring_list
+
+    def has_sufficient_score(
+        self, highest_results: dict, locus_size: list[int]
+    ) -> bool:
+        """
+        Checks if at least one locus in highest_results has a score >= 0.5 * avg base pair size.
+
+        Args:
+            highest_results (dict): Dict where each key is a locus and each value is the kmer score.
+            locus_size (list[int]): List of average base pair sizes per locus (in directory order).
+
+        Returns:
+            bool: True if any locus score >= 0.5 * its avg base pair size, False otherwise.
+        """
+        for i, (locus, allele_score_dict) in enumerate(highest_results.items()):
+            if not allele_score_dict:
+                continue  # skip empty values
+
+            # Take the score (the only value) from the nested dict
+            score = next(iter(allele_score_dict.values()))
+            if score >= 0.5 * locus_size[i]:
+                return True
+        return False

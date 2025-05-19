@@ -1,20 +1,7 @@
-# XspecT
-:::{toctree}
-:hidden:
-
-quickstart
-installation
-input_data
-cli
-web
-:::
-
-:::{image} img/logo.png
-:::
-
-:::{include} ../README.md
-:start-after: <!-- start intro -->
-:end-before: <!-- end intro -->
-:::
-
-
+# Home
+{%
+    include-markdown "../README.md"
+    start="<!-- start intro -->"
+    end="<!-- end intro -->"
+%}
+[Get started](quickstart.md){ .md-button .md-button--primary}
