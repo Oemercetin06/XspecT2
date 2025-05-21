@@ -25,12 +25,12 @@ def train_from_directory(
     display_name: str,
     dir_path: Path,
     meta: bool = False,
-    training_accessions: dict[str, list[str]] = None,
-    svm_accessions: list[str] = None,
+    training_accessions: dict[str, list[str]] | None = None,
+    svm_accessions: dict[str, list[str]] | None = None,
     svm_step: int = 1,
-    translation_dict: dict[str, str] = None,
-    author: str = None,
-    author_email: str = None,
+    translation_dict: dict[str, str] | None = None,
+    author: str | None = None,
+    author_email: str | None = None,
 ):
     """
     Train a model from a directory containing training data.
@@ -179,6 +179,8 @@ def train_from_directory(
 def train_from_ncbi(
     genus: str,
     svm_step: int = 1,
+    author: str | None = None,
+    author_email: str | None = None,
     author: str = None,
     author_email: str = None,
 ):

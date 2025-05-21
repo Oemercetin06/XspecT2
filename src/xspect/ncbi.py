@@ -34,7 +34,7 @@ class NCBIHandler:
 
     def __init__(
         self,
-        api_key: str = None,
+        api_key: str | None = None,
     ):
         """Initialise the NCBI handler."""
         self.api_key = api_key

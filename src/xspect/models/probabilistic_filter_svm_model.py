@@ -21,16 +21,16 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         self,
         k: int,
         model_display_name: str,
-        author: str,
-        author_email: str,
+        author: str | None,
+        author_email: str | None,
         model_type: str,
         base_path: Path,
         kernel: str,
         c: float,
         fpr: float = 0.01,
         num_hashes: int = 7,
-        training_accessions: dict[str, list[str]] = None,
-        svm_accessions: dict[str, list[str]] = None,
+        training_accessions: dict[str, list[str]] | None = None,
+        svm_accessions: dict[str, list[str]] | None = None,
     ) -> None:
         super().__init__(
             k=k,
@@ -64,10 +64,10 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         self,
         dir_path: Path,
         svm_path: Path,
-        display_names: dict = None,
+        display_names: dict[str, str] | None = None,
         svm_step: int = 1,
-        training_accessions: list[str] = None,
-        svm_accessions: list[str] = None,
+        training_accessions: dict[str, list[str]] | None = None,
+        svm_accessions: dict[str, list[str]] | None = None,
     ) -> None:
         """Fit the SVM to the sequences and labels"""
 

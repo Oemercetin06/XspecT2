@@ -20,12 +20,12 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
         self,
         k: int,
         model_display_name: str,
-        author: str,
-        author_email: str,
+        author: str | None,
+        author_email: str | None,
         model_type: str,
         base_path: Path,
         fpr: float = 0.01,
-        training_accessions: list[str] = None,
+        training_accessions: list[str] | None = None,
     ) -> None:
         super().__init__(
             k=k,
@@ -41,7 +41,10 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
         self.bf = None
 
     def fit(
-        self, file_path: Path, display_name: str, training_accessions: list[str] = None
+        self,
+        file_path: Path,
+        display_name: str,
+        training_accessions: list[str] | None = None,
     ) -> None:
         """Fit the cobs classic index to the sequences and labels"""
         self.training_accessions = training_accessions
