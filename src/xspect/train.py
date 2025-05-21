@@ -113,10 +113,11 @@ def train_from_directory(
         species_dir = tmp_dir / "species"
         species_dir.mkdir(parents=True, exist_ok=True)
 
-        # concatenate files in cobs_training_data for each species
+        logger.info("Concatenating genomes for species training...")
         concatenate_species_fasta_files(cobs_folders, species_dir)
 
         if svm_path.exists():
+            logger.info("Training species SVM model...")
             species_model = ProbabilisticFilterSVMModel(
                 k=21,
                 model_display_name=display_name,
@@ -136,6 +137,7 @@ def train_from_directory(
                 svm_accessions=svm_accessions,
             )
         else:
+            logger.info("Training species model...")
             species_model = ProbabilisticFilterModel(
                 k=21,
                 model_display_name=display_name,
@@ -153,9 +155,11 @@ def train_from_directory(
         species_model.save()
 
         if meta:
+            logger.info("Concatenating genomes for metagenome training...")
             meta_fasta = tmp_dir / f"{display_name}.fasta"
             concatenate_metagenome(species_dir, meta_fasta)
 
+            logger.info("Training metagenome model...")
             genus_model = ProbabilisticSingleFilterModel(
                 k=21,
                 model_display_name=display_name,
@@ -207,6 +211,7 @@ def train_from_ncbi(
     if not isinstance(genus, str):
         raise TypeError("genus must be a string")
 
+    logger.info("Getting NCBI metadata...")
     ncbi_handler = NCBIHandler(api_key=ncbi_api_key)
     genus_tax_id = ncbi_handler.get_genus_taxon_id(genus)
     species_ids = ncbi_handler.get_species(genus_tax_id)
@@ -245,7 +250,7 @@ def train_from_ncbi(
         cobs_dir.mkdir(parents=True, exist_ok=True)
         svm_dir.mkdir(parents=True, exist_ok=True)
 
-        # download assemblies
+        logger.info("Downloading genomes from NCBI...")
         all_accessions = sum(accessions.values(), [])
         batch_size = 100
         accession_paths = {}

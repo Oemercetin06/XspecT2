@@ -3,6 +3,7 @@
 from enum import Enum
 from pathlib import Path
 import time
+from loguru import logger
 import requests
 
 # pylint: disable=line-too-long
@@ -229,7 +230,7 @@ class NCBIHandler:
                 == "OK"
             ]
         except (IndexError, KeyError, TypeError):
-            print(
+            logger.debug(
                 f"Could not get {assembly_level.value} accessions for taxon with ID: {taxon_id}. Skipping."
             )
             return []
