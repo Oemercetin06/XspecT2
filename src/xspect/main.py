@@ -12,7 +12,7 @@ from xspect.train import train_from_directory, train_from_ncbi
 from xspect.definitions import (
     get_xspect_model_path,
 )
-from xspect.mlst_feature.mlst_helper import pick_scheme, pick_scheme_from_models_dir
+from xspect.mlst_feature.mlst_helper import pick_scheme
 from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
 from xspect.models.probabilistic_filter_mlst_model import (
     ProbabilisticFilterMlstSchemeModel,
@@ -330,8 +330,9 @@ def filter_seqs():
     prompt=True,
 )
 @click.option(
+    "-t",
     "--threshold",
-    type=float,
+    type=click.FloatRange(0, 1),
     help="Threshold for filtering (default: 0.7).",
     default=0.7,
     prompt=True,
@@ -387,6 +388,7 @@ def filter_genus(model_genus, input_path, output_path, threshold):
     prompt=True,
 )
 @click.option(
+    "-t",
     "--threshold",
     type=float,
     help="Threshold for filtering (default: 0.7). Use -1 to filter for the highest scoring species.",
@@ -395,6 +397,11 @@ def filter_genus(model_genus, input_path, output_path, threshold):
 )
 def filter_species(model_genus, model_species, input_path, output_path, threshold):
     """Filter a sample using the species model."""
+
+    if threshold != -1 and (threshold < 0 or threshold > 1):
+        raise click.BadParameter(
+            "Threshold must be between 0 and 1, or -1 for filtering by the highest scoring species."
+        )
 
     available_species = get_model_metadata(f"{model_genus}-species")["display_names"]
     available_species = {
