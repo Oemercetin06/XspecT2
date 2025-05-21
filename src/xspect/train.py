@@ -181,8 +181,7 @@ def train_from_ncbi(
     svm_step: int = 1,
     author: str | None = None,
     author_email: str | None = None,
-    author: str = None,
-    author_email: str = None,
+    ncbi_api_key: str | None = None,
 ):
     """Train a model using NCBI assembly data for a given genus.
 
@@ -195,6 +194,7 @@ def train_from_ncbi(
         svm_step (int, optional): Step size for SVM training. Defaults to 1.
         author (str, optional): Author of the model. Defaults to None.
         author_email (str, optional): Author's email. Defaults to None.
+        ncbi_api_key (str, optional): NCBI API key for accessing NCBI resources. Defaults to None.
 
     Raises:
         TypeError: If `genus` is not a string.
@@ -207,7 +207,7 @@ def train_from_ncbi(
     if not isinstance(genus, str):
         raise TypeError("genus must be a string")
 
-    ncbi_handler = NCBIHandler()
+    ncbi_handler = NCBIHandler(api_key=ncbi_api_key)
     genus_tax_id = ncbi_handler.get_genus_taxon_id(genus)
     species_ids = ncbi_handler.get_species(genus_tax_id)
     species_names = ncbi_handler.get_taxon_names(species_ids)
