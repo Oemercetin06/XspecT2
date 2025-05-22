@@ -7,7 +7,7 @@ import uvicorn
 from xspect import classify
 from xspect.web import app
 from xspect.download_models import download_test_models
-from xspect.file_io import filter_sequences
+from xspect import filter_sequences
 from xspect.train import train_from_directory, train_from_ncbi
 from xspect.definitions import (
     get_xspect_model_path,
@@ -211,6 +211,7 @@ def classify_seqs():
     help="Path to FASTA or FASTQ file for classification.",
     type=click.Path(exists=True, dir_okay=True, file_okay=True),
     prompt=True,
+    default=Path("."),
 )
 @click.option(
     "-o",
@@ -223,7 +224,6 @@ def classify_genus(model_genus, input_path, output_path):
     """Classify samples using a genus model."""
     click.echo("Classifying...")
     classify.classify_genus(model_genus, Path(input_path), Path(output_path))
-    click.echo(f"Result saved as {output_path}.")
 
 
 @classify_seqs.command(
@@ -244,6 +244,7 @@ def classify_genus(model_genus, input_path, output_path):
     help="Path to FASTA or FASTQ file for classification.",
     type=click.Path(exists=True, dir_okay=True, file_okay=True),
     prompt=True,
+    default=Path("."),
 )
 @click.option(
     "-o",
@@ -264,7 +265,6 @@ def classify_species(model_genus, input_path, output_path, sparse_sampling_step)
     classify.classify_species(
         model_genus, Path(input_path), Path(output_path), sparse_sampling_step
     )
-    click.echo(f"Result saved as {output_path}.")
 
 
 @classify_seqs.command(
@@ -275,7 +275,7 @@ def classify_species(model_genus, input_path, output_path, sparse_sampling_step)
     "-i",
     "--input-path",
     help="Path to FASTA-file for mlst identification.",
-    type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    type=click.Path(exists=True, dir_okay=False, file_okay=True),
     prompt=True,
 )
 @click.option(
@@ -283,7 +283,6 @@ def classify_species(model_genus, input_path, output_path, sparse_sampling_step)
     "--output-path",
     help="Path to the output file.",
     type=click.Path(dir_okay=True, file_okay=True),
-    default=Path(".") / f"result_{uuid4()}.json",
 )
 def classify_mlst(input_path, output_path):
     """MLST classify a sample."""
@@ -321,6 +320,7 @@ def filter_seqs():
     help="Path to FASTA or FASTQ file for classification.",
     type=click.Path(exists=True, dir_okay=True, file_okay=True),
     prompt=True,
+    default=Path("."),
 )
 @click.option(
     "-o",
@@ -328,6 +328,7 @@ def filter_seqs():
     help="Path to the output file.",
     type=click.Path(dir_okay=True, file_okay=True),
     prompt=True,
+    default=Path(".") / f"genus_filtered_{uuid4()}.fasta",
 )
 @click.option(
     "-t",
@@ -340,19 +341,13 @@ def filter_seqs():
 def filter_genus(model_genus, input_path, output_path, threshold):
     """Filter samples using a genus model."""
     click.echo("Filtering...")
-    genus_model = get_genus_model(model_genus)
-    result = genus_model.predict(Path(input_path))
-    included_ids = result.get_filtered_subsequence_labels(model_genus, threshold)
-    if not included_ids:
-        click.echo("No sequences found for the given genus.")
-        return
 
-    filter_sequences(
+    filter_sequences.filter_genus(
+        model_genus,
         Path(input_path),
         Path(output_path),
-        included_ids=included_ids,
+        threshold,
     )
-    click.echo(f"Filtered sequences saved at {output_path}.")
 
 
 @filter_seqs.command(
@@ -379,6 +374,7 @@ def filter_genus(model_genus, input_path, output_path, threshold):
     help="Path to FASTA or FASTQ file for classification.",
     type=click.Path(exists=True, dir_okay=True, file_okay=True),
     prompt=True,
+    default=Path("."),
 )
 @click.option(
     "-o",
@@ -386,6 +382,7 @@ def filter_genus(model_genus, input_path, output_path, threshold):
     help="Path to the output file.",
     type=click.Path(dir_okay=True, file_okay=True),
     prompt=True,
+    default=Path(".") / f"species_filtered_{uuid4()}.fasta",
 )
 @click.option(
     "-t",
@@ -427,18 +424,13 @@ def filter_species(model_genus, model_species, input_path, output_path, threshol
     ][0]
 
     click.echo("Filtering...")
-    species_model = get_species_model(model_genus)
-    result = species_model.predict(Path(input_path))
-    included_ids = result.get_filtered_subsequence_labels(model_species, threshold)
-    if not included_ids:
-        click.echo("No sequences found for the given species.")
-        return
-    filter_sequences(
+    filter_sequences.filter_species(
+        model_genus,
+        model_species,
         Path(input_path),
         Path(output_path),
-        included_ids=included_ids,
+        threshold,
     )
-    click.echo(f"Filtered sequences saved at {output_path}.")
 
 
 if __name__ == "__main__":
