@@ -217,7 +217,7 @@ def classify_seqs():
     "-o",
     "--output-path",
     help="Path to the output file.",
-    type=click.Path(dir_okay=True, file_okay=True),
+    type=click.Path(dir_okay=False, file_okay=True),
     default=Path(".") / f"result_{uuid4()}.json",
 )
 def classify_genus(model_genus, input_path, output_path):
@@ -250,7 +250,7 @@ def classify_genus(model_genus, input_path, output_path):
     "-o",
     "--output-path",
     help="Path to the output file.",
-    type=click.Path(dir_okay=True, file_okay=True),
+    type=click.Path(dir_okay=False, file_okay=True),
     default=Path(".") / f"result_{uuid4()}.json",
 )
 @click.option(
@@ -282,7 +282,7 @@ def classify_species(model_genus, input_path, output_path, sparse_sampling_step)
     "-o",
     "--output-path",
     help="Path to the output file.",
-    type=click.Path(dir_okay=True, file_okay=True),
+    type=click.Path(dir_okay=False, file_okay=True),
 )
 def classify_mlst(input_path, output_path):
     """MLST classify a sample."""
@@ -326,9 +326,14 @@ def filter_seqs():
     "-o",
     "--output-path",
     help="Path to the output file.",
-    type=click.Path(dir_okay=True, file_okay=True),
+    type=click.Path(dir_okay=False, file_okay=True),
     prompt=True,
     default=Path(".") / f"genus_filtered_{uuid4()}.fasta",
+)
+@click.option(
+    "--classification-output-path",
+    help="Optional path to the classification output file.",
+    type=click.Path(dir_okay=False, file_okay=True),
 )
 @click.option(
     "-t",
@@ -338,7 +343,9 @@ def filter_seqs():
     default=0.7,
     prompt=True,
 )
-def filter_genus(model_genus, input_path, output_path, threshold):
+def filter_genus(
+    model_genus, input_path, output_path, classification_output_path, threshold
+):
     """Filter samples using a genus model."""
     click.echo("Filtering...")
 
@@ -347,6 +354,7 @@ def filter_genus(model_genus, input_path, output_path, threshold):
         Path(input_path),
         Path(output_path),
         threshold,
+        Path(classification_output_path) if classification_output_path else None,
     )
 
 
@@ -380,9 +388,14 @@ def filter_genus(model_genus, input_path, output_path, threshold):
     "-o",
     "--output-path",
     help="Path to the output file.",
-    type=click.Path(dir_okay=True, file_okay=True),
+    type=click.Path(dir_okay=False, file_okay=True),
     prompt=True,
     default=Path(".") / f"species_filtered_{uuid4()}.fasta",
+)
+@click.option(
+    "--classification-output-path",
+    help="Optional path to the classification output file.",
+    type=click.Path(dir_okay=False, file_okay=True),
 )
 @click.option(
     "-t",
@@ -392,7 +405,14 @@ def filter_genus(model_genus, input_path, output_path, threshold):
     default=0.7,
     prompt=True,
 )
-def filter_species(model_genus, model_species, input_path, output_path, threshold):
+def filter_species(
+    model_genus,
+    model_species,
+    input_path,
+    output_path,
+    threshold,
+    classification_output_path,
+):
     """Filter a sample using the species model."""
 
     if threshold != -1 and (threshold < 0 or threshold > 1):
@@ -430,6 +450,7 @@ def filter_species(model_genus, model_species, input_path, output_path, threshol
         Path(input_path),
         Path(output_path),
         threshold,
+        Path(classification_output_path) if classification_output_path else None,
     )
 
 
