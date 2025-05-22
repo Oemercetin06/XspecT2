@@ -110,6 +110,8 @@ def test_filter_genus_and_classify_species(assembly_file_path, genus, species, t
             assembly_file_path,
             "-o",
             str(tmpdir) + "/genus_filtered.fna",
+            "-t",
+            "0.7",
         ],
     )
     assert result.exit_code == 0, f"Error: {result.output}"
@@ -155,6 +157,8 @@ def test_filter_species(assembly_file_path, tmpdir):
             assembly_file_path,
             "-o",
             str(tmpdir) + "/species_filtered.fna",
+            "-t",
+            "0.7",
         ],
     )
     assert result.exit_code == 0, f"Error: {result.output}"
@@ -177,7 +181,7 @@ def test_filter_species_max_scoring(mixed_species_assembly_file_path, tmpdir):
             mixed_species_assembly_file_path,
             "-o",
             str(tmpdir) + "/mixed_species_filtered.fna",
-            "--threshold",
+            "-t",
             "-1",
         ],
     )

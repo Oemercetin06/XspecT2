@@ -4,6 +4,7 @@ import xspect.model_management as mm
 from xspect.models.probabilistic_filter_mlst_model import (
     ProbabilisticFilterMlstSchemeModel,
 )
+from xspect.definitions import fasta_endings, fastq_endings
 
 
 def classify_genus(
@@ -11,17 +12,51 @@ def classify_genus(
 ):
     """Classify the input file using the genus model."""
     model = mm.get_genus_model(model_genus)
-    result = model.predict(input_path, step=step)
-    result.input_source = input_path.name
-    result.save(output_path)
+
+    input_paths = []
+    input_is_dir = input_path.is_dir()
+    ending_wildcards = [f"*.{ending}" for ending in fasta_endings + fastq_endings]
+
+    if input_is_dir:
+        input_paths = [p for e in ending_wildcards for p in input_path.glob(e)]
+    elif input_path.is_file():
+        input_paths = [input_path]
+
+    for idx, current_path in enumerate(input_paths):
+        result = model.predict(current_path, step=step)
+        result.input_source = current_path.name
+        output_name = (
+            f"{output_path.stem}_{idx+1}{output_path.suffix}"
+            if input_is_dir
+            else output_path.name
+        )
+        result.save(output_path.parent / output_name)
+        print(f"Saved result as {output_name}")
 
 
 def classify_species(model_genus, input_path, output_path, step=1):
     """Classify the input file using the species model."""
     model = mm.get_species_model(model_genus)
-    result = model.predict(input_path, step=step)
-    result.input_source = input_path.name
-    result.save(output_path)
+
+    input_paths = []
+    input_is_dir = input_path.is_dir()
+    ending_wildcards = [f"*.{ending}" for ending in fasta_endings + fastq_endings]
+
+    if input_is_dir:
+        input_paths = [p for e in ending_wildcards for p in input_path.glob(e)]
+    elif input_path.is_file():
+        input_paths = [input_path]
+
+    for idx, current_path in enumerate(input_paths):
+        result = model.predict(current_path, step=step)
+        result.input_source = current_path.name
+        output_name = (
+            f"{output_path.stem}_{idx+1}{output_path.suffix}"
+            if input_is_dir
+            else output_path.name
+        )
+        result.save(output_path.parent / output_name)
+        print(f"Saved result as {output_name}")
 
 
 def classify_mlst(input_path, output_path):

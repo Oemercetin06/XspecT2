@@ -1,4 +1,4 @@
-# XspecT - Acinetobacter Species Assignment Tool
+# XspecT
 <!-- start intro -->
 ![Test](https://github.com/bionf/xspect2/actions/workflows/test.yml/badge.svg)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
@@ -6,7 +6,7 @@
 
 XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or MLST level using [kmer indices] and a [Support Vector Machine].
 
-XspecT utilizes the uniqueness of kmers and compares extracted kmers from the input-data to a reference database. Bloom Filter ensure a fast lookup in this process. For a final prediction, the results are classified using a Support Vector Machine.
+XspecT utilizes the uniqueness of kmers and compares extracted kmers from the input-data to a kmer index. Probablistic data structures ensure a fast lookup in this process. For a final prediction, the results are classified using a Support Vector Machine.
 
 The tool is available as a web-based application and as a command line interface.
 
@@ -34,16 +34,22 @@ xspect models train ncbi
 ```
 
 ### How to run the web app
-To run the web app, install and run [XspecT Web](https://github.com/aromberg/xspect-web). Additionally, run XspecT in API mode:
+To run the web app, simply execute:
 ```
 xspect web
 ```
 
+This will start a local web server. You can access the web app by navigating to `http://localhost:8000` in your web browser.
+
 ### How to use the XspecT command line interface
-Run XspecT with the configuration you want to run it with as arguments.
+To use the XspecT command line interface, execute `xspect` with the desired subcommand and parameters.
+
+**Example**:
 ```
 xspect classify species
 ```
+
+If you do not provide the required parameters, the command line interface will prompt you for them.
 For further instructions on how to use the command line interface, please refer to the [documentation] or execute:
 ```
 xspect --help

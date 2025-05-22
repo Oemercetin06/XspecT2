@@ -9,9 +9,17 @@ fastq_endings = ["fastq", "fq"]
 
 def get_xspect_root_path():
     """Return the root path for XspecT data."""
-    root_path = Path(getcwd()) / "xspect-data"
-    root_path.mkdir(exist_ok=True, parents=True)
-    return root_path
+
+    home_based_dir = Path.home() / "xspect-data"
+    if home_based_dir.exists():
+        return home_based_dir
+
+    cwd_based_dir = Path(getcwd()) / "xspect-data"
+    if cwd_based_dir.exists():
+        return cwd_based_dir
+
+    home_based_dir.mkdir(exist_ok=True, parents=True)
+    return home_based_dir
 
 
 def get_xspect_model_path():

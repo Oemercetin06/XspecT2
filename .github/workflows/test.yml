@@ -28,6 +28,8 @@ jobs:
           run: |
             xspect models download
         - name: Test with pytest
+          env:
+            NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           run: |
             pytest --cov --retries 2 --retry-delay 5
         - name: Upload coverage reports to Codecov

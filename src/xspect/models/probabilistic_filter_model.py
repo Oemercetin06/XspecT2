@@ -20,13 +20,13 @@ class ProbabilisticFilterModel:
         self,
         k: int,
         model_display_name: str,
-        author: str,
-        author_email: str,
+        author: str | None,
+        author_email: str | None,
         model_type: str,
         base_path: Path,
         fpr: float = 0.01,
         num_hashes: int = 7,
-        training_accessions: dict[str, list[str]] = None,
+        training_accessions: dict[str, list[str]] | None = None,
     ) -> None:
         if k < 1:
             raise ValueError("Invalid k value, must be greater than 0")
@@ -49,7 +49,7 @@ class ProbabilisticFilterModel:
         self.index = None
         self.training_accessions = training_accessions
 
-    def get_cobs_index_path(self) -> Path:
+    def get_cobs_index_path(self) -> str:
         """Returns the path to the cobs index"""
         return str(self.base_path / self.slug() / "index.cobs_classic")
 
@@ -76,8 +76,8 @@ class ProbabilisticFilterModel:
     def fit(
         self,
         dir_path: Path,
-        display_names: dict = None,
-        training_accessions: dict[str, list[str]] = None,
+        display_names: dict | None = None,
+        training_accessions: dict[str, list[str]] | None = None,
     ) -> None:
         """Adds filters to the model"""
 
@@ -123,7 +123,7 @@ class ProbabilisticFilterModel:
         self.index = cobs.Search(self.get_cobs_index_path(), True)
 
     def calculate_hits(
-        self, sequence: Seq, filter_ids: list[str] = None, step: int = 1
+        self, sequence: Seq, filter_ids: list[str] | None = None, step: int = 1
     ) -> dict:
         """Calculates the hits for a sequence"""
 

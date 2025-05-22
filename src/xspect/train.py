@@ -25,12 +25,12 @@ def train_from_directory(
     display_name: str,
     dir_path: Path,
     meta: bool = False,
-    training_accessions: dict[str, list[str]] = None,
-    svm_accessions: list[str] = None,
+    training_accessions: dict[str, list[str]] | None = None,
+    svm_accessions: dict[str, list[str]] | None = None,
     svm_step: int = 1,
-    translation_dict: dict[str, str] = None,
-    author: str = None,
-    author_email: str = None,
+    translation_dict: dict[str, str] | None = None,
+    author: str | None = None,
+    author_email: str | None = None,
 ):
     """
     Train a model from a directory containing training data.
@@ -113,10 +113,11 @@ def train_from_directory(
         species_dir = tmp_dir / "species"
         species_dir.mkdir(parents=True, exist_ok=True)
 
-        # concatenate files in cobs_training_data for each species
+        logger.info("Concatenating genomes for species training...")
         concatenate_species_fasta_files(cobs_folders, species_dir)
 
         if svm_path.exists():
+            logger.info("Training species SVM model...")
             species_model = ProbabilisticFilterSVMModel(
                 k=21,
                 model_display_name=display_name,
@@ -136,6 +137,7 @@ def train_from_directory(
                 svm_accessions=svm_accessions,
             )
         else:
+            logger.info("Training species model...")
             species_model = ProbabilisticFilterModel(
                 k=21,
                 model_display_name=display_name,
@@ -153,9 +155,11 @@ def train_from_directory(
         species_model.save()
 
         if meta:
+            logger.info("Concatenating genomes for metagenome training...")
             meta_fasta = tmp_dir / f"{display_name}.fasta"
             concatenate_metagenome(species_dir, meta_fasta)
 
+            logger.info("Training metagenome model...")
             genus_model = ProbabilisticSingleFilterModel(
                 k=21,
                 model_display_name=display_name,
@@ -179,8 +183,9 @@ def train_from_directory(
 def train_from_ncbi(
     genus: str,
     svm_step: int = 1,
-    author: str = None,
-    author_email: str = None,
+    author: str | None = None,
+    author_email: str | None = None,
+    ncbi_api_key: str | None = None,
 ):
     """Train a model using NCBI assembly data for a given genus.
 
@@ -193,6 +198,7 @@ def train_from_ncbi(
         svm_step (int, optional): Step size for SVM training. Defaults to 1.
         author (str, optional): Author of the model. Defaults to None.
         author_email (str, optional): Author's email. Defaults to None.
+        ncbi_api_key (str, optional): NCBI API key for accessing NCBI resources. Defaults to None.
 
     Raises:
         TypeError: If `genus` is not a string.
@@ -205,7 +211,8 @@ def train_from_ncbi(
     if not isinstance(genus, str):
         raise TypeError("genus must be a string")
 
-    ncbi_handler = NCBIHandler()
+    logger.info("Getting NCBI metadata...")
+    ncbi_handler = NCBIHandler(api_key=ncbi_api_key)
     genus_tax_id = ncbi_handler.get_genus_taxon_id(genus)
     species_ids = ncbi_handler.get_species(genus_tax_id)
     species_names = ncbi_handler.get_taxon_names(species_ids)
@@ -243,7 +250,7 @@ def train_from_ncbi(
         cobs_dir.mkdir(parents=True, exist_ok=True)
         svm_dir.mkdir(parents=True, exist_ok=True)
 
-        # download assemblies
+        logger.info("Downloading genomes from NCBI...")
         all_accessions = sum(accessions.values(), [])
         batch_size = 100
         accession_paths = {}

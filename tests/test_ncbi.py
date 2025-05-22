@@ -1,5 +1,6 @@
 """Test the NCBIHandler class."""
 
+import os
 import pytest
 from xspect.ncbi import NCBIHandler, AssemblyLevel, AssemblySource
 
@@ -9,7 +10,10 @@ from xspect.ncbi import NCBIHandler, AssemblyLevel, AssemblySource
 @pytest.fixture(scope="module")
 def ncbi_handler():
     """Fixture for the NCBI class."""
-    return NCBIHandler()
+
+    ncbi_api_key = os.environ.get("NCBI_API_KEY")
+
+    return NCBIHandler(api_key=ncbi_api_key)
 
 
 def test_get_genus_taxon_id(ncbi_handler):
