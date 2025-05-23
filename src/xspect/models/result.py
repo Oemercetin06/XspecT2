@@ -111,5 +111,6 @@ class ModelResult:
 
     def save(self, path: Path) -> None:
         """Save the result as a JSON file."""
+        path.parent.mkdir(exist_ok=True, parents=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(dumps(self.to_dict(), indent=4))

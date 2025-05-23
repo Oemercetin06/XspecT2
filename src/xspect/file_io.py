@@ -159,6 +159,7 @@ def filter_sequences(
         print("No IDs provided, no output file will be created.")
         return
 
+    output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as out_f:
         for record in get_record_iterator(input_file):
             if record.id in included_ids:
