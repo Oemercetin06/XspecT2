@@ -32,3 +32,22 @@ def test_chosen_download(monkeypatch):
     assert handler.scheme_list == [
         "https://rest.pubmlst.org/db/pubmlst_abaumannii_seqdef/schemes/1"
     ]
+
+
+def test_get_strain_type_name():
+    """Tests the POST request that gets the strain type name based on the highest kmer results."""
+    # url is from the oxford scheme of A.baumannii.
+    post_url = "https://rest.pubmlst.org/db/pubmlst_abaumannii_seqdef/schemes/1"
+    alleles = {  # Translates to ST 1 in the db.
+        "Oxf_gyrB": 1,
+        "Oxf_gltA": 1,
+        "Oxf_gdhB": 1,
+        "Oxf_recA": 1,
+        "Oxf_gpi": 1,
+        "Oxf_cpn60": 1,
+        "Oxf_rpoD": 6,
+    }
+
+    strain_type_name = handler.get_strain_type_name(alleles, post_url)
+
+    assert strain_type_name["ST"] == "1"

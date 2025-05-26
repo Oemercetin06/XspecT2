@@ -17,7 +17,7 @@ from xspect.definitions import get_xspect_mlst_path, get_xspect_upload_path
 class PubMLSTHandler:
     """Class for communicating with PubMLST and downloading alleles (FASTA-Format) from all loci."""
 
-    base_url = "http://rest.pubmlst.org/db"
+    base_url = "https://rest.pubmlst.org/db"
 
     def __init__(self):
         """Initialise a PubMLSTHandler object."""
@@ -27,6 +27,7 @@ class PubMLSTHandler:
             self.base_url + "/pubmlst_abaumannii_seqdef/schemes/2",
         ]
         self.scheme_paths = []
+        self.scheme_mapping = {}
 
     def get_scheme_paths(self) -> dict:
         """
@@ -103,6 +104,7 @@ class PubMLSTHandler:
 
             species_name = scheme.split("_")[1]  # name = pubmlst_abaumannii_seqdef
             scheme_path = get_xspect_mlst_path() / species_name / scheme_name
+            self.scheme_mapping[str(scheme_path)] = scheme
             self.scheme_paths.append(scheme_path)
 
             for locus_url in locus_list:
@@ -143,3 +145,43 @@ class PubMLSTHandler:
             # Example: 'Pas_fusA': [{'href': some URL, 'allele_id': '2'}]
             print(locus + ":" + meta_data[0]["allele_id"], end="; ")
         print("\nStrain Type:", response["fields"])
+
+    def get_strain_type_name(self, highest_results: dict, post_url: str) -> str:
+        """
+        Send an API-POST request to PubMLST with the highest result of each locus as payload.
+
+        This function formats the highest_result dict into an accepted input for the request.
+        It gets a response from the site which is the strain type name.
+        The name is based on the allele id with the highest score for each locus.
+        Example of post_url for the oxford scheme of A.baumannii:
+        https://rest.pubmlst.org/db/pubmlst_abaumannii_seqdef/schemes/1/designations
+
+        Args:
+            highest_results (dict): The allele ids with the highest kmer matches.
+            post_url (str): The specific url for the scheme of a species
+
+        Returns:
+            str: The response (ST name or No ST found) of the POST request.
+        """
+        payload = {
+            "designations": {
+                locus: [{"allele": str(allele)}]
+                for locus, allele in highest_results.items()
+            }
+        }
+
+        response = requests.post(post_url + "/designations", json=payload)
+
+        if response.status_code == 200:
+            data = response.json()
+            if "fields" in data:
+                post_response = data["fields"]
+                return post_response
+            else:
+                post_response = "No matching Strain Type found in the database. "
+                post_response += "Possibly a novel Strain Type."
+                return post_response
+        else:
+            post_response = "Error:" + str(response.status_code)
+            post_response += response.text
+            return post_response

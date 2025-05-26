@@ -12,6 +12,7 @@ from cobs_index import DocumentList
 from collections import defaultdict
 from xspect.file_io import get_record_iterator
 from xspect.mlst_feature.mlst_helper import MlstResult
+from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
 
 
 class ProbabilisticFilterMlstSchemeModel:
@@ -19,20 +20,22 @@ class ProbabilisticFilterMlstSchemeModel:
 
     def __init__(
         self,
-        k: int,
-        model_display_name: str,
+        k_value: int,
+        model_name: str,
         base_path: Path,
+        scheme_url: str,
         fpr: float = 0.001,
     ) -> None:
         """Initialise a ProbabilisticFilterMlstSchemeModel object."""
-        if k < 1:
+        if k_value < 1:
             raise ValueError("Invalid k value, must be greater than 0")
         if not isinstance(base_path, Path):
             raise ValueError("Invalid base path, must be a pathlib.Path object")
 
-        self.k = k
-        self.model_display_name = model_display_name
+        self.k_value = k_value
+        self.model_name = model_name
         self.base_path = base_path / "MLST"
+        self.scheme_url = scheme_url
         self.fpr = fpr
         self.model_type = "Strain"
         self.loci = {}
@@ -49,9 +52,10 @@ class ProbabilisticFilterMlstSchemeModel:
             dict: The dictionary containing all metadata of an object.
         """
         return {
-            "k": self.k,
-            "model_display_name": self.model_display_name,
+            "k_value": self.k_value,
+            "model_name": self.model_name,
             "model_type": self.model_type,
+            "scheme_url": str(self.scheme_url),
             "fpr": self.fpr,
             "scheme_path": str(self.scheme_path),
             "cobs_path": str(self.cobs_path),
@@ -115,7 +119,7 @@ class ProbabilisticFilterMlstSchemeModel:
             # COBS only accepts strings as paths
             doclist = DocumentList(str(locus_path))
             index_params = cobs_index.CompactIndexParameters()
-            index_params.term_size = self.k  # k-mer size
+            index_params.term_size = self.k_value  # k-mer size
             index_params.clobber = True  # overwrite output and temporary files
             index_params.false_positive_rate = self.fpr
 
@@ -130,9 +134,7 @@ class ProbabilisticFilterMlstSchemeModel:
 
     def save(self) -> None:
         """Saves the model to disk"""
-        scheme = str(self.scheme_path).split("/")[
-            -1
-        ]  # [-1] -> contains the scheme name
+        scheme = str(self.scheme_path).split("/")[-1]  # [-1] contains the scheme name
         json_path = self.base_path / scheme / f"{scheme}.json"
         json_object = json.dumps(self.to_dict(), indent=4)
 
@@ -156,9 +158,10 @@ class ProbabilisticFilterMlstSchemeModel:
             json_object = file.read()
             model_json = json.loads(json_object)
             model = ProbabilisticFilterMlstSchemeModel(
-                model_json["k"],
-                model_json["model_display_name"],
+                model_json["k_value"],
+                model_json["model_name"],
                 json_path.parent,
+                model_json["scheme_url"],
                 model_json["fpr"],
             )
             model.scheme_path = model_json["scheme_path"]
@@ -175,7 +178,12 @@ class ProbabilisticFilterMlstSchemeModel:
             return model
 
     def calculate_hits(
-        self, cobs_path: Path, sequence: Seq, step: int = 1
+        self,
+        cobs_path: Path,
+        sequence: Seq,
+        step: int = 1,
+        limit: bool = False,
+        limit_number: int = 5,
     ) -> list[dict]:
         """
         Calculates the hits for a sequence.
@@ -189,6 +197,8 @@ class ProbabilisticFilterMlstSchemeModel:
             cobs_path (Path): The path of the COBS-structure directory.
             sequence (Seq): The input sequence for classification.
             step (int, optional): The amount of kmers that are passed; defaults to one.
+            limit (bool): Applying a filter that limits the best result.
+            limit_number (int): The amount of results when the filter is set to true.
 
         Returns:
             list[dict]: The results of the prediction.
@@ -201,7 +211,7 @@ class ProbabilisticFilterMlstSchemeModel:
         if not isinstance(sequence, Seq):
             raise ValueError("Invalid sequence, must be a Bio.Seq object")
 
-        if not len(sequence) > self.k:
+        if not len(sequence) > self.k_value:
             raise ValueError("Invalid sequence, must be longer than k")
 
         if not self.indices:
@@ -239,6 +249,10 @@ class ProbabilisticFilterMlstSchemeModel:
                 sorted_counts = dict(
                     sorted(all_counts.items(), key=lambda item: -item[1])
                 )
+
+                if limit:
+                    sorted_counts = dict(list(sorted_counts.items())[:limit_number])
+
                 if not sorted_counts:
                     result_dict = "A Strain type could not be detected because of no kmer matches!"
                     highest_results[scheme_path_list[counter]] = {"N/A": 0}
@@ -250,25 +264,37 @@ class ProbabilisticFilterMlstSchemeModel:
                         first_key: highest_result
                     }
                 counter += 1
-        else:
+        else:  # No split procedure is needed, when the sequence is short
             for index in self.indices:
-                res = index.search(
+                res = index.search(  # COBS can't handle Seq-Objects
                     str(sequence), step=step
-                )  # COBS can't handle Seq-Objects
-                result_dict[scheme_path_list[counter]] = self.get_cobs_result(
-                    res, False
                 )
-                first_key, highest_result = next(
-                    iter(result_dict[scheme_path_list[counter]].items())
+                result = self.get_cobs_result(res, False)
+                result = (
+                    dict(sorted(result.items(), key=lambda x: -x[1])[:limit_number])
+                    if limit
+                    else result
                 )
+                result_dict[scheme_path_list[counter]] = result
+                first_key, highest_result = next(iter(result.items()))
                 highest_results[scheme_path_list[counter]] = {first_key: highest_result}
                 counter += 1
+
         # check if the strain type has sufficient amount of kmer hits
         is_valid = self.has_sufficient_score(highest_results, self.avg_locus_bp_size)
         if not is_valid:
             highest_results["Attention:"] = (
                 "This strain type is not reliable due to low kmer hit rates!"
             )
+        else:
+            handler = PubMLSTHandler()
+            # allele_id is of type dict
+            flattened = {
+                locus: int(list(allele_id.keys())[0].split("_")[-1])
+                for locus, allele_id in highest_results.items()
+            }
+            strain_type_name = handler.get_strain_type_name(flattened, self.scheme_url)
+            highest_results["ST_Name"] = strain_type_name
         return [{"Strain type": highest_results}, {"All results": result_dict}]
 
     def predict(
@@ -282,6 +308,7 @@ class ProbabilisticFilterMlstSchemeModel:
             | Path
         ),
         step: int = 1,
+        limit: bool = False,
     ) -> MlstResult:
         """
         Get scores for the sequence(s) based on the filters in the model.
@@ -290,6 +317,7 @@ class ProbabilisticFilterMlstSchemeModel:
             cobs_path (Path): The path of the COBS-structure directory.
             sequence_input (Seq): The input sequence for classification
             step (int, optional): The amount of kmers that are passed; defaults to one
+            limit (bool, optional): Applying a filter that limits the best result.
 
         Returns:
             MlstResult: The results of the prediction.
@@ -301,13 +329,19 @@ class ProbabilisticFilterMlstSchemeModel:
             if sequence_input.id == "<unknown id>":
                 sequence_input.id = "test"
             hits = {
-                sequence_input.id: self.calculate_hits(cobs_path, sequence_input.seq)
+                sequence_input.id: self.calculate_hits(
+                    cobs_path, sequence_input.seq, step, limit
+                )
             }
-            return MlstResult(self.model_display_name, step, hits)
+            return MlstResult(self.model_name, step, hits, None)
 
         if isinstance(sequence_input, Path):
             return ProbabilisticFilterMlstSchemeModel.predict(
-                self, cobs_path, get_record_iterator(sequence_input), step=step
+                self,
+                cobs_path,
+                get_record_iterator(sequence_input),
+                step=step,
+                limit=limit,
             )
 
         if isinstance(
@@ -317,33 +351,35 @@ class ProbabilisticFilterMlstSchemeModel:
             hits = {}
             # individual_seq is a SeqRecord-Object
             for individual_seq in sequence_input:
-                individual_hits = self.calculate_hits(cobs_path, individual_seq.seq)
+                individual_hits = self.calculate_hits(
+                    cobs_path, individual_seq.seq, step, limit
+                )
                 hits[individual_seq.id] = individual_hits
-            return MlstResult(self.model_display_name, step, hits)
-
+            return MlstResult(self.model_name, step, hits, None)
         raise ValueError(
             "Invalid sequence input, must be a Seq object, a list of Seq objects, a"
             " SeqIO FastaIterator, or a SeqIO FastqPhredIterator"
         )
 
     def get_cobs_result(
-        self, cobs_result: cobs_index.SearchResult, kmer_threshold: bool
+        self,
+        cobs_result: cobs_index.SearchResult,
+        kmer_threshold: bool,
     ) -> dict:
         """
         Get every entry in a COBS search result.
 
         Args:
             cobs_result (SearchResult): The result of the prediction.
-            kmer_threshold (bool): Applying a kmer threshold to mitigate false positives
+            kmer_threshold (bool): Applying a kmer threshold to mitigate false positives.
 
         Returns:
             dict: A dictionary storing the allele id of locus as key and the score as value.
         """
-        return {
-            individual_result.doc_name: individual_result.score
-            for individual_result in cobs_result
-            if not kmer_threshold or individual_result.score > 50
-        }
+        hits = [
+            result for result in cobs_result if not kmer_threshold or result.score > 50
+        ]
+        return {result.doc_name: result.score for result in hits}
 
     def sequence_splitter(self, input_sequence: str, allele_len: int) -> list[str]:
         """
@@ -379,13 +415,15 @@ class ProbabilisticFilterMlstSchemeModel:
 
         while start + substring_length <= sequence_len:
             substring_list.append(input_sequence[start : start + substring_length])
-            start += substring_length - self.k + 1  # To not lose kmers when dividing
+            start += (
+                substring_length - self.k_value + 1
+            )  # To not lose kmers when dividing
 
         # The remaining string is either appended to the list or added to the last entry.
         if start < len(input_sequence):
             remaining_substring = input_sequence[start:]
             # A substring needs to be at least of size k for COBS.
-            if len(remaining_substring) < self.k:
+            if len(remaining_substring) < self.k_value:
                 substring_list[-1] += remaining_substring
             else:
                 substring_list.append(remaining_substring)

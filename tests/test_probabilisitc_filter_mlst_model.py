@@ -16,7 +16,10 @@ PubMLSTHandler.download_alleles(handler, False)
 def filter_model():
     """Fixture for the ProbabilisticFilterMlstSchemeModel class."""
     return ProbabilisticFilterMlstSchemeModel(
-        k=21, model_display_name="Test Filter", base_path=get_xspect_model_path()
+        k_value=21,
+        model_name="Test Filter",
+        base_path=get_xspect_model_path() / "test",
+        scheme_url="https://rest.pubmlst.org/db/pubmlst_abaumannii_seqdef/schemes/1",
     )
 
 
@@ -33,8 +36,8 @@ def test_model_initialization(
     filter_model,
 ):
     """Test the initialization of the ProbabilisticFilterMlstSchemeModel class."""
-    assert filter_model.k == 21
-    assert filter_model.model_display_name == "Test Filter"
+    assert filter_model.k_value == 21
+    assert filter_model.model_name == "Test Filter"
     assert filter_model.model_type == "Strain"
     assert filter_model.fpr == 0.001
 
@@ -90,10 +93,10 @@ def test_predict(trained_filter_model, monkeypatch):
 def test_model_load(trained_filter_model):
     """Test the load method of the ProbabilisticFilterMlstSchemeModel class."""
     loaded_model = ProbabilisticFilterMlstSchemeModel.load(
-        get_xspect_model_path() / "MLST" / "MLST (Oxford)"
+        get_xspect_model_path() / "test" / "MLST" / "MLST (Oxford)"
     )
-    assert loaded_model.k == 21
-    assert loaded_model.model_display_name == "Test Filter"
+    assert loaded_model.k_value == 21
+    assert loaded_model.model_name == "Test Filter"
     assert loaded_model.model_type == "Strain"
     assert len(loaded_model.indices) == 7
     expected_values = {
@@ -111,8 +114,12 @@ def test_model_load(trained_filter_model):
 
 
 def test_sequence_splitter():
+    """Test the sequence split method on an arbitrary short sequence."""
     model = ProbabilisticFilterMlstSchemeModel(
-        k=4, model_display_name="Test Filter", base_path=get_xspect_model_path()
+        k_value=4,
+        model_name="Test Filter",
+        base_path=get_xspect_model_path(),
+        scheme_url="",
     )
     # len(seq) = 80; len(substring) = 20
     # k = 4 means each substring (except the first one) starts 3 (k - 1) base pairs earlier
@@ -120,3 +127,38 @@ def test_sequence_splitter():
     res = model.sequence_splitter(seq, 20)
     # Does not assert 4 because of 3 additional base pairs when sliced (Last slice has 12 base pairs)
     assert len(res) == 5
+
+
+def test_has_sufficient_score(trained_filter_model):
+    """Tests if the kmer scores of a scheme are sufficient."""
+    sufficient_dict = {
+        "Scores": {
+            "Oxf_cpn60": 265,
+            "Oxf_gdhB": 381,
+            "Oxf_gltA": 241,
+            "Oxf_gpi": 541,
+            "Oxf_gyrB": 352,
+            "Oxf_recA": 254,
+            "Oxf_rpoD": 286,
+        }
+    }
+
+    not_sufficient_dict = {
+        "Scores": {
+            "Oxf_cpn60": 100,
+            "Oxf_gdhB": 20,
+            "Oxf_gltA": 6,
+            "Oxf_gpi": 55,
+            "Oxf_gyrB": 21,
+            "Oxf_recA": 0,
+            "Oxf_rpoD": 7,
+        }
+    }
+
+    assert trained_filter_model.has_sufficient_score(
+        sufficient_dict, trained_filter_model.avg_locus_bp_size
+    )
+
+    assert not trained_filter_model.has_sufficient_score(
+        not_sufficient_dict, trained_filter_model.avg_locus_bp_size
+    )
