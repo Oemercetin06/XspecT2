@@ -27,35 +27,6 @@ def extract_zip(zip_path: Path, unzipped_path: Path):
         item.extractall(unzipped_path)
 
 
-def concatenate_meta(path: Path, genus: str):
-    """Concatenates all species files to one fasta file.
-
-    :param path: Path to the directory with the concatenated fasta files.
-    :type path: Path
-    :param genus: Genus name.
-    :type genus: str
-    """
-    files_path = path / "concatenate"
-    meta_path = path / (genus + ".fasta")
-    files = os.listdir(files_path)
-
-    with open(meta_path, "w", encoding="utf-8") as meta_file:
-        # Write the header.
-        meta_header = f">{genus} metagenome\n"
-        meta_file.write(meta_header)
-
-        # Open each concatenated species file and write the sequence in the meta file.
-        for file in files:
-            file_ending = str(file).rsplit(".", maxsplit=1)[-1]
-            if file_ending in fasta_endings:
-                with open(
-                    (files_path / str(file)), "r", encoding="utf-8"
-                ) as species_file:
-                    for line in species_file:
-                        if line[0] != ">":
-                            meta_file.write(line.replace("\n", ""))
-
-
 def get_record_iterator(file_path: Path):
     """Returns a record iterator for a fasta or fastq file."""
     if not isinstance(file_path, Path):
@@ -86,7 +57,7 @@ def concatenate_species_fasta_files(input_folders: list[Path], output_directory:
     """Concatenate fasta files from different species into one file per species.
 
     Args:
-        input_species_folders (list[Path]): List of paths to species folders.
+        input_folders (list[Path]): List of paths to species folders.
         output_directory (Path): Path to the output directory.
     """
     for species_folder in input_folders:
@@ -112,8 +83,11 @@ def concatenate_metagenome(fasta_dir: Path, meta_path: Path):
         fasta_dir (Path): Path to the directory with the fasta files.
         meta_path (Path): Path to the output file.
     """
+    fasta_files = [
+        file for ending in fasta_endings for file in fasta_dir.glob(f"*.{ending}")
+    ]
     with open(meta_path, "w", encoding="utf-8") as meta_file:
-        for fasta_file in fasta_dir.glob("*.fasta"):
+        for fasta_file in fasta_files:
             with open(fasta_file, "r", encoding="utf-8") as f_in:
                 meta_file.write(f_in.read())
 
@@ -159,8 +133,41 @@ def filter_sequences(
         print("No IDs provided, no output file will be created.")
         return
 
-    output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as out_f:
         for record in get_record_iterator(input_file):
             if record.id in included_ids:
                 SeqIO.write(record, out_f, "fasta")
+
+
+def prepare_input_output_paths(input_path: Path, output_path: Path):
+    """Processes the given input path and creates the output path.
+
+    Args:
+        input_path (Path): Path to the directory or file.
+        output_path (Path): Path to the output directory or file.
+
+    Returns:
+        Path: The processed input path.
+        Path: The processed output path.
+
+    Raises:
+        ValueError: If the input path is invalid.
+    """
+    input_is_dir = input_path.is_dir()
+    ending_wildcards = [f"*.{ending}" for ending in fasta_endings + fastq_endings]
+
+    if input_is_dir:
+        input_paths = [p for e in ending_wildcards for p in input_path.glob(e)]
+    elif input_path.is_file():
+        input_paths = [input_path]
+    else:
+        raise ValueError("Invalid input path")
+
+    def get_output_path(idx: int):
+        return (
+            output_path.parent / f"{output_path.stem}_{idx+1}{output_path.suffix}"
+            if input_is_dir
+            else output_path
+        )
+
+    return input_paths, get_output_path
