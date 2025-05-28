@@ -21,13 +21,14 @@ def classify_genus(
         step (int): The amount of kmers to be skipped.
     """
     model = mm.get_genus_model(model_genus)
-    input_paths, get_output_path = prepare_input_output_paths(input_path, output_path)
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
         result = model.predict(current_path, step=step)
         result.input_source = current_path.name
-        result.save(get_output_path(idx))
-        print(f"Saved result as {get_output_path(idx).name}")
+        cls_path = get_output_path(idx, output_path)
+        result.save(cls_path)
+        print(f"Saved result as {cls_path.name}")
 
 
 def classify_species(
@@ -44,13 +45,14 @@ def classify_species(
         step (int): The amount of kmers to be skipped.
     """
     model = mm.get_species_model(model_genus)
-    input_paths, get_output_path = prepare_input_output_paths(input_path, output_path)
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
         result = model.predict(current_path, step=step)
         result.input_source = current_path.name
-        result.save(get_output_path(idx))
-        print(f"Saved result as {get_output_path(idx).name}")
+        cls_path = get_output_path(idx, output_path)
+        result.save(cls_path)
+        print(f"Saved result as {cls_path.name}")
 
 
 def classify_mlst(input_path: Path, output_path: Path, limit: bool):
@@ -64,9 +66,10 @@ def classify_mlst(input_path: Path, output_path: Path, limit: bool):
 
     scheme_path = pick_scheme_from_models_dir()
     model = ProbabilisticFilterMlstSchemeModel.load(scheme_path)
-    input_paths, get_output_path = prepare_input_output_paths(input_path, output_path)
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
     for idx, current_path in enumerate(input_paths):
         result = model.predict(scheme_path, current_path, step=1, limit=limit)
         result.input_source = current_path.name
-        result.save(get_output_path(idx))
-        print(f"Saved result as {get_output_path(idx).name}")
+        cls_path = get_output_path(idx, output_path)
+        result.save(cls_path)
+        print(f"Saved result as {cls_path.name}")

@@ -13,17 +13,14 @@ def filter_species(
 ):
     """Filter sequences by species.
     This function filters sequences from the input file based on the species model.
-    It uses the genus model to identify the genus of the sequences and then applies
-    the species model to filter the sequences.
+    It uses the species model to identify the species of individual sequences and then applies
+    a threshold filter the sequences.
 
     Args:
-        model_genus (str): The genus model slug.
-        model_species (str): The species model slug.
+        model_genus (str): The genus of the species model.
+        model_species (str): The species to filter by.
         input_path (Path): The path to the input file containing sequences.
         output_path (Path): The path to the output file where filtered sequences will be saved.
-            above this threshold will be included in the output file. A threshold of -1 will
-            include only sequences if the species score is the highest among the
-            available species scores.
         classification_output_path (Path): Optional path to save the classification results.
         threshold (float): The threshold for filtering sequences. Only sequences with a score
             above this threshold will be included in the output file. A threshold of -1 will
@@ -31,17 +28,14 @@ def filter_species(
             available species scores.
     """
     species_model = get_species_model(model_genus)
-    input_paths, get_output_path = prepare_input_output_paths(input_path, output_path)
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
         result = species_model.predict(current_path)
         result.input_source = current_path.name
 
         if classification_output_path:
-            cls_out = (
-                classification_output_path.parent
-                / f"{classification_output_path.stem}_{idx+1}{classification_output_path.suffix}"
-            )
+            cls_out = get_output_path(idx, classification_output_path)
             result.save(cls_out)
             print(
                 f"Saved classification results from {current_path.name} as {cls_out.name}"
@@ -52,9 +46,10 @@ def filter_species(
             print(f"No sequences found for the given species in {current_path.name}.")
             continue
 
-        filter_sequences(current_path, get_output_path(idx), included_ids)
+        filter_output_path = get_output_path(idx, output_path)
+        filter_sequences(current_path, filter_output_path, included_ids)
         print(
-            f"Saved filtered sequences from {current_path.name} as {get_output_path(idx).name}"
+            f"Saved filtered sequences from {current_path.name} as {filter_output_path.name}"
         )
 
 
@@ -80,17 +75,14 @@ def filter_genus(
 
     """
     model = get_genus_model(model_genus)
-    input_paths, get_output_path = prepare_input_output_paths(input_path, output_path)
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
         result = model.predict(current_path)
         result.input_source = current_path.name
 
         if classification_output_path:
-            cls_out = (
-                classification_output_path.parent
-                / f"{classification_output_path.stem}_{idx+1}{classification_output_path.suffix}"
-            )
+            cls_out = get_output_path(idx, classification_output_path)
             result.save(cls_out)
             print(
                 f"Saved classification results from {current_path.name} as {cls_out.name}"
@@ -101,7 +93,8 @@ def filter_genus(
             print(f"No sequences found for the given genus in {current_path.name}.")
             continue
 
-        filter_sequences(current_path, get_output_path(idx), included_ids)
+        filter_output_path = get_output_path(idx, output_path)
+        filter_sequences(current_path, filter_output_path, included_ids)
         print(
-            f"Saved filtered sequences from {current_path.name} as {get_output_path(idx).name}"
+            f"Saved filtered sequences from {current_path.name} as {filter_output_path.name}"
         )

@@ -8,6 +8,7 @@ from pathlib import Path
 import zipfile
 from Bio import SeqIO
 from xspect.definitions import fasta_endings, fastq_endings
+from typing import Callable
 
 
 def delete_zip_files(dir_path):
@@ -139,16 +140,19 @@ def filter_sequences(
                 SeqIO.write(record, out_f, "fasta")
 
 
-def prepare_input_output_paths(input_path: Path, output_path: Path):
+def prepare_input_output_paths(
+    input_path: Path,
+) -> tuple[list[Path], Callable[[int, Path], Path]]:
     """Processes the given input path and creates the output path.
 
     Args:
         input_path (Path): Path to the directory or file.
-        output_path (Path): Path to the output directory or file.
 
     Returns:
-        Path: The processed input path.
-        Path: The processed output path.
+        tuple[list[Path], Callable[[int, Path], Path]]: A tuple containing:
+            - A list of input file paths
+            - A function that takes an index and the output path,
+              and returns the processed output path.
 
     Raises:
         ValueError: If the input path is invalid.
@@ -163,7 +167,7 @@ def prepare_input_output_paths(input_path: Path, output_path: Path):
     else:
         raise ValueError("Invalid input path")
 
-    def get_output_path(idx: int):
+    def get_output_path(idx: int, output_path: Path) -> Path:
         return (
             output_path.parent / f"{output_path.stem}_{idx+1}{output_path.suffix}"
             if input_is_dir
