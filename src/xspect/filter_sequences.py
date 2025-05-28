@@ -10,6 +10,7 @@ def filter_species(
     output_path: Path,
     threshold: float,
     classification_output_path: Path | None = None,
+    sparse_sampling_step: int = 1,
 ):
     """Filter sequences by species.
     This function filters sequences from the input file based on the species model.
@@ -26,12 +27,13 @@ def filter_species(
             above this threshold will be included in the output file. A threshold of -1 will
             include only sequences if the species score is the highest among the
             available species scores.
+        sparse_sampling_step (int): The step size for sparse sampling. Defaults to 1.
     """
     species_model = get_species_model(model_genus)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
-        result = species_model.predict(current_path)
+        result = species_model.predict(current_path, step=sparse_sampling_step)
         result.input_source = current_path.name
 
         if classification_output_path:
@@ -59,6 +61,7 @@ def filter_genus(
     output_path: Path,
     threshold: float,
     classification_output_path: Path | None = None,
+    sparse_sampling_step: int = 1,
 ):
     """Filter sequences by genus.
     This function filters sequences from the input file based on the genus model.
@@ -72,13 +75,14 @@ def filter_genus(
         threshold (float): The threshold for filtering sequences. Only sequences with a score
             above this threshold will be included in the output file.
         classification_output_path (Path): Optional path to save the classification results.
+        sparse_sampling_step (int): The step size for sparse sampling. Defaults to 1.
 
     """
     model = get_genus_model(model_genus)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
-        result = model.predict(current_path)
+        result = model.predict(current_path, step=sparse_sampling_step)
         result.input_source = current_path.name
 
         if classification_output_path:

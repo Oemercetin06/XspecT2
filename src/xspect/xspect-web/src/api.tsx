@@ -61,9 +61,9 @@ export async function getModelMetadata(modelSlug: string): Promise<ModelMetadata
     }
 }
 
-export async function filterSequences(filter_type: string, genus : string, input_file : string, threshold : number, filter_species : string = ""): Promise<any> {
+export async function filterSequences(filter_type: string, genus : string, input_file : string, threshold : number, filter_species : string = "", sparse_sampling_step : number = 1): Promise<any> {
     try {
-        const response = await axios.post(`/api/filter?filter_type=${filter_type}&genus=${genus}&input_file=${input_file}&threshold=${threshold}&filter_species=${filter_species}`);
+        const response = await axios.post(`/api/filter?filter_type=${filter_type}&genus=${genus}&input_file=${input_file}&threshold=${threshold}&filter_species=${filter_species}&step=${sparse_sampling_step}`);
         return response.data;
     } catch (error) {
         console.error('Error filtering sequences:', error);

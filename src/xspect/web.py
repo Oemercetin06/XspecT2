@@ -93,6 +93,7 @@ def filter_post(
     threshold: float,
     background_tasks: BackgroundTasks,
     filter_species: str | None = None,
+    step: int = 1,
 ):
     """Filter sequences."""
     input_path = get_xspect_upload_path() / input_file
@@ -112,6 +113,7 @@ def filter_post(
             filter_output_path,
             threshold,
             classification_output_path,
+            step,
         )
         return {"message": "Genus filtering started.", "uuid": uuid}
 
@@ -126,6 +128,7 @@ def filter_post(
             filter_output_path,
             threshold,
             classification_output_path,
+            step,
         )
         return {"message": "Species filtering started.", "uuid": uuid}
 

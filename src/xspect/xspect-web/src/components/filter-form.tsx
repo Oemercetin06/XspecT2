@@ -143,7 +143,8 @@ export default function FilterForm() {
             data.model,
             data.input_file,
             threshold,
-            data.filter_species
+            data.filter_species,
+            data.sparse_sampling_step
         ).then((response) => {
             console.log("Filtering response:", response)
             navigate(`/filter-result/${response.uuid}`)

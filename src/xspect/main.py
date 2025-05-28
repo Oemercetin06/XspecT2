@@ -219,10 +219,18 @@ def classify_seqs():
     type=click.Path(dir_okay=False, file_okay=True),
     default=Path(".") / f"result_{uuid4()}.json",
 )
-def classify_genus(model_genus, input_path, output_path):
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
+def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     """Classify samples using a genus model."""
     click.echo("Classifying...")
-    classify.classify_genus(model_genus, Path(input_path), Path(output_path))
+    classify.classify_genus(
+        model_genus, Path(input_path), Path(output_path), sparse_sampling_step
+    )
 
 
 @classify_seqs.command(
@@ -346,8 +354,19 @@ def filter_seqs():
     default=0.7,
     prompt=True,
 )
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
 def filter_genus(
-    model_genus, input_path, output_path, classification_output_path, threshold
+    model_genus,
+    input_path,
+    output_path,
+    classification_output_path,
+    threshold,
+    sparse_sampling_step,
 ):
     """Filter samples using a genus model."""
     click.echo("Filtering...")
@@ -358,6 +377,7 @@ def filter_genus(
         Path(output_path),
         threshold,
         Path(classification_output_path) if classification_output_path else None,
+        sparse_sampling_step=sparse_sampling_step,
     )
 
 
@@ -408,6 +428,12 @@ def filter_genus(
     default=0.7,
     prompt=True,
 )
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
 def filter_species(
     model_genus,
     model_species,
@@ -415,6 +441,7 @@ def filter_species(
     output_path,
     threshold,
     classification_output_path,
+    sparse_sampling_step,
 ):
     """Filter a sample using the species model."""
 
@@ -454,6 +481,7 @@ def filter_species(
         Path(output_path),
         threshold,
         Path(classification_output_path) if classification_output_path else None,
+        sparse_sampling_step=sparse_sampling_step,
     )
 
 
