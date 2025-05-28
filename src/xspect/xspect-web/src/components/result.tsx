@@ -33,7 +33,7 @@ const useCheckboxItems = () => {
 };
 
 
-export default function Result() {
+export default function ResultPage() {
     const { checkboxItems: contig_checkbox_items, setItems: setCheckboxItems } = useCheckboxItems();
     const { classification_uuid } = useParams();
     const [classificationResult, setClassificationResult] = useState<ClassificationResult | null>(null);

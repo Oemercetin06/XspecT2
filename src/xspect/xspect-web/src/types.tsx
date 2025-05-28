@@ -32,3 +32,8 @@ export interface ClassificationResult {
   num_kmers: { [subsequence: string]: number };
   prediction: string;
 }
+
+export interface FilteringResult {
+  message: string;
+  uuid : string;
+}

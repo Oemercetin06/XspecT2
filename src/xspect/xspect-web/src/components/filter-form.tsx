@@ -20,7 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { getModelMetadata, getModels, uploadFile } from "../api"
+import { filterSequences, getModelMetadata, getModels, uploadFile } from "../api"
 import {
     FileUpload,
     FileUploadDropzone,
@@ -137,8 +137,20 @@ export default function FilterForm() {
     }, []);
 
     function onSubmit(data: z.infer<typeof FormSchema>) {
-        alert("Coming soon! This feature is not yet implemented.");
-        console.log("Form data:", data);
+        const threshold = data.filter_mode === "threshold" ? data.threshold : -1;
+        filterSequences(
+            data.filter_type,
+            data.model,
+            data.input_file,
+            threshold,
+            data.filter_species
+        ).then((response) => {
+            console.log("Filtering response:", response)
+            navigate(`/filter-result/${response.uuid}`)
+        })
+        .catch((error) => {
+            console.error("Error during filtering:", error)
+        });
     }
 
     return (

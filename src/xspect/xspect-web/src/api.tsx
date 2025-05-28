@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Models, ClassificationResult, ModelMetadata } from '@/types';
+import { Models, ClassificationResult, FilteringResult, ModelMetadata } from '@/types';
 
 export async function getModels(): Promise<Models> {
     try {
@@ -58,5 +58,27 @@ export async function getModelMetadata(modelSlug: string): Promise<ModelMetadata
     } catch (error) {
         console.error('Error fetching model metadata:', error);
         throw new Error('Failed to fetch model metadata');
+    }
+}
+
+export async function filterSequences(filter_type: string, genus : string, input_file : string, threshold : number, filter_species : string = ""): Promise<any> {
+    try {
+        const response = await axios.post(`/api/filter?filter_type=${filter_type}&genus=${genus}&input_file=${input_file}&threshold=${threshold}&filter_species=${filter_species}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error filtering sequences:', error);
+        throw new Error('Failed to filter sequences');
+    }
+}
+
+export async function getFilteringResult(filter_uuid: string): Promise<FilteringResult> {
+    try {
+        const response = await axios.get(`/api/filtering-result`, {
+            params: { uuid: filter_uuid },
+        });
+        return response.data as FilteringResult;
+    } catch (error) {
+        console.error('Error fetching filtering result:', error);
+        throw new Error('Failed to fetch filtering result');
     }
 }
