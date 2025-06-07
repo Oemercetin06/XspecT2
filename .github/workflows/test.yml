@@ -24,9 +24,10 @@ jobs:
           run: |
             python -m pip install --upgrade pip
             pip install '.[test]'
-        - name: Download models
+        - name: Download models and train MLST
           run: |
             xspect models download
+            yes 1 | xspect models train mlst
         - name: Test with pytest
           env:
             NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
