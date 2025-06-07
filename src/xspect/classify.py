@@ -10,7 +10,9 @@ from xspect.file_io import prepare_input_output_paths
 def classify_genus(
     model_genus: str, input_path: Path, output_path: Path, step: int = 1
 ):
-    """Classify the genus of sequences.
+    """
+    Classify the genus of sequences.
+
     This function classifies input files using the genus model.
     The input path can be a file or directory
 
@@ -34,7 +36,9 @@ def classify_genus(
 def classify_species(
     model_genus: str, input_path: Path, output_path: Path, step: int = 1
 ):
-    """Classify the species of sequences.
+    """
+    Classify the species of sequences.
+
     This function classifies input files using the species model.
     The input path can be a file or directory
 
@@ -56,7 +60,8 @@ def classify_species(
 
 
 def classify_mlst(input_path: Path, output_path: Path, limit: bool):
-    """Classify the strain type using the specific MLST model.
+    """
+    Classify the strain type using the specific MLST model.
 
     Args:
         input_path (Path): The path to the input file/directory containing sequences.

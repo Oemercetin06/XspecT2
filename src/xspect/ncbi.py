@@ -27,26 +27,35 @@ class AssemblySource(Enum):
 
 
 class NCBIHandler:
-    """This class uses the NCBI Datasets API to get the taxonomy tree of a given Taxon.
+    """
+    This class uses the NCBI Datasets API to get data about taxa and their assemblies.
 
-    The taxonomy tree consists of only the next children to the parent taxon.
-    The children are only of the next lower rank of the parent taxon.
+    It provides methods to get taxon IDs, species, names, accessions, and download assemblies.
+    It also enforces rate limiting to comply with NCBI's API usage policies.
     """
 
     def __init__(
         self,
         api_key: str | None = None,
     ):
-        """Initialise the NCBI handler."""
+        """
+        Initialise the NCBI handler.
+
+        This method sets up the base URL for the NCBI Datasets API and initializes the rate limiting parameters.
+
+        Args:
+            api_key (str | None): The NCBI API key. If None, the handler will use the public API without an API key.
+        """
         self.api_key = api_key
         self.base_url = "https://api.ncbi.nlm.nih.gov/datasets/v2"
-        self.last_request_time = 0
+        self.last_request_time = 0.0
         self.min_interval = (
             1 / 10 if api_key else 1 / 5
         )  # NCBI allows 10 requests per second with if an API key, otherwise 5 requests per second
 
-    def _enforce_rate_limit(self):
-        """Enforce rate limiting for the NCBI Datasets API.
+    def _enforce_rate_limit(self) -> None:
+        """
+        Enforce rate limiting for the NCBI Datasets API.
 
         This method ensures that the requests to the API are limited to 5 requests per second
         without an API key and 10 requests per second with an API key.
@@ -59,7 +68,11 @@ class NCBIHandler:
         self.last_request_time = now
 
     def _make_request(self, endpoint: str, timeout: int = 15) -> dict:
-        """Make a request to the NCBI Datasets API.
+        """
+        Make a request to the NCBI Datasets API.
+
+        This method constructs the full URL for the API endpoint, adds the necessary headers (including the API key if provided),
+        and makes a GET request to the API. It also enforces rate limiting before making the request.
 
         Args:
             endpoint (str): The endpoint to make the request to.
@@ -239,7 +252,20 @@ class NCBIHandler:
     def get_highest_quality_accessions(
         self, taxon_id: int, assembly_source: AssemblySource, count: int
     ) -> list[str]:
-        """Get the highest quality accessions for a given taxon id (based on the assembly level)."""
+        """
+        Get the highest quality accessions for a given taxon id (based on the assembly level).
+
+        This function iterates through the assembly levels in order of quality and retrieves accessions
+        until the specified count is reached. It ensures that the accessions are unique and sorted by quality.
+
+        Args:
+            taxon_id (int): The taxon id to get the accessions for.
+            assembly_source (AssemblySource): The assembly source to get the accessions for.
+            count (int): The number of accessions to get.
+
+        Returns:
+            list[str]: A list containing the highest quality accessions.
+        """
         accessions = []
         for assembly_level in list(AssemblyLevel):
             accessions += self.get_accessions(
@@ -253,7 +279,16 @@ class NCBIHandler:
         return list(set(accessions))[:count]  # Remove duplicates and limit to count
 
     def download_assemblies(self, accessions: list[str], output_dir: Path) -> None:
-        """Download assemblies for a list of accessions."""
+        """
+        Download assemblies for a list of accessions.
+
+        This function makes a request to the NCBI Datasets API to download the assemblies for the given accessions.
+        It saves the downloaded assemblies as a zip file in the specified output directory.
+
+        Args:
+            accessions (list[str]): A list of accessions to download.
+            output_dir (Path): The directory where the downloaded assemblies will be saved.
+        """
         endpoint = f"/genome/accession/{','.join(accessions)}/download?include_annotation_type=GENOME_FASTA"
 
         self._enforce_rate_limit()

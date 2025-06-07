@@ -15,7 +15,13 @@ from xspect.models.result import ModelResult
 
 
 class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
-    """Probabilistic filter SVM model for sequence data"""
+    """
+    Probabilistic filter SVM model for sequence data
+
+    In addition to the standard probabilistic filter model, this model uses an SVM to predict
+    labels based on their scores and training data. It requires the `scikit-learn` library
+    to be installed.
+    """
 
     def __init__(
         self,
@@ -32,6 +38,28 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         training_accessions: dict[str, list[str]] | None = None,
         svm_accessions: dict[str, list[str]] | None = None,
     ) -> None:
+        """
+        Initialize the SVM model with the given parameters.
+
+        In addition to the standard parameters, this model uses an SVM.
+        Therefore, it requires the `kernel` and `C` parameters to be set.
+        Furthermore, the `svm_accessions` parameter is used to store which accessions
+        are used for training the SVM.
+
+        Args:
+            k (int): The k-mer size for the probabilistic filter.
+            model_display_name (str): The display name of the model.
+            author (str | None): The author of the model.
+            author_email (str | None): The author's email address.
+            model_type (str): The type of the model.
+            base_path (Path): The base path where the model will be stored.
+            kernel (str): The kernel type for the SVM (e.g., 'linear', 'rbf').
+            c (float): Regularization parameter for the SVM.
+            fpr (float, optional): False positive rate for the probabilistic filter. Defaults to 0.01.
+            num_hashes (int, optional): Number of hashes for the probabilistic filter. Defaults to 7.
+            training_accessions (dict[str, list[str]] | None, optional): Accessions used for training the probabilistic filter. Defaults to None.
+            svm_accessions (dict[str, list[str]] | None, optional): Accessions used for training the SVM. Defaults to None.
+        """
         super().__init__(
             k=k,
             model_display_name=model_display_name,
@@ -48,6 +76,12 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         self.svm_accessions = svm_accessions
 
     def to_dict(self) -> dict:
+        """
+        Convert the model to a dictionary representation
+
+        Returns:
+            dict: A dictionary containing the model's parameters and state.
+        """
         return super().to_dict() | {
             "kernel": self.kernel,
             "C": self.c,
@@ -55,7 +89,13 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         }
 
     def set_svm_params(self, kernel: str, c: float) -> None:
-        """Set the parameters for the SVM"""
+        """
+        Set the parameters for the SVM
+
+        Args:
+            kernel (str): The kernel type for the SVM (e.g., 'linear', 'rbf').
+            c (float): Regularization parameter for the SVM.
+        """
         self.kernel = kernel
         self.c = c
         self.save()
@@ -69,7 +109,22 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         training_accessions: dict[str, list[str]] | None = None,
         svm_accessions: dict[str, list[str]] | None = None,
     ) -> None:
-        """Fit the SVM to the sequences and labels"""
+        """
+        Fit the SVM to the sequences and labels.
+
+        This method first trains the probabilistic filter model and then
+        calculates scores for the SVM training. It expects the sequences to be in
+        the specified directory and the SVM training sequences to be in the
+        specified SVM path. The scores are saved in a CSV file for later use.
+
+        Args:
+            dir_path (Path): The directory containing the training sequences.
+            svm_path (Path): The directory containing the SVM training sequences.
+            display_names (dict[str, str] | None): A mapping of accession IDs to display names.
+            svm_step (int): Step size for sparse sampling in SVM training.
+            training_accessions (dict[str, list[str]] | None): Accessions used for training the probabilistic filter.
+            svm_accessions (dict[str, list[str]] | None): Accessions used for training the SVM.
+        """
 
         # Since the SVM works with score data, we need to train
         # the underlying data structure for score generation first
@@ -124,7 +179,21 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         filter_ids: list[str] = None,
         step: int = 1,
     ) -> ModelResult:
-        """Predict the labels of the sequences"""
+        """
+        Predict the labels of the sequences.
+
+        This method uses the SVM to predict labels based on the scores generated
+        from the sequences. It expects the sequences to be in a format compatible
+        with the probabilistic filter model, and it will return a `ModelResult`.
+
+        Args:
+            sequence_input (SeqRecord | list[SeqRecord] | SeqIO.FastaIO.FastaIterator | SeqIO.QualityIO.FastqPhredIterator | Path): The input sequences to predict.
+            filter_ids (list[str], optional): A list of IDs to filter the predictions. Defaults to None.
+            step (int, optional): Step size for sparse sampling. Defaults to 1.
+
+        Returns:
+            ModelResult: The result of the prediction containing hits, number of kmers, and the predicted label.
+        """
         # get scores and format them for the SVM
         res = super().predict(sequence_input, filter_ids, step=step)
         svm_scores = dict(sorted(res.get_scores()["total"].items()))
@@ -140,7 +209,19 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         )
 
     def _get_svm(self, id_keys) -> SVC:
-        """Get the SVM for the given id keys"""
+        """
+        Get the SVM for the given id keys.
+
+        This method loads the SVM model from the scores CSV file and trains it
+        using the scores from the CSV. If `id_keys` is provided, it filters the
+        training data to only include those keys.
+
+        Args:
+            id_keys (list[str] | None): A list of IDs to filter the training data. If None, all data is used.
+
+        Returns:
+            SVC: The trained SVM model.
+        """
         svm = SVC(kernel=self.kernel, C=self.c)
         # parse csv
         with open(
@@ -160,7 +241,19 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
 
     @staticmethod
     def load(path: Path) -> "ProbabilisticFilterSVMModel":
-        """Load the model from disk"""
+        """
+        Load the model from disk
+
+        Loads the model from the specified path. The path should point to a JSON file
+        containing the model's parameters and state. It also checks for the existence of
+        the COBS index file.
+
+        Args:
+            path (Path): The path to the model JSON file.
+
+        Returns:
+            ProbabilisticFilterSVMModel: The loaded model instance.
+        """
         with open(path, "r", encoding="utf-8") as file:
             json_object = file.read()
             model_json = json.loads(json_object)

@@ -12,7 +12,9 @@ def filter_species(
     classification_output_path: Path | None = None,
     sparse_sampling_step: int = 1,
 ):
-    """Filter sequences by species.
+    """
+    Filter sequences by species.
+
     This function filters sequences from the input file based on the species model.
     It uses the species model to identify the species of individual sequences and then applies
     a threshold filter the sequences.
@@ -63,7 +65,9 @@ def filter_genus(
     classification_output_path: Path | None = None,
     sparse_sampling_step: int = 1,
 ):
-    """Filter sequences by genus.
+    """
+    Filter sequences by genus.
+
     This function filters sequences from the input file based on the genus model.
     It uses the genus model to identify the genus of the sequences and then applies
     the filtering based on the provided threshold.

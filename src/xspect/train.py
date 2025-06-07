@@ -187,7 +187,8 @@ def train_from_ncbi(
     author_email: str | None = None,
     ncbi_api_key: str | None = None,
 ):
-    """Train a model using NCBI assembly data for a given genus.
+    """
+    Train a model using NCBI assembly data for a given genus.
 
     This function trains a probabilistic filter model using the assembly data from NCBI.
     The training data is downloaded and processed, and the model is saved to the
