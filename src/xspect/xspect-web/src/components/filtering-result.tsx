@@ -50,7 +50,7 @@ export default function FilteringResultPage() {
                         <div className="flex flex-col gap-3 mt-4">
                             {filteringResult.message == "Filtering completed successfully." && (
                                 <Button asChild>
-                                    <a href={`/api/download-filtered?uuid=${filter_uuid}`} download>Download the filtered file</a>
+                                    <a href={`${window.location.origin}/api/download-filtered?uuid=${filter_uuid}`} download>Download the filtered file</a>
                                 </Button>
                             )}
                             <Button variant="outline" asChild>
