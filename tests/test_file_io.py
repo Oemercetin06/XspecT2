@@ -2,11 +2,8 @@
 File IO module tests.
 """
 
-import os
 from pathlib import Path
-from xspect.file_io import (
-    concatenate_meta,
-)
+from xspect.file_io import concatenate_metagenome
 
 
 def test_concatenate_meta(tmpdir, monkeypatch):
@@ -21,6 +18,8 @@ def test_concatenate_meta(tmpdir, monkeypatch):
     # Create some temporary fasta files
     fasta_files = [
         "file1.fasta",
+        "test1.fasta",
+        "test2.fasta",
         "file2.fna",
         "file3.fa",
         "file4.ffn",
@@ -32,17 +31,14 @@ def test_concatenate_meta(tmpdir, monkeypatch):
     for file in fasta_files:
         with open(concatenate_dir / file, "w", encoding="utf-8") as f:
             f.write(f">{file}\n{file}")
+    meta_file = Path(tmpdir) / "Test.fasta"
 
     # Call the function to be tested
-    concatenate_meta(tmpdir, "Salmonella")
-
-    # Check if the meta file has been created and contains the correct content
-    meta_file = Path(tmpdir) / "Salmonella.fasta"
-    assert meta_file.is_file()
+    concatenate_metagenome(concatenate_dir, meta_file)
 
     with open(meta_file, "r", encoding="utf-8") as f:
         content = f.read()
-        assert content.startswith(">Salmonella metagenome")
+        assert content.startswith(">")
         for file in fasta_files:
             if (
                 file.endswith(".fasta")

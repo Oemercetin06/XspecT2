@@ -8,8 +8,16 @@ import requests
 from xspect.definitions import get_xspect_model_path
 
 
-def download_test_models(url):
-    """Download models."""
+def download_test_models(url: str) -> None:
+    """
+    Download models from the specified URL.
+
+    This function downloads a zip file from the given URL, extracts its contents,
+    and copies the extracted files to the XspecT model directory.
+
+    Args:
+        url (str): The URL from which to download the models.
+    """
     with TemporaryDirectory() as tmp_dir:
         tmp_dir = Path(tmp_dir)
         download_path = tmp_dir / "models.zip"

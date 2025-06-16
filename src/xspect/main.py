@@ -18,10 +18,8 @@ from xspect.models.probabilistic_filter_mlst_model import (
     ProbabilisticFilterMlstSchemeModel,
 )
 from xspect.model_management import (
-    get_genus_model,
     get_model_metadata,
     get_models,
-    get_species_model,
 )
 
 
@@ -173,8 +171,9 @@ def train_mlst(choose_schemes):
     scheme_path = pick_scheme(handler.get_scheme_paths())
     species_name = str(scheme_path).split("/")[-2]
     scheme_name = str(scheme_path).split("/")[-1]
+    scheme_url = handler.scheme_mapping[str(scheme_path)]
     model = ProbabilisticFilterMlstSchemeModel(
-        31, f"{species_name}:{scheme_name}", get_xspect_model_path()
+        31, f"{species_name}:{scheme_name}", get_xspect_model_path(), scheme_url
     )
     click.echo("Creating mlst model")
     model.fit(scheme_path)
@@ -220,10 +219,18 @@ def classify_seqs():
     type=click.Path(dir_okay=False, file_okay=True),
     default=Path(".") / f"result_{uuid4()}.json",
 )
-def classify_genus(model_genus, input_path, output_path):
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
+def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     """Classify samples using a genus model."""
     click.echo("Classifying...")
-    classify.classify_genus(model_genus, Path(input_path), Path(output_path))
+    classify.classify_genus(
+        model_genus, Path(input_path), Path(output_path), sparse_sampling_step
+    )
 
 
 @classify_seqs.command(
@@ -275,20 +282,24 @@ def classify_species(model_genus, input_path, output_path, sparse_sampling_step)
     "-i",
     "--input-path",
     help="Path to FASTA-file for mlst identification.",
-    type=click.Path(exists=True, dir_okay=False, file_okay=True),
+    type=click.Path(exists=True, dir_okay=True, file_okay=True),
     prompt=True,
+    default=Path("."),
 )
 @click.option(
     "-o",
     "--output-path",
     help="Path to the output file.",
     type=click.Path(dir_okay=False, file_okay=True),
+    default=Path(".") / f"MLST_result_{uuid4()}.json",
 )
-def classify_mlst(input_path, output_path):
+@click.option(
+    "-l", "--limit", is_flag=True, help="Limit the output to 5 results for each locus."
+)
+def classify_mlst(input_path, output_path, limit):
     """MLST classify a sample."""
     click.echo("Classifying...")
-    classify.classify_mlst(Path(input_path), Path(output_path))
-    click.echo(f"Result saved as {output_path}.")
+    classify.classify_mlst(Path(input_path), Path(output_path), limit)
 
 
 # # # # # # # # # # # # # # #
@@ -343,8 +354,19 @@ def filter_seqs():
     default=0.7,
     prompt=True,
 )
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
 def filter_genus(
-    model_genus, input_path, output_path, classification_output_path, threshold
+    model_genus,
+    input_path,
+    output_path,
+    classification_output_path,
+    threshold,
+    sparse_sampling_step,
 ):
     """Filter samples using a genus model."""
     click.echo("Filtering...")
@@ -355,6 +377,7 @@ def filter_genus(
         Path(output_path),
         threshold,
         Path(classification_output_path) if classification_output_path else None,
+        sparse_sampling_step=sparse_sampling_step,
     )
 
 
@@ -405,6 +428,12 @@ def filter_genus(
     default=0.7,
     prompt=True,
 )
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
 def filter_species(
     model_genus,
     model_species,
@@ -412,6 +441,7 @@ def filter_species(
     output_path,
     threshold,
     classification_output_path,
+    sparse_sampling_step,
 ):
     """Filter a sample using the species model."""
 
@@ -451,6 +481,7 @@ def filter_species(
         Path(output_path),
         threshold,
         Path(classification_output_path) if classification_output_path else None,
+        sparse_sampling_step=sparse_sampling_step,
     )
 
 

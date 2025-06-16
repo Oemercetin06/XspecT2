@@ -3,6 +3,7 @@
 import json
 from math import ceil
 from pathlib import Path
+from typing import Any
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
@@ -28,6 +29,25 @@ class ProbabilisticFilterModel:
         num_hashes: int = 7,
         training_accessions: dict[str, list[str]] | None = None,
     ) -> None:
+        """
+        Initializes the probabilistic filter model.
+
+        This method sets up the model with the specified parameters, including the k-mer size,
+        display name, author information, model type, base path for storage, false positive rate,
+        number of hashes, and training accessions.
+
+        Args:
+            k (int): The size of the k-mers to be used in the model.
+            model_display_name (str): The display name of the model.
+            author (str | None): The name of the author of the model.
+            author_email (str | None): The email of the author of the model.
+            model_type (str): The type of the model.
+            base_path (Path): The base path where the model will be stored.
+            fpr (float): The false positive rate for the model. Default is 0.01.
+            num_hashes (int): The number of hashes to use in the model. Default is 7.
+            training_accessions (dict[str, list[str]] | None): A dictionary mapping filter IDs to
+                lists of accession numbers used for training the model. Default is None.
+        """
         if k < 1:
             raise ValueError("Invalid k value, must be greater than 0")
         if not model_display_name:
@@ -50,11 +70,27 @@ class ProbabilisticFilterModel:
         self.training_accessions = training_accessions
 
     def get_cobs_index_path(self) -> str:
-        """Returns the path to the cobs index"""
+        """
+        Returns the path to the cobs inde
+
+        This method constructs the path where the cobs index file will be stored,
+        based on the model's slug and the base path.
+
+        Returns:
+            str: The path to the cobs index file.
+        """
         return str(self.base_path / self.slug() / "index.cobs_classic")
 
     def to_dict(self) -> dict:
-        """Returns a dictionary representation of the model"""
+        """
+        Returns a dictionary representation of the model
+
+        This method includes all relevant attributes of the model, such as k-mer size,
+        display name, author information, model type, and other parameters.
+
+        Returns:
+            dict: A dictionary containing the model's attributes.
+        """
         return {
             "model_slug": self.slug(),
             "k": self.k,
@@ -70,7 +106,15 @@ class ProbabilisticFilterModel:
         }
 
     def slug(self) -> str:
-        """Returns a slug representation of the model"""
+        """
+        Returns a slug representation of the model
+
+        This method generates a slug based on the model's display name and type,
+        which can be used for file naming or identification purposes.
+
+        Returns:
+            str: A slug representation of the model.
+        """
         return slugify(self.model_display_name + "-" + str(self.model_type))
 
     def fit(
@@ -79,7 +123,23 @@ class ProbabilisticFilterModel:
         display_names: dict | None = None,
         training_accessions: dict[str, list[str]] | None = None,
     ) -> None:
-        """Adds filters to the model"""
+        """
+        Adds filters to the model
+
+        This method constructs the model's index from sequence files in the specified directory.
+        It reads files with specified extensions (fasta and fastq), constructs a document list,
+        and builds a cobs index for efficient searching.
+
+        Args:
+            dir_path (Path): The directory containing sequence files to be indexed.
+            display_names (dict | None): A dictionary mapping file names to display names.
+                If None, uses file names as display names.
+            training_accessions (dict[str, list[str]] | None): A dictionary mapping filter IDs to
+                lists of accession numbers used for training the model. If None, no training accessions
+                are set.
+        Raises:
+            ValueError: If the directory path is invalid, does not exist, or is not a directory.
+        """
 
         if display_names is None:
             display_names = {}
@@ -125,8 +185,26 @@ class ProbabilisticFilterModel:
     def calculate_hits(
         self, sequence: Seq, filter_ids: list[str] | None = None, step: int = 1
     ) -> dict:
-        """Calculates the hits for a sequence"""
+        """
+        Calculates the hits for a sequence
 
+        This method searches the model's index for the given sequence and returns a dictionary
+        of filter IDs and their corresponding scores. If filter_ids is provided, it filters the
+        results to only include those IDs.
+
+        Args:
+            sequence (Seq): The sequence to search for in the model's index.
+            filter_ids (list[str] | None): A list of filter IDs to filter the results. If None,
+                all results are returned.
+            step (int): The step size for the k-mer search. Default is 1.
+
+        Returns:
+            dict: A dictionary where keys are filter IDs and values are scores for the sequence.
+
+        Raises:
+            ValueError: If the sequence is not a valid Bio.Seq or Bio.SeqRecord object,
+                        if the sequence length is not greater than k, or if the input is invalid.
+        """
         if not isinstance(sequence, (Seq)):
             raise ValueError(
                 "Invalid sequence, must be a Bio.Seq or a Bio.SeqRecord object"
@@ -153,7 +231,30 @@ class ProbabilisticFilterModel:
         filter_ids: list[str] = None,
         step: int = 1,
     ) -> ModelResult:
-        """Returns scores for the sequence(s) based on the filters in the model"""
+        """
+        Returns a model result object for the sequence(s) based on the filters in the model
+
+        This method processes the input sequence(s) and calculates hits against the model's index.
+        It supports various input types, including single sequences, lists of sequences,
+        SeqIO iterators, and file paths. The results are returned as a ModelResult object.
+
+        Args:
+            sequence_input (SeqRecord | list[SeqRecord] | SeqIO.FastaIO.FastaIterator |
+                            SeqIO.QualityIO.FastqPhredIterator | Path):
+                The input sequence(s) to be processed. Can be a single SeqRecord, a list of
+                SeqRecords, a SeqIO iterator, or a Path to a fasta/fastq file.
+            filter_ids (list[str]): A list of filter IDs to filter the results. If None,
+                all results are returned.
+            step (int): The step size for the k-mer search. Default is 1.
+
+        Returns:
+            ModelResult: An object containing the hits for each sequence, the number of kmers,
+                         and the sparse sampling step.
+
+        Raises:
+            ValueError: If the input sequence is not valid, or if it is not a Seq object,
+                        a list of Seq objects, a SeqIO iterator, or a Path object to a fasta/fastq file.
+        """
         if isinstance(sequence_input, (SeqRecord)):
             return ProbabilisticFilterModel.predict(
                 self, [sequence_input], filter_ids, step=step
@@ -186,7 +287,14 @@ class ProbabilisticFilterModel:
         )
 
     def save(self) -> None:
-        """Saves the model to disk"""
+        """
+        Saves the model to disk
+
+        This method serializes the model's attributes to a JSON file and creates a directory
+        for the model based on its slug. The JSON file contains all relevant information about
+        the model, including k-mer size, display name, author information, model type, and
+        other parameters. The directory structure is created if it does not already exist.
+        """
         json_path = self.base_path / f"{self.slug()}.json"
         filter_path = self.base_path / self.slug()
         filter_path.mkdir(exist_ok=True, parents=True)
@@ -198,7 +306,23 @@ class ProbabilisticFilterModel:
 
     @staticmethod
     def load(path: Path) -> "ProbabilisticFilterModel":
-        """Loads the model from a file"""
+        """
+        Loads the model from a file
+
+        This static method reads a JSON file containing the model's attributes and constructs
+        a ProbabilisticFilterModel object. It also checks for the existence of the cobs index file
+        and initializes the index if it exists.
+
+        Args:
+            path (Path): The path to the JSON file containing the model's attributes.
+
+        Returns:
+            ProbabilisticFilterModel: An instance of the ProbabilisticFilterModel class
+            initialized with the attributes from the JSON file.
+
+        Raises:
+            FileNotFoundError: If the JSON file or the cobs index file does not exist.
+        """
         with open(path, "r", encoding="utf-8") as file:
             json_object = file.read()
             model_json = json.loads(json_object)
@@ -223,6 +347,18 @@ class ProbabilisticFilterModel:
             return model
 
     def _convert_cobs_result_to_dict(self, cobs_result: cobs.SearchResult) -> dict:
+        """
+        Converts a cobs SearchResult to a dictionary
+
+        This method takes a cobs SearchResult object and converts it into a dictionary
+        where the keys are document names and the values are their corresponding scores.
+
+        Args:
+            cobs_result (cobs.SearchResult): The result object from a cobs search.
+
+        Returns:
+            dict: A dictionary mapping document names to their scores.
+        """
         return {
             individual_result.doc_name: individual_result.score
             for individual_result in cobs_result
@@ -239,7 +375,27 @@ class ProbabilisticFilterModel:
         ),
         step: int = 1,
     ) -> int:
-        """Counts the number of kmers in the sequence(s)"""
+        """
+        Counts the number of kmers in the sequence(s)
+
+        This method calculates the number of k-mers in a given sequence or list of sequences.
+        It supports various input types, including single sequences, SeqRecords, lists of sequences,
+        and SeqIO iterators. The step size for the k-mer search can be specified.
+
+        Args:
+            sequence_input (Seq | SeqRecord | list[Seq] | SeqIO.FastaIO.FastaIterator |
+                            SeqIO.QualityIO.FastqPhredIterator):
+                The input sequence(s) to count k-mers in. Can be a single Seq, a SeqRecord,
+                a list of Seq objects, or a SeqIO iterator.
+            step (int): The step size for the k-mer search. Default is 1.
+
+        Returns:
+            int: The total number of k-mers in the input sequence(s).
+
+        Raises:
+            ValueError: If the input sequence is not valid, or if it is not a Seq object,
+                        a SeqRecord, a list of Seq objects, or a SeqIO iterator.
+        """
         if isinstance(sequence_input, Seq):
             return self._count_kmers([sequence_input], step=step)
 
@@ -268,12 +424,38 @@ class ProbabilisticFilterModel:
             " SeqIO FastaIterator, or a SeqIO FastqPhredIterator"
         )
 
-    def _is_sequence_list(self, sequence_input):
+    def _is_sequence_list(self, sequence_input: Any) -> bool:
+        """
+        Checks if the input is a list of SeqRecord objects
+
+        This method verifies if the input is a list and that all elements in the list
+        are instances of SeqRecord. This is useful for ensuring that the input is a valid
+        collection of sequence records.
+
+        Args:
+            sequence_input (Any): The input to check.
+
+        Returns:
+            bool: True if the input is a list of SeqRecord objects, False otherwise.
+        """
         return isinstance(sequence_input, list) and all(
             isinstance(seq, (SeqRecord)) for seq in sequence_input
         )
 
-    def _is_sequence_iterator(self, sequence_input):
+    def _is_sequence_iterator(self, sequence_input: Any) -> bool:
+        """
+        Checks if the input is a SeqIO iterator
+
+        This method verifies if the input is an instance of a SeqIO iterator, such as
+        FastaIterator or FastqPhredIterator. This is useful for ensuring that the input
+        is a valid sequence iterator that can be processed by the model.
+
+        Args:
+            sequence_input (Any): The input to check.
+
+        Returns:
+            bool: True if the input is a SeqIO iterator, False otherwise.
+        """
         return isinstance(
             sequence_input,
             (SeqIO.FastaIO.FastaIterator, SeqIO.QualityIO.FastqPhredIterator),

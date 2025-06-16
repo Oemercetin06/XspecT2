@@ -33,7 +33,7 @@ const useCheckboxItems = () => {
 };
 
 
-export default function Result() {
+export default function ResultPage() {
     const { checkboxItems: contig_checkbox_items, setItems: setCheckboxItems } = useCheckboxItems();
     const { classification_uuid } = useParams();
     const [classificationResult, setClassificationResult] = useState<ClassificationResult | null>(null);
@@ -124,7 +124,7 @@ export default function Result() {
                 )}
                 {chartData && (<>
                     <h1 className="text-xl font-bold">Classification Results</h1>
-                    <p>{classificationResult?.input_source} was classified using the <Link className="font-medium underline underline-offset-4" to={`/models/${modelMetadata?.model_slug}`}>{modelMetadata?.model_display_name} {modelMetadata?.model_type.toLowerCase()}</Link> model. {classificationResult?.sparse_sampling_step === 1 ? 'No sparse sampling was used.' : 'Sparse sampling was used with step ' + classificationResult?.sparse_sampling_step}</p>
+                    <p>{classificationResult?.input_source} was classified using the <Link className="font-medium underline underline-offset-4" to={`/models/${modelMetadata?.model_slug}`}>{modelMetadata?.model_display_name} {modelMetadata?.model_type.toLowerCase()}</Link> model. {classificationResult?.sparse_sampling_step === 1 ? 'No sparse sampling was used.' : 'Sparse sampling was used with step ' + classificationResult?.sparse_sampling_step + '.'}</p>
                     <p className="mt-4"><b>Prediction:</b> {modelMetadata?.display_names[classificationResult?.prediction] || 'No prediction available.'}</p>
                     <Button className="w-full mt-4" onClick={() => {
                         const blob = new Blob([JSON.stringify(classificationResult, null, 2)], { type: 'application/json' });

@@ -194,11 +194,13 @@ class MlstResult:
         scheme_model: str,
         steps: int,
         hits: dict[str, list[dict]],
+        input_source: str = None,
     ):
         """Initialise an MlstResult object."""
         self.scheme_model = scheme_model
         self.steps = steps
         self.hits = hits
+        self.input_source = input_source
 
     def get_results(self) -> dict:
         """
@@ -221,6 +223,7 @@ class MlstResult:
             "Scheme": self.scheme_model,
             "Steps": self.steps,
             "Results": self.get_results(),
+            "Input_source": self.input_source,
         }
         return result
 

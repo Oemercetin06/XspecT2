@@ -4,64 +4,77 @@ import xspect.model_management as mm
 from xspect.models.probabilistic_filter_mlst_model import (
     ProbabilisticFilterMlstSchemeModel,
 )
-from xspect.definitions import fasta_endings, fastq_endings
+from xspect.file_io import prepare_input_output_paths
 
 
 def classify_genus(
     model_genus: str, input_path: Path, output_path: Path, step: int = 1
 ):
-    """Classify the input file using the genus model."""
+    """
+    Classify the genus of sequences.
+
+    This function classifies input files using the genus model.
+    The input path can be a file or directory
+
+    Args:
+        model_genus (str): The genus model slug.
+        input_path (Path): The path to the input file/directory containing sequences.
+        output_path (Path): The path to the output file where results will be saved.
+        step (int): The amount of kmers to be skipped.
+    """
     model = mm.get_genus_model(model_genus)
-
-    input_paths = []
-    input_is_dir = input_path.is_dir()
-    ending_wildcards = [f"*.{ending}" for ending in fasta_endings + fastq_endings]
-
-    if input_is_dir:
-        input_paths = [p for e in ending_wildcards for p in input_path.glob(e)]
-    elif input_path.is_file():
-        input_paths = [input_path]
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
         result = model.predict(current_path, step=step)
         result.input_source = current_path.name
-        output_name = (
-            f"{output_path.stem}_{idx+1}{output_path.suffix}"
-            if input_is_dir
-            else output_path.name
-        )
-        result.save(output_path.parent / output_name)
-        print(f"Saved result as {output_name}")
+        cls_path = get_output_path(idx, output_path)
+        result.save(cls_path)
+        print(f"Saved result as {cls_path.name}")
 
 
-def classify_species(model_genus, input_path, output_path, step=1):
-    """Classify the input file using the species model."""
+def classify_species(
+    model_genus: str, input_path: Path, output_path: Path, step: int = 1
+):
+    """
+    Classify the species of sequences.
+
+    This function classifies input files using the species model.
+    The input path can be a file or directory
+
+    Args:
+        model_genus (str): The genus model slug.
+        input_path (Path): The path to the input file/directory containing sequences.
+        output_path (Path): The path to the output file where results will be saved.
+        step (int): The amount of kmers to be skipped.
+    """
     model = mm.get_species_model(model_genus)
-
-    input_paths = []
-    input_is_dir = input_path.is_dir()
-    ending_wildcards = [f"*.{ending}" for ending in fasta_endings + fastq_endings]
-
-    if input_is_dir:
-        input_paths = [p for e in ending_wildcards for p in input_path.glob(e)]
-    elif input_path.is_file():
-        input_paths = [input_path]
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
         result = model.predict(current_path, step=step)
         result.input_source = current_path.name
-        output_name = (
-            f"{output_path.stem}_{idx+1}{output_path.suffix}"
-            if input_is_dir
-            else output_path.name
-        )
-        result.save(output_path.parent / output_name)
-        print(f"Saved result as {output_name}")
+        cls_path = get_output_path(idx, output_path)
+        result.save(cls_path)
+        print(f"Saved result as {cls_path.name}")
 
 
-def classify_mlst(input_path, output_path):
-    """Classify the input file using the MLST model."""
+def classify_mlst(input_path: Path, output_path: Path, limit: bool):
+    """
+    Classify the strain type using the specific MLST model.
+
+    Args:
+        input_path (Path): The path to the input file/directory containing sequences.
+        output_path (Path): The path to the output file where results will be saved.
+        limit (bool): A limit for the highest allele_id results that are shown.
+    """
+
     scheme_path = pick_scheme_from_models_dir()
     model = ProbabilisticFilterMlstSchemeModel.load(scheme_path)
-    result = model.predict(scheme_path, input_path)
-    result.save(output_path)
+    input_paths, get_output_path = prepare_input_output_paths(input_path)
+    for idx, current_path in enumerate(input_paths):
+        result = model.predict(scheme_path, current_path, step=1, limit=limit)
+        result.input_source = current_path.name
+        cls_path = get_output_path(idx, output_path)
+        result.save(cls_path)
+        print(f"Saved result as {cls_path.name}")

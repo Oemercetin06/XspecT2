@@ -5,7 +5,7 @@ import json
 from shutil import copyfileobj
 import importlib.resources as pkg_resources
 from fastapi import APIRouter, FastAPI, HTTPException, UploadFile, BackgroundTasks
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from xspect.definitions import get_xspect_runs_path, get_xspect_upload_path
 from xspect.download_models import download_test_models
 import xspect.model_management as mm
@@ -85,34 +85,90 @@ def classify_post(
     )
 
 
-router.post("/filter")
-
-
+@router.post("/filter")
 def filter_post(
     filter_type: str,
-    model: str,
+    genus: str,
     input_file: str,
     threshold: float,
-    filter_species: str = None,
+    background_tasks: BackgroundTasks,
+    filter_species: str | None = None,
+    step: int = 1,
 ):
     """Filter sequences."""
     input_path = get_xspect_upload_path() / input_file
-    output_path = get_xspect_upload_path() / f"filtered_{input_file}"
+
+    uuid = str(uuid4())
+    filter_output_path = get_xspect_runs_path() / f"filtered_{uuid}.fasta"
+    classification_output_path = get_xspect_runs_path() / f"result_{uuid}.json"
 
     if not input_path.exists():
         raise FileNotFoundError(f"File {input_path} does not exist.")
 
     if filter_type == "Genus":
-        filter_sequences.filter_genus(model, input_path, output_path, threshold)
-        return {"message": "Genus Filtering started."}
+        background_tasks.add_task(
+            filter_sequences.filter_genus,
+            genus,
+            input_path,
+            filter_output_path,
+            threshold,
+            classification_output_path,
+            step,
+        )
+        return {"message": "Genus filtering started.", "uuid": uuid}
 
     elif filter_type == "Species":
-        filter_sequences.filter_species(
-            model, filter_species, input_path, output_path, threshold
+        if not filter_species:
+            raise ValueError("filter_species must be provided for species filtering.")
+        background_tasks.add_task(
+            filter_sequences.filter_species,
+            genus,
+            filter_species,
+            input_path,
+            filter_output_path,
+            threshold,
+            classification_output_path,
+            step,
         )
-        return {"message": "Species Filtering started."}
+        return {"message": "Species filtering started.", "uuid": uuid}
 
     raise NotImplementedError(f"Filter type {filter_type} is not implemented.")
+
+
+@router.get("/filtering-result")
+def get_filtering_result(uuid: str):
+    """Get filtering result."""
+    result_path = get_xspect_runs_path() / f"result_{uuid}.json"
+    filtered_path = get_xspect_runs_path() / f"filtered_{uuid}.fasta"
+    if not result_path.exists():
+        raise HTTPException(
+            status_code=404, detail="No result found for the specified uuid."
+        )
+    if not filtered_path.exists():
+        return {
+            "message": "Filtering completed, but no sequences met the criteria.",
+            "uuid": uuid,
+        }
+    return {
+        "message": "Filtering completed successfully.",
+        "uuid": uuid,
+    }
+
+
+@router.get("/download-filtered")
+def download_filtered(uuid: str):
+    """Download filtered sequences."""
+    filtered_path = get_xspect_runs_path() / f"filtered_{uuid}.fasta"
+    if not filtered_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="No filtered sequences found for the specified uuid.",
+        )
+    return FileResponse(
+        filtered_path,
+        media_type="application/octet-stream",
+        filename=filtered_path.name,
+    )
 
 
 @router.post("/train")
