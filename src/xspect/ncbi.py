@@ -221,6 +221,7 @@ class NCBIHandler:
         """
         endpoint = (
             f"/genome/taxon/{taxon_id}/dataset_report?"
+            f"filters.tax_exact_match=false&"
             f"filters.assembly_source={assembly_source.value}&"
             f"filters.exclude_atypical={exclude_atypical}&"
             f"filters.exclude_paired_reports={exclude_paired_reports}&"
@@ -228,9 +229,9 @@ class NCBIHandler:
             f"page_size={count * 2}&"  # to avoid having less than count if n50 or ANI is not met
         )
         endpoint += (
-            "&filters.reference_only=true"
+            "filters.reference_only=true&"
             if assembly_level == AssemblyLevel.REFERENCE
-            else f"&filters.assembly_level={assembly_level.value}"
+            else f"filters.assembly_level={assembly_level.value}"
         )
 
         response = self._make_request(endpoint)

@@ -31,7 +31,9 @@ def root():
 @router.get("/download-filters")
 def download_filters():
     """Download filters."""
-    download_test_models("http://assets.adrianromberg.com/xspect-models.zip")
+    download_test_models(
+        "https://assets.adrianromberg.com/science/xspect-models-07-08-2025.zip"
+    )
 
 
 @router.get("/classification-result")
