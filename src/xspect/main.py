@@ -49,7 +49,9 @@ def models():
 def download():
     """Download models."""
     click.echo("Downloading models, this may take a while...")
-    download_test_models("http://assets.adrianromberg.com/ake/xspect-models.zip")
+    download_test_models(
+        "https://assets.adrianromberg.com/science/xspect-models-07-08-2025.zip"
+    )
 
 
 @models.command(
