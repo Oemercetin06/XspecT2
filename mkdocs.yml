@@ -15,5 +15,7 @@ nav:
   - Quickstart: quickstart.md
   - CLI: cli.md
   - "Web App": web.md
-  - "Understanding XspecT": understanding.md
+  - "Understanding XspecT":
+    - understanding.md
+    - benchmark.md
   - Contributing: contributing.md
