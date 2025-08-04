@@ -180,6 +180,11 @@ xspect-data/
 .devcontainer/
 
 # Nextflow
+.nextflow.log*
 .nextflow/
-.nextflow.log.*
 work/
+data/
+results/
+
+# Slurm
+slurm-*
