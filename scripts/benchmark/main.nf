@@ -220,7 +220,8 @@ process generateReads {
   seed = 42
   
   random.seed(seed)
-  chromosome_sequence = list(SeqIO.parse("${sample}", "fasta"))[0] # [0] does not include plasmids
+  sequences = list(SeqIO.parse("${sample}", "fasta"))
+  chromosome_sequence = max(sequences, key=len)  # we assume the longest sequence is the chromosome
   
   ch_rec_id = chromosome_sequence.id
   ch_seq = chromosome_sequence.seq
@@ -237,7 +238,7 @@ process generateReads {
 }
 
 process summarizeReadClassifications {
-  conda "conda-forge::pandas conda-forge::jq"
+  conda "conda-forge::jq"
   cpus 2
   memory '16 GB'
   publishDir "results"
@@ -427,7 +428,7 @@ process mismatchConfusionMatrix {
   plt.title('Mismatches Confusion Matrix', fontsize=30)
   plt.xlabel('Predicted Labels', fontsize=24)
   plt.ylabel('True Labels', fontsize=24)
-
+  
   plt.savefig('mismatches_confusion_matrix.png', dpi=300, bbox_inches='tight')
   """
 }
@@ -469,5 +470,4 @@ workflow {
   summarizeReadClassifications(selectForReadGen.out, read_classifications.collect())
 
   calculateStats(summarizeClassifications.out, summarizeReadClassifications.out)
-
   }
