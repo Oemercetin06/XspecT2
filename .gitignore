@@ -178,3 +178,13 @@ out.png
 xspect-data/
 
 .devcontainer/
+
+# Nextflow
+.nextflow.log*
+.nextflow/
+work/
+data/
+results/
+
+# Slurm
+slurm-*

@@ -1,0 +1,7 @@
+name: xspect-benchmark
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - pip:
+      - XspecT

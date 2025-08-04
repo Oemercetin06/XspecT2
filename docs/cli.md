@@ -12,7 +12,7 @@ In general, XspecT commands will prompt you for parameters if they are not provi
 
 ## Model Management
 
-At its core, XspecT uses models to classify and filter samples. These models are based on kmer indices trained on publicly availabel genomes as well as, possibly, a support vector machine (SVM) classifier.
+At its core, XspecT uses models to classify and filter samples. These models are based on kmer indices trained on publicly available genomes as well as, possibly, a support vector machine (SVM) classifier.
 
 To manage models, the `xspect models` command can be used. This command allows you to download, train, and view available models.
 
@@ -119,11 +119,11 @@ This will only consider every 10th kmer in the sample.
 Samples can also be classified based on Multi-locus sequence type schemas. To MLST-classify a sample, run:
 
 ```bash
-xspect classify-mlst -p path
+xspect classify mlst
 ```
 
 ## Filtering
-XspecT can also be used to filter samples based on their classification results. This is useful when analyzing metagenome samples, for example when looking at genomic bycatch.
+XspecT can also be used to filter samples based on their classification results. This is useful when analyzing metagenomic samples, for example when looking at genomic bycatch.
 
 To filter samples, the command `xspect filter` can be used. This command will filter the samples based on the specified criteria.
 
