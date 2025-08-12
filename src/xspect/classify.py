@@ -22,7 +22,12 @@ def classify_genus(
         output_path (Path): The path to the output file where results will be saved.
         step (int): The amount of kmers to be skipped.
     """
-    model = mm.get_genus_model(model_genus)
+    from xspect.models.probabilistic_single_filter_model import (
+        ProbabilisticSingleFilterModel,
+    )
+
+    model_path = mm.get_genus_model_path(model_genus)
+    model = ProbabilisticSingleFilterModel.load(model_path)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
@@ -48,7 +53,12 @@ def classify_species(
         output_path (Path): The path to the output file where results will be saved.
         step (int): The amount of kmers to be skipped.
     """
-    model = mm.get_species_model(model_genus)
+    from xspect.models.probabilistic_filter_svm_model import (
+        ProbabilisticFilterSVMModel,
+    )
+
+    model_path = mm.get_species_model_path(model_genus)
+    model = ProbabilisticFilterSVMModel.load(model_path)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):

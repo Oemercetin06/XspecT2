@@ -1,5 +1,5 @@
 from pathlib import Path
-from xspect.model_management import get_genus_model, get_species_model
+from xspect.model_management import get_genus_model_path, get_species_model_path
 from xspect.file_io import filter_sequences, prepare_input_output_paths
 
 
@@ -31,7 +31,12 @@ def filter_species(
             available species scores.
         sparse_sampling_step (int): The step size for sparse sampling. Defaults to 1.
     """
-    species_model = get_species_model(model_genus)
+    from xspect.models.probabilistic_filter_svm_model import (
+        ProbabilisticFilterSVMModel,
+    )
+
+    species_model_path = get_species_model_path(model_genus)
+    species_model = ProbabilisticFilterSVMModel.load(species_model_path)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
@@ -82,11 +87,16 @@ def filter_genus(
         sparse_sampling_step (int): The step size for sparse sampling. Defaults to 1.
 
     """
-    model = get_genus_model(model_genus)
+    from xspect.models.probabilistic_single_filter_model import (
+        ProbabilisticSingleFilterModel,
+    )
+
+    genus_model_path = get_genus_model_path(model_genus)
+    genus_model = ProbabilisticSingleFilterModel.load(genus_model_path)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):
-        result = model.predict(current_path, step=sparse_sampling_step)
+        result = genus_model.predict(current_path, step=sparse_sampling_step)
         result.input_source = current_path.name
 
         if classification_output_path:

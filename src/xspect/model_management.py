@@ -2,45 +2,39 @@
 
 from json import loads, dumps
 from pathlib import Path
-from xspect.models.probabilistic_single_filter_model import (
-    ProbabilisticSingleFilterModel,
-)
-from xspect.models.probabilistic_filter_svm_model import ProbabilisticFilterSVMModel
 from xspect.definitions import get_xspect_model_path
 
 
-def get_genus_model(genus) -> ProbabilisticSingleFilterModel:
+def get_genus_model_path(genus) -> Path:
     """
-    Get a genus model for the specified genus.
+    Get a genus model path for the specified genus.
 
-    This function retrieves a pre-trained genus classification model based on the provided genus name.
+    This function retrieves the path of a pre-trained genus classification model based on the provided genus name.
 
     Args:
         genus (str): The genus name for which the model is to be retrieved.
 
     Returns:
-        ProbabilisticSingleFilterModel: An instance of the genus classification model.
+        Path: The file path of the genus classification model.
     """
     genus_model_path = get_xspect_model_path() / (genus.lower() + "-genus.json")
-    genus_filter_model = ProbabilisticSingleFilterModel.load(genus_model_path)
-    return genus_filter_model
+    return genus_model_path
 
 
-def get_species_model(genus) -> ProbabilisticFilterSVMModel:
+def get_species_model_path(genus) -> Path:
     """
-    Get a species classification model for the specified genus.
+    Get a species model path for the specified genus.
 
-    This function retrieves a pre-trained species classification model based on the provided genus name.
+    This function retrieves the path of a pre-trained species classification model based on the provided genus name.
 
     Args:
         genus (str): The genus name for which the species model is to be retrieved.
 
     Returns:
-        ProbabilisticFilterSVMModel: An instance of the species classification model.
+        Path: The file path of the species classification model.
     """
     species_model_path = get_xspect_model_path() / (genus.lower() + "-species.json")
-    species_filter_model = ProbabilisticFilterSVMModel.load(species_model_path)
-    return species_filter_model
+    return species_model_path
 
 
 def get_model_metadata(model: str | Path) -> dict:
