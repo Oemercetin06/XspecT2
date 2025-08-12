@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from uuid import uuid4
+from importlib import import_module
 import click
 from xspect.model_management import get_models
 
@@ -15,8 +16,8 @@ def cli():
 @cli.command()
 def web():
     """Open the XspecT web application."""
-    from xspect.web import app
-    from uvicorn import run
+    app = import_module("xspect.web").app
+    run = import_module("uvicorn").run
 
     run(app, host="0.0.0.0", port=8000)
 
@@ -35,7 +36,7 @@ def models():
 def download():
     """Download models."""
     click.echo("Downloading models, this may take a while...")
-    from xspect.download_models import download_test_models
+    download_test_models = import_module("xspect.download_models").download_test_models
 
     download_test_models(
         "https://assets.adrianromberg.com/science/xspect-models-07-08-2025.zip"
@@ -52,7 +53,6 @@ def list_models():
     if not available_models:
         click.echo("No models found.")
         return
-    # todo: make this machine readable
     click.echo("Models found:")
     click.echo("--------------")
     for model_type, names in available_models.items():
@@ -88,7 +88,7 @@ def train_ncbi(model_genus, svm_steps, author, author_email):
     """Train a species and a genus model based on NCBI data."""
     click.echo(f"Training {model_genus} species and genus metagenome model.")
     try:
-        from xspect.train import train_from_ncbi
+        train_from_ncbi = import_module("xspect.train").train_from_ncbi
 
         train_from_ncbi(model_genus, svm_steps, author, author_email)
     except ValueError as e:
@@ -133,7 +133,7 @@ def train_ncbi(model_genus, svm_steps, author, author_email):
 def train_directory(model_genus, input_path, svm_steps, meta, author, author_email):
     """Train a model based on data from a directory for a given genus."""
     click.echo(f"Training {model_genus} model with {svm_steps} SVM steps.")
-    from xspect.train import train_from_directory
+    train_from_directory = import_module("xspect.train").train_from_directory
 
     train_from_directory(
         model_genus,
@@ -159,14 +159,21 @@ def train_directory(model_genus, input_path, svm_steps, meta, author, author_ema
 def train_mlst(choose_schemes):
     """Download alleles and train bloom filters."""
     click.echo("Updating alleles")
-    from xspect.mlst_feature.mlst_helper import pick_scheme
-    from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
-    from xspect.models.probabilistic_filter_mlst_model import (
-        ProbabilisticFilterMlstSchemeModel,
+    mlst_helper = import_module("xspect.mlst_feature.mlst_helper")
+    pick_scheme = mlst_helper.pick_scheme
+
+    pub_mlst_handler = import_module("xspect.mlst_feature.pub_mlst_handler")
+    PubMLSTHandler = pub_mlst_handler.PubMLSTHandler
+
+    probabilistic_filter_mlst_model = import_module(
+        "xspect.models.probabilistic_filter_mlst_model"
     )
-    from xspect.definitions import (
-        get_xspect_model_path,
+    ProbabilisticFilterMlstSchemeModel = (
+        probabilistic_filter_mlst_model.ProbabilisticFilterMlstSchemeModel
     )
+
+    definitions = import_module("xspect.definitions")
+    get_xspect_model_path = definitions.get_xspect_model_path
 
     handler = PubMLSTHandler()
     handler.download_alleles(choose_schemes)
@@ -231,7 +238,7 @@ def classify_seqs():
 def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     """Classify samples using a genus model."""
     click.echo("Classifying...")
-    from xspect import classify
+    classify = import_module("xspect.classify")
 
     classify.classify_genus(
         model_genus, Path(input_path), Path(output_path), sparse_sampling_step
@@ -274,7 +281,7 @@ def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
 def classify_species(model_genus, input_path, output_path, sparse_sampling_step):
     """Classify samples using a species model."""
     click.echo("Classifying...")
-    from xspect import classify
+    classify = import_module("xspect.classify")
 
     classify.classify_species(
         model_genus, Path(input_path), Path(output_path), sparse_sampling_step
@@ -306,7 +313,7 @@ def classify_species(model_genus, input_path, output_path, sparse_sampling_step)
 def classify_mlst(input_path, output_path, limit):
     """MLST classify a sample."""
     click.echo("Classifying...")
-    from xspect import classify
+    classify = import_module("xspect.classify")
 
     classify.classify_mlst(Path(input_path), Path(output_path), limit)
 
@@ -379,7 +386,7 @@ def filter_genus(
 ):
     """Filter samples using a genus model."""
     click.echo("Filtering...")
-    from xspect import filter_sequences
+    filter_sequences = import_module("xspect.filter_sequences")
 
     filter_sequences.filter_genus(
         model_genus,
@@ -459,7 +466,8 @@ def filter_species(
         raise click.BadParameter(
             "Threshold must be between 0 and 1, or -1 for filtering by the highest scoring species."
         )
-    from xspect.model_management import get_model_metadata
+
+    get_model_metadata = import_module("xspect.model_management").get_model_metadata
 
     available_species = get_model_metadata(f"{model_genus}-species")["display_names"]
     available_species = {
@@ -485,7 +493,7 @@ def filter_species(
     ][0]
 
     click.echo("Filtering...")
-    from xspect import filter_sequences
+    filter_sequences = import_module("xspect.filter_sequences")
 
     filter_sequences.filter_species(
         model_genus,

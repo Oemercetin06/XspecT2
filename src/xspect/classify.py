@@ -1,10 +1,7 @@
 from pathlib import Path
-from xspect.mlst_feature.mlst_helper import pick_scheme_from_models_dir
 import xspect.model_management as mm
-from xspect.models.probabilistic_filter_mlst_model import (
-    ProbabilisticFilterMlstSchemeModel,
-)
 from xspect.file_io import prepare_input_output_paths
+from importlib import import_module
 
 
 def classify_genus(
@@ -22,9 +19,9 @@ def classify_genus(
         output_path (Path): The path to the output file where results will be saved.
         step (int): The amount of kmers to be skipped.
     """
-    from xspect.models.probabilistic_single_filter_model import (
-        ProbabilisticSingleFilterModel,
-    )
+    ProbabilisticSingleFilterModel = import_module(
+        "xspect.models.probabilistic_single_filter_model"
+    ).ProbabilisticSingleFilterModel
 
     model_path = mm.get_genus_model_path(model_genus)
     model = ProbabilisticSingleFilterModel.load(model_path)
@@ -53,9 +50,9 @@ def classify_species(
         output_path (Path): The path to the output file where results will be saved.
         step (int): The amount of kmers to be skipped.
     """
-    from xspect.models.probabilistic_filter_svm_model import (
-        ProbabilisticFilterSVMModel,
-    )
+    ProbabilisticFilterSVMModel = import_module(
+        "xspect.models.probabilistic_filter_svm_model"
+    ).ProbabilisticFilterSVMModel
 
     model_path = mm.get_species_model_path(model_genus)
     model = ProbabilisticFilterSVMModel.load(model_path)
@@ -78,6 +75,12 @@ def classify_mlst(input_path: Path, output_path: Path, limit: bool):
         output_path (Path): The path to the output file where results will be saved.
         limit (bool): A limit for the highest allele_id results that are shown.
     """
+    pick_scheme_from_models_dir = import_module(
+        "xspect.mlst_feature.mlst_helper"
+    ).pick_scheme_from_models_dir
+    ProbabilisticFilterMlstSchemeModel = import_module(
+        "xspect.models.probabilistic_filter_mlst_model"
+    ).ProbabilisticFilterMlstSchemeModel
 
     scheme_path = pick_scheme_from_models_dir()
     model = ProbabilisticFilterMlstSchemeModel.load(scheme_path)
