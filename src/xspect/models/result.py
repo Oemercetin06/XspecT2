@@ -50,7 +50,8 @@ class ModelResult:
 
         Returns:
             dict: A dictionary where keys are subsequence names and values are dictionaries
-                with labels as keys and scores as values. Also includes a 'total' key for overall scores.
+                with labels as keys and scores as values. Also includes a 'total' key for
+                overall scores.
         """
         scores = {
             subsequence: {
@@ -78,7 +79,8 @@ class ModelResult:
         The total hits are calculated by summing the hits for each label across all subsequences.
 
         Returns:
-            dict: A dictionary where keys are labels and values are the total number of hits for that label.
+            dict: A dictionary where keys are labels and values are the total number of hits for
+            that label.
         """
         total_hits = {label: 0 for label in list(self.hits.values())[0]}
         for _, subsequence_hits in self.hits.items():
@@ -97,8 +99,8 @@ class ModelResult:
 
         Args:
             label (str): The label for which to filter the subsequences.
-            filter_threshold (float): The threshold for filtering subsequences. Must be between 0 and 1,
-                or -1 to return the subsequence with the maximum score for the label.
+            filter_threshold (float): The threshold for filtering subsequences. Must be between 0
+                and 1, or -1 to return the subsequence with the maximum score for the label.
 
         Returns:
             dict[str, bool]: A dictionary where keys are subsequence names and values are booleans
@@ -114,11 +116,10 @@ class ModelResult:
                 subsequence: score[label] >= filter_threshold
                 for subsequence, score in scores.items()
             }
-        else:
-            return {
-                subsequence: score[label] == max(score.values())
-                for subsequence, score in scores.items()
-            }
+        return {
+            subsequence: score[label] == max(score.values())
+            for subsequence, score in scores.items()
+        }
 
     def get_filtered_subsequence_labels(
         self, label: str, filter_threshold: float = 0.7
@@ -126,15 +127,17 @@ class ModelResult:
         """
         Return the labels of filtered subsequences.
 
-        This method filters subsequences based on the scores for a given label and a filter threshold.
+        This method filters subsequences based on the scores for a given label and a filter
+        threshold.
 
         Args:
             label (str): The label for which to filter the subsequences.
-            filter_threshold (float): The threshold for filtering subsequences. Must be between 0 and 1,
-                or -1 to return the subsequence with the maximum score for the label.
+            filter_threshold (float): The threshold for filtering subsequences. Must be between 0
+                and 1, or -1 to return the subsequence with the maximum score for the label.
 
         Returns:
-            list[str]: A list of subsequence names that meet the filter criteria for the given label.
+            list[str]: A list of subsequence names that meet the filter criteria for the given
+                label.
         """
         return [
             subsequence
@@ -148,11 +151,13 @@ class ModelResult:
         """
         Return the result as a dictionary.
 
-        This method converts the ModelResult object into a dictionary format suitable for serialization.
+        This method converts the ModelResult object into a dictionary format suitable for
+        serialization.
 
         Returns:
             dict: A dictionary representation of the ModelResult object, including model slug,
-            sparse sampling step, hits, scores, number of k-mers, input source, and prediction if available.
+            sparse sampling step, hits, scores, number of k-mers, input source, and prediction if
+            available.
         """
         res = {
             "model_slug": self.model_slug,

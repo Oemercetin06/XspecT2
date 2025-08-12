@@ -6,6 +6,9 @@ from importlib import import_module
 import click
 from xspect.model_management import get_models
 
+# inline imports lead to "invalid name" issues
+# pylint: disable=invalid-name
+
 
 @click.group()
 @click.version_option()
@@ -180,7 +183,7 @@ def train_mlst(choose_schemes):
     click.echo("Download finished")
     scheme_path = pick_scheme(handler.get_scheme_paths())
     species_name = str(scheme_path).split("/")[-2]
-    scheme_name = str(scheme_path).split("/")[-1]
+    scheme_name = str(scheme_path).rsplit("/", maxsplit=1)[-1]
     scheme_url = handler.scheme_mapping[str(scheme_path)]
     model = ProbabilisticFilterMlstSchemeModel(
         31, f"{species_name}:{scheme_name}", get_xspect_model_path(), scheme_url
@@ -441,14 +444,16 @@ def filter_genus(
     "-t",
     "--threshold",
     type=float,
-    help="Threshold for filtering (default: 0.7). Use -1 to filter for the highest scoring species.",
+    help="Threshold for filtering (default: 0.7). Use -1 to filter for the highest scoring "
+    "species.",
     default=0.7,
     prompt=True,
 )
 @click.option(
     "--sparse-sampling-step",
     type=int,
-    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    help="Sparse sampling step (e. g. only every 500th kmer for "
+    "'--sparse-sampling-step 500').",
     default=1,
 )
 def filter_species(
@@ -464,7 +469,8 @@ def filter_species(
 
     if threshold != -1 and (threshold < 0 or threshold > 1):
         raise click.BadParameter(
-            "Threshold must be between 0 and 1, or -1 for filtering by the highest scoring species."
+            "Threshold must be between 0 and 1, or -1 for filtering by the highest "
+            "scoring species."
         )
 
     get_model_metadata = import_module("xspect.model_management").get_model_metadata

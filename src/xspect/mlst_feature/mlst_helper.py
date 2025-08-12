@@ -2,10 +2,10 @@
 
 __author__ = "Cetin, Oemer"
 
-import requests
 import json
-from io import StringIO
 from pathlib import Path
+from io import StringIO
+import requests
 from Bio import SeqIO
 from xspect.definitions import get_xspect_model_path
 
@@ -29,7 +29,7 @@ def create_fasta_files(locus_path: Path, fasta_batch: str) -> None:
         output_fasta_file = locus_path / f"Allele_ID_{number}.fasta"
         if output_fasta_file.exists():
             continue  # Ignore existing ones
-        with open(output_fasta_file, "w") as allele:
+        with open(output_fasta_file, "w", encoding="utf-8") as allele:
             SeqIO.write(record, allele, "fasta")
 
 
@@ -59,10 +59,9 @@ def pick_species_number_from_db(available_species: dict) -> str:
             if int(choice) in available_species.keys():
                 chosen_species = available_species.get(int(choice))
                 return chosen_species
-            else:
-                print(
-                    "Wrong input! Try again with a number that is available in the list above."
-                )
+            print(
+                "Wrong input! Try again with a number that is available in the list above."
+            )
         except ValueError:
             print(
                 "Wrong input! Try again with a number that is available in the list above."
@@ -95,10 +94,9 @@ def pick_scheme_number_from_db(available_schemes: dict) -> str:
             if int(choice) in available_schemes.keys():
                 chosen_scheme = available_schemes.get(int(choice))[1]
                 return chosen_scheme
-            else:
-                print(
-                    "Wrong input! Try again with a number that is available in the above list."
-                )
+            print(
+                "Wrong input! Try again with a number that is available in the above list."
+            )
         except ValueError:
             print(
                 "Wrong input! Try again with a number that is available in the above list."
@@ -162,12 +160,12 @@ def pick_scheme(available_schemes: dict) -> Path:
     for counter, scheme in available_schemes.items():
         # For Strain Typing with an API-POST Request to the db
         if str(scheme).startswith("http"):
-            scheme_json = requests.get(scheme).json()
+            scheme_json = requests.get(scheme, timeout=10).json()
             print(str(counter) + ":" + scheme_json["description"])
 
         # To pick a scheme after download for fitting
         else:
-            print(str(counter) + ":" + str(scheme).split("/")[-1])
+            print(str(counter) + ":" + str(scheme).rsplit("/", maxsplit=1)[-1])
 
     print("\nPick a scheme for strain type prediction")
     while True:
@@ -176,10 +174,9 @@ def pick_scheme(available_schemes: dict) -> Path:
             if int(choice) in available_schemes.keys():
                 chosen_scheme = available_schemes.get(int(choice))
                 return chosen_scheme
-            else:
-                print(
-                    "Wrong input! Try again with a number that is available in the above list."
-                )
+            print(
+                "Wrong input! Try again with a number that is available in the above list."
+            )
         except ValueError:
             print(
                 "Wrong input! Try again with a number that is available in the above list."
@@ -209,8 +206,7 @@ class MlstResult:
         Returns:
             dict: The result dictionary with s sequence ID as key and the Strain type as value.
         """
-        results = {seq_id: result for seq_id, result in self.hits.items()}
-        return results
+        return dict(self.hits.items())
 
     def to_dict(self) -> dict:
         """

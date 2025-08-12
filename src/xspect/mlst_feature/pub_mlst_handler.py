@@ -2,8 +2,8 @@
 
 __author__ = "Cetin, Oemer"
 
-import requests
 import json
+import requests
 from xspect.mlst_feature.mlst_helper import (
     create_fasta_files,
     pick_species_number_from_db,
@@ -51,7 +51,7 @@ class PubMLSTHandler:
         counter = 1
         # retrieve all available species
         species_url = PubMLSTHandler.base_url
-        for species_databases in requests.get(species_url).json():
+        for species_databases in requests.get(species_url, timeout=10).json():
             for database in species_databases["databases"]:
                 if database["name"].endswith("seqdef"):
                     available_species[counter] = database["name"]
@@ -61,7 +61,7 @@ class PubMLSTHandler:
 
         counter = 1
         scheme_url = f"{species_url}/{chosen_species}/schemes"
-        for scheme in requests.get(scheme_url).json()["schemes"]:
+        for scheme in requests.get(scheme_url, timeout=10).json()["schemes"]:
             # scheme["description"] stores the name of a scheme.
             # scheme["scheme"] stores the URL that is needed for downloading all loci.
             available_schemes[counter] = [scheme["description"], scheme["scheme"]]
@@ -70,11 +70,8 @@ class PubMLSTHandler:
         # Selection process of available scheme from a species for download (doubles are caught!)
         while True:
             chosen_scheme = pick_scheme_number_from_db(available_schemes)
-            (
+            if chosen_scheme not in chosen_schemes:
                 chosen_schemes.append(chosen_scheme)
-                if chosen_scheme not in chosen_schemes
-                else None
-            )
             choice = input(
                 "Do you want to pick another scheme to download? (y/n):"
             ).lower()
@@ -97,7 +94,7 @@ class PubMLSTHandler:
             self.choose_schemes()  # changes the scheme_list attribute
 
         for scheme in self.scheme_list:
-            scheme_json = requests.get(scheme).json()
+            scheme_json = requests.get(scheme, timeout=10).json()
             # We only want the name and the respective featured loci of a scheme
             scheme_name = scheme_json["description"]
             locus_list = scheme_json["loci"]
@@ -117,7 +114,7 @@ class PubMLSTHandler:
                 if not locus_path.exists():
                     locus_path.mkdir(exist_ok=True, parents=True)
 
-                alleles = requests.get(f"{locus_url}/alleles_fasta").text
+                alleles = requests.get(f"{locus_url}/alleles_fasta", timeout=10).text
                 create_fasta_files(locus_path, alleles)
 
     def assign_strain_type_by_db(self) -> None:
@@ -132,13 +129,15 @@ class PubMLSTHandler:
             str(pick_scheme(scheme_list_to_dict(self.scheme_list))) + "/sequence"
         )
         fasta_file = get_xspect_upload_path() / "Test.fna"
-        with open(fasta_file, "r") as file:
+        with open(fasta_file, "r", encoding="utf-8") as file:
             data = file.read()
             payload = {  # Essential API-POST-Body
                 "sequence": data,
                 "filetype": "fasta",
             }
-        response = requests.post(scheme_url, data=json.dumps(payload)).json()
+        response = requests.post(
+            scheme_url, data=json.dumps(payload), timeout=10
+        ).json()
 
         for locus, meta_data in response["exact_matches"].items():
             # meta_data is a list containing a dictionary, therefore [0] and then key value.
@@ -170,18 +169,16 @@ class PubMLSTHandler:
             }
         }
 
-        response = requests.post(post_url + "/designations", json=payload)
+        response = requests.post(post_url + "/designations", json=payload, timeout=10)
 
         if response.status_code == 200:
             data = response.json()
             if "fields" in data:
                 post_response = data["fields"]
                 return post_response
-            else:
-                post_response = "No matching Strain Type found in the database. "
-                post_response += "Possibly a novel Strain Type."
-                return post_response
-        else:
-            post_response = "Error:" + str(response.status_code)
-            post_response += response.text
+            post_response = "No matching Strain Type found in the database. "
+            post_response += "Possibly a novel Strain Type."
             return post_response
+        post_response = "Error:" + str(response.status_code)
+        post_response += response.text
+        return post_response

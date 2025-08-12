@@ -2,14 +2,14 @@
 
 __author__ = "Cetin, Oemer"
 
-import cobs_index
 import json
 from pathlib import Path
+from collections import defaultdict
+import cobs_index
+from cobs_index import DocumentList
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from cobs_index import DocumentList
-from collections import defaultdict
 from xspect.file_io import get_record_iterator
 from xspect.mlst_feature.mlst_helper import MlstResult
 from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
@@ -100,11 +100,11 @@ class ProbabilisticFilterMlstSchemeModel:
                 "Scheme not found. Please make sure to download the schemes prior!"
             )
 
-        scheme = str(scheme_path).split("/")[-1]
+        scheme = str(scheme_path).rsplit("/", maxsplit=1)[-1]
         cobs_path = ""
         # COBS structure for every locus (default = 7 for Oxford or Pasteur scheme)
         for locus_path in sorted(scheme_path.iterdir()):
-            locus = str(locus_path).split("/")[-1]
+            locus = str(locus_path).rsplit("/", maxsplit=1)[-1]
             # counts all fasta files that belong to a locus
             self.loci[locus] = sum(
                 (1 for _ in locus_path.iterdir() if not str(_).endswith("cache"))
@@ -112,7 +112,7 @@ class ProbabilisticFilterMlstSchemeModel:
 
             # determine the avg base pair size of alleles
             fasta_file = next(locus_path.glob("*.fasta"), None)
-            with open(fasta_file, "r") as handle:
+            with open(fasta_file, "r", encoding="utf-8") as handle:
                 record = next(SeqIO.parse(handle, "fasta"))
             self.avg_locus_bp_size.append(len(record.seq))
 
@@ -134,7 +134,8 @@ class ProbabilisticFilterMlstSchemeModel:
 
     def save(self) -> None:
         """Saves the model to disk"""
-        scheme = str(self.scheme_path).split("/")[-1]  # [-1] contains the scheme name
+        # [-1] contains the scheme name
+        scheme = str(self.scheme_path).rsplit("/", maxsplit=1)[-1]
         json_path = self.base_path / scheme / f"{scheme}.json"
         json_object = json.dumps(self.to_dict(), indent=4)
 
@@ -152,7 +153,7 @@ class ProbabilisticFilterMlstSchemeModel:
         Returns:
             ProbabilisticFilterMlstSchemeModel: A trained model from the disk in JSON format.
         """
-        scheme_name = str(scheme_path).split("/")[-1]
+        scheme_name = str(scheme_path).rsplit("/", maxsplit=1)[-1]
         json_path = scheme_path / f"{scheme_name}.json"
         with open(json_path, "r", encoding="utf-8") as file:
             json_object = file.read()
@@ -221,7 +222,7 @@ class ProbabilisticFilterMlstSchemeModel:
         for entry in sorted(cobs_path.iterdir()):
             if str(entry).endswith(".json"):
                 continue
-            file_name = str(entry).split("/")[-1]  # file_name = locus
+            file_name = str(entry).rsplit("/", maxsplit=1)[-1]  # file_name = locus
             scheme_path_list.append(file_name.split(".")[0])  # without the file ending
 
         result_dict = {}
@@ -442,7 +443,7 @@ class ProbabilisticFilterMlstSchemeModel:
         Returns:
             bool: True if any locus score >= 0.5 * its avg base pair size, False otherwise.
         """
-        for i, (locus, allele_score_dict) in enumerate(highest_results.items()):
+        for i, (_, allele_score_dict) in enumerate(highest_results.items()):
             if not allele_score_dict:
                 continue  # skip empty values
 

@@ -135,8 +135,8 @@ class ProbabilisticFilterModel:
             display_names (dict | None): A dictionary mapping file names to display names.
                 If None, uses file names as display names.
             training_accessions (dict[str, list[str]] | None): A dictionary mapping filter IDs to
-                lists of accession numbers used for training the model. If None, no training accessions
-                are set.
+                lists of accession numbers used for training the model. If None, no training
+                accessions are set.
         Raises:
             ValueError: If the directory path is invalid, does not exist, or is not a directory.
         """
@@ -253,7 +253,8 @@ class ProbabilisticFilterModel:
 
         Raises:
             ValueError: If the input sequence is not valid, or if it is not a Seq object,
-                        a list of Seq objects, a SeqIO iterator, or a Path object to a fasta/fastq file.
+                        a list of Seq objects, a SeqIO iterator, or a Path object to a fasta/fastq
+                        file.
         """
         if isinstance(sequence_input, (SeqRecord)):
             return ProbabilisticFilterModel.predict(

@@ -9,7 +9,8 @@ def get_genus_model_path(genus) -> Path:
     """
     Get a genus model path for the specified genus.
 
-    This function retrieves the path of a pre-trained genus classification model based on the provided genus name.
+    This function retrieves the path of a pre-trained genus classification model based on the
+    provided genus name.
 
     Args:
         genus (str): The genus name for which the model is to be retrieved.
@@ -25,7 +26,8 @@ def get_species_model_path(genus) -> Path:
     """
     Get a species model path for the specified genus.
 
-    This function retrieves the path of a pre-trained species classification model based on the provided genus name.
+    This function retrieves the path of a pre-trained species classification model based on the
+    provided genus name.
 
     Args:
         genus (str): The genus name for which the species model is to be retrieved.
@@ -115,7 +117,8 @@ def get_models() -> dict[str, list[dict]]:
     This function scans the model directory for JSON files and organizes them by their model type.
 
     Returns:
-        dict[str, list[dict]]: A dictionary where keys are model types and values are lists of model display names.
+        dict[str, list[dict]]: A dictionary where keys are model types and values are lists of
+        model display names.
     """
     model_dict = {}
     for model_file in get_xspect_model_path().glob("*.json"):

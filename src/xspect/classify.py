@@ -1,7 +1,12 @@
+"""Classification module"""
+
 from pathlib import Path
+from importlib import import_module
 import xspect.model_management as mm
 from xspect.file_io import prepare_input_output_paths
-from importlib import import_module
+
+# inline imports lead to "invalid name" issues
+# pylint: disable=invalid-name
 
 
 def classify_genus(

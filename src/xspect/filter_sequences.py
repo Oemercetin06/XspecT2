@@ -1,7 +1,12 @@
+"""Sequence filtering module"""
+
 from pathlib import Path
 from importlib import import_module
 from xspect.model_management import get_genus_model_path, get_species_model_path
 from xspect.file_io import filter_sequences, prepare_input_output_paths
+
+# inline imports lead to "invalid name" issues
+# pylint: disable=invalid-name
 
 
 def filter_species(
