@@ -281,13 +281,25 @@ def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
     default=1,
 )
-def classify_species(model_genus, input_path, output_path, sparse_sampling_step):
+@click.option(
+    "-s",
+    "--scientific-name",
+    help="Includes the scientific name next to the taxonomy-ID.",
+    is_flag=True,
+)
+def classify_species(
+    model_genus, input_path, output_path, sparse_sampling_step, scientific_name
+):
     """Classify samples using a species model."""
     click.echo("Classifying...")
     classify = import_module("xspect.classify")
 
     classify.classify_species(
-        model_genus, Path(input_path), Path(output_path), sparse_sampling_step
+        model_genus,
+        Path(input_path),
+        Path(output_path),
+        sparse_sampling_step,
+        scientific_name,
     )
 
 
