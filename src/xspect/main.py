@@ -282,13 +282,13 @@ def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     default=1,
 )
 @click.option(
-    "-s",
-    "--scientific-name",
-    help="Includes the scientific name next to the taxonomy-ID.",
+    "-n",
+    "--display-names",
+    help="Includes the display names next to taxonomy-IDs.",
     is_flag=True,
 )
 def classify_species(
-    model_genus, input_path, output_path, sparse_sampling_step, scientific_name
+    model_genus, input_path, output_path, sparse_sampling_step, display_names
 ):
     """Classify samples using a species model."""
     click.echo("Classifying...")
@@ -299,7 +299,7 @@ def classify_species(
         Path(input_path),
         Path(output_path),
         sparse_sampling_step,
-        scientific_name,
+        display_names,
     )
 
 
