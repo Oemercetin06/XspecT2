@@ -86,6 +86,47 @@ def test_classify_species(assembly_file_path, genus, species, tmpdir):
 
 
 @pytest.mark.parametrize(
+    ["assembly_file_path", "genus", "species_display_name"],
+    [
+        (
+            "GCF_000069245.1_ASM6924v1_genomic.fna",
+            "Acinetobacter",
+            "470 - baumannii",
+        ),
+    ],
+    indirect=["assembly_file_path"],
+)
+def test_classify_species_with_names(
+    assembly_file_path, genus, species_display_name, tmpdir
+):
+    """Test the species assignment with display names included"""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "classify",
+            "species",
+            "-g",
+            genus,
+            "-i",
+            assembly_file_path,
+            "-o",
+            str(tmpdir) + "/classify_species_with_names.json",
+            "-n",
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
+
+    with open(str(tmpdir) + "/classify_species_with_names.json", encoding="utf-8") as f:
+        result_content = json.load(f)
+        assert result_content["prediction"] == species_display_name
+        for subseq_scores in result_content["scores"].values():
+            assert species_display_name in subseq_scores
+        for subseq_hits in result_content["hits"].values():
+            assert species_display_name in subseq_hits
+
+
+@pytest.mark.parametrize(
     ["assembly_file_path", "genus", "species"],
     [
         (
