@@ -209,12 +209,17 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         svm_scores = [list(svm_scores.values())]
 
         svm = self._get_svm(filter_ids)
+        svm_prediction = str(svm.predict(svm_scores)[0])
+        if display_name:
+            svm_prediction = f"{svm_prediction} -{self.display_names.get(svm_prediction, 'Unknown')}".replace(
+                self.model_display_name, "", 1
+            )
         return ModelResult(
             self.slug(),
             res.hits,
             res.num_kmers,
             sparse_sampling_step=step,
-            prediction=str(svm.predict(svm_scores)[0]),
+            prediction=svm_prediction,
         )
 
     def _get_svm(self, id_keys) -> SVC:
