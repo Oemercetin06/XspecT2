@@ -113,7 +113,8 @@ def concatenate_metagenome(fasta_dir: Path, meta_path: Path) -> None:
     Concatenate all fasta files in a directory into one file.
 
     This function searches for all fasta files in the specified directory and writes their contents
-    into a single output file. The output file will contain the concatenated sequences from all fasta files.
+    into a single output file. The output file will contain the concatenated sequences from all
+    fasta files.
 
     Args:
         fasta_dir (Path): Path to the directory with the fasta files.

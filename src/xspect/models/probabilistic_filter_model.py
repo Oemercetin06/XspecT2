@@ -135,8 +135,8 @@ class ProbabilisticFilterModel:
             display_names (dict | None): A dictionary mapping file names to display names.
                 If None, uses file names as display names.
             training_accessions (dict[str, list[str]] | None): A dictionary mapping filter IDs to
-                lists of accession numbers used for training the model. If None, no training accessions
-                are set.
+                lists of accession numbers used for training the model. If None, no training
+                accessions are set.
         Raises:
             ValueError: If the directory path is invalid, does not exist, or is not a directory.
         """
@@ -230,6 +230,7 @@ class ProbabilisticFilterModel:
         ),
         filter_ids: list[str] = None,
         step: int = 1,
+        display_name: bool = False,
     ) -> ModelResult:
         """
         Returns a model result object for the sequence(s) based on the filters in the model
@@ -246,6 +247,7 @@ class ProbabilisticFilterModel:
             filter_ids (list[str]): A list of filter IDs to filter the results. If None,
                 all results are returned.
             step (int): The step size for the k-mer search. Default is 1.
+            display_name (bool): Includes a display name for each tax_ID.
 
         Returns:
             ModelResult: An object containing the hits for each sequence, the number of kmers,
@@ -253,11 +255,12 @@ class ProbabilisticFilterModel:
 
         Raises:
             ValueError: If the input sequence is not valid, or if it is not a Seq object,
-                        a list of Seq objects, a SeqIO iterator, or a Path object to a fasta/fastq file.
+                        a list of Seq objects, a SeqIO iterator, or a Path object to a fasta/fastq
+                        file.
         """
         if isinstance(sequence_input, (SeqRecord)):
             return ProbabilisticFilterModel.predict(
-                self, [sequence_input], filter_ids, step=step
+                self, [sequence_input], filter_ids, step=step, display_name=display_name
             )
 
         if self._is_sequence_list(sequence_input) | self._is_sequence_iterator(
@@ -272,12 +275,25 @@ class ProbabilisticFilterModel:
                 num_kmers[individual_sequence.id] = self._count_kmers(
                     individual_sequence, step=step
                 )
+                if display_name:
+                    individual_hits.update(
+                        {
+                            f"{key} -{self.display_names.get(key, 'Unknown').replace( 
+                                self.model_display_name, '', 1)}": individual_hits.pop(
+                                key
+                            )
+                            for key in list(individual_hits.keys())
+                        }
+                    )
                 hits[individual_sequence.id] = individual_hits
             return ModelResult(self.slug(), hits, num_kmers, sparse_sampling_step=step)
 
         if isinstance(sequence_input, Path):
             return ProbabilisticFilterModel.predict(
-                self, get_record_iterator(sequence_input), step=step
+                self,
+                get_record_iterator(sequence_input),
+                step=step,
+                display_name=display_name,
             )
 
         raise ValueError(

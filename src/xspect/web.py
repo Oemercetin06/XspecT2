@@ -1,17 +1,26 @@
 """FastAPI-based web application for XspecT."""
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+
+
 from uuid import uuid4
 import json
 from shutil import copyfileobj
 import importlib.resources as pkg_resources
-from fastapi import APIRouter, FastAPI, HTTPException, UploadFile, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    FastAPI,
+    HTTPException,
+    UploadFile,
+)
 from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from xspect.definitions import get_xspect_runs_path, get_xspect_upload_path
 from xspect.download_models import download_test_models
 import xspect.model_management as mm
 from xspect.train import train_from_ncbi
 from xspect import classify, filter_sequences
-from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 app.mount(
@@ -72,7 +81,7 @@ def classify_post(
         )
         return {"message": "Classification started.", "uuid": uuid}
 
-    elif classification_type == "Species":
+    if classification_type == "Species":
         background_tasks.add_task(
             classify.classify_species,
             model,
@@ -119,7 +128,7 @@ def filter_post(
         )
         return {"message": "Genus filtering started.", "uuid": uuid}
 
-    elif filter_type == "Species":
+    if filter_type == "Species":
         if not filter_species:
             raise ValueError("filter_species must be provided for species filtering.")
         background_tasks.add_task(

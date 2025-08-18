@@ -20,9 +20,12 @@ Get started by cloning the repository:
 git clone https://github.com/BIONF/XspecT2.git
 ```
 
-You then need to build the web application using Vite. Navigate to the `xspect-web` directory and run the build command, which will also watch for changes:
+You then need to build the web application using Vite. Navigate to the `xspect-web` directory, install dependencies, and run the build command, which will also watch for changes:
 ```bash
 cd XspecT2/src/xspect/xspect-web
+```
+```bash
+npm i
 ```
 ```bash
 npx vite build --watch

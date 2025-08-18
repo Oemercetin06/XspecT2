@@ -191,8 +191,8 @@ process selectForReadGen {
   assemblies = assemblies[assemblies['Assembly Level'] == 'Complete Genome']
   assemblies = assemblies[~assemblies['Assembly Accession'].isin(training_accessions)]
 
-  # use the first assembly only for each species
-  assemblies = assemblies.drop_duplicates(subset=['Species ID'], keep='first')
+  # use up to three assemblies for each species
+  assemblies = assemblies.groupby('Species ID').head(3)
 
   assemblies.to_csv('selected_samples.tsv', sep='\\t', index=False)
   """
@@ -215,8 +215,8 @@ process generateReads {
   import random
   from Bio import SeqIO
   
-  read_length = 150
-  num_reads = 1000
+  read_length = 100
+  num_reads = 100000
   seed = 42
   
   random.seed(seed)
@@ -252,7 +252,7 @@ process summarizeReadClassifications {
 
   script:
   """
-  echo -e "Assembly Accession\tRead\tSpecies ID\tPrediction" > read_classifications.tsv
+  echo -e "Assembly Accession\tRead\tPrediction\tSpecies ID" > read_classifications.tsv
 
   for json_file in ${read_classifications}; do
     basename=\$(basename \$json_file .json)
