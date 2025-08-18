@@ -86,6 +86,18 @@ def test_post_model_display_name(client):
     model_metadata = get_model_metadata("acinetobacter-species")
     assert model_metadata["display_names"]["470"] == "AB"
 
+    # revert to previous state
+    client.post(
+        "/api/model-display-name",
+        params={
+            "model_slug": "acinetobacter-species",
+            "filter_id": "470",
+            "display_name": "Acinetobacter baumannii",
+        },
+    )
+    model_metadata = get_model_metadata("acinetobacter-species")
+    assert model_metadata["display_names"]["470"] == "Acinetobacter baumannii"
+
 
 @pytest.mark.parametrize(
     ["assembly_file_path", "client_with_uploaded_file"],
