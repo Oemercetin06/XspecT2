@@ -188,7 +188,10 @@ process selectForReadGen {
     for id, accession in species_model["training_accessions"].items():
       training_accessions.extend(accession)
   
-  assemblies = assemblies[assemblies['Assembly Level'] == 'Complete Genome']
+  assemblies = assemblies[
+    (assemblies['Assembly Level'] == 'Complete Genome') |
+    (assemblies['Assembly Level'] == 'Chromosome')
+  ]
   assemblies = assemblies[~assemblies['Assembly Accession'].isin(training_accessions)]
 
   # use up to three assemblies for each species
