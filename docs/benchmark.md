@@ -6,7 +6,7 @@ The benchmark was performed by first download all available Acinetobacter genome
 
 ## Benchmark Results
 
-The benchmark results show that XspecT achieves high classification accuracy, with an overall accuracy nearly 100% for whole genomes and  82% for simulated reads. However, the low macro-average F1 score (0.41) for the read dataset highlights a substantial class imbalance.
+The benchmark results show that XspecT achieves high classification accuracy, with an overall accuracy of nearly 100% for whole genomes and 82% for simulated reads. However, the low macro-average F1 score (0.41) for the read dataset highlights a substantial class imbalance.
 
 | Dataset   | Total Samples | Matches   | Mismatches | Match Rate | Mismatch Rate | Accuracy | Macro Avg F1 | Weighted Avg F1 |
 |-----------|--------------:|----------:|-----------:|-----------:|--------------:|---------:|-------------:|----------------:|
