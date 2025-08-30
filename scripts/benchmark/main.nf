@@ -151,6 +151,12 @@ process summarizeClassifications {
 
   classifications = '${classifications}'.split()
 
+  with open(classifications[0]) as f:
+    data = json.load(f)
+    keys = data["scores"]["total"]
+    for key in keys:
+      df[str(key)] = pd.NA
+
   for json_file in classifications:
     basename = os.path.basename(json_file).replace('.json', '')
     accession = '_'.join(basename.split('_')[:2])
@@ -161,6 +167,10 @@ process summarizeClassifications {
     
     mask = df['Assembly Accession'].str.contains(accession, na=False)
     df.loc[mask, 'Prediction'] = prediction
+    
+    scores = data.get('scores', {}).get('total', {})
+    for species_id, score in scores.items():
+      df.loc[mask, str(species_id)] = score
 
   df.to_csv('classifications.tsv', sep='\\t', index=False)
   """
@@ -286,14 +296,20 @@ process summarizeReadClassifications {
         if read_name != 'total':
           if read_scores:
             max_score = max(read_scores.values())
-            max_keys = [key for key, value in read_scores.items() if value == max_score]
-            prediction = max_keys[0] if len(max_keys) == 1 else "ambiguous"
-            results.append({
+            max_species = [species for species, score in read_scores.items() if score == max_score]
+            prediction = max_species[0] if len(max_species) == 1 else "ambiguous"
+
+            result = {
               'Assembly Accession': accession,
               'Read': read_name,
               'Prediction': prediction,
               'Species ID': species_id
-            })
+            }
+            
+            for species, score in read_scores.items():
+              result[species] = score
+
+            results.append(result)
 
   df_results = pd.DataFrame(results)
   df_results.to_csv('read_classifications.tsv', sep='\\t', index=False)
