@@ -40,6 +40,7 @@ class ModelResult:
         self.sparse_sampling_step = sparse_sampling_step
         self.prediction = prediction
         self.input_source = input_source
+        self.misclassified = self.hits.pop("misclassified", None)
 
     def get_scores(self) -> dict:
         """
@@ -165,6 +166,7 @@ class ModelResult:
             "hits": self.hits,
             "scores": self.get_scores(),
             "num_kmers": self.num_kmers,
+            "misclassified": self.misclassified,
             "input_source": self.input_source,
         }
 

@@ -1,10 +1,12 @@
 """NCBI handler for the NCBI Datasets API."""
 
+import shutil
 from enum import Enum
 from pathlib import Path
 import time
 from loguru import logger
 import requests
+import zipfile
 
 # pylint: disable=line-too-long
 
@@ -302,3 +304,53 @@ class NCBIHandler:
         with open(output_dir / "ncbi_dataset.zip", "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
+
+    def download_reference_genome(self, taxon_id: int, output_dir: Path) -> Path | None:
+        """
+        Notes:
+        Developed by Oemer Cetin as part of a Bsc thesis at Goethe University Frankfurt am Main (2025).
+        (An Integration of Alignment-Free and Alignment-Based Approaches for Bacterial Taxon Assignment)
+
+        Downloads the reference genome from the RefSeq-DB for a given taxon ID.
+
+        This function queries the NCBI Datasets API for the reference genome and downloads it.
+
+        Args:
+            taxon_id (int): The taxonomy ID of the species.
+            output_dir (Path): Directory where the genome will be saved.
+
+        Returns:
+            Path: Path to the downloaded ZIP file.
+        """
+        accessions = self.get_accessions(
+            taxon_id=taxon_id,
+            assembly_level=AssemblyLevel.REFERENCE,
+            assembly_source=AssemblySource.REFSEQ,
+            count=1,  # only one reference exists
+        )
+
+        if not accessions:
+            return None
+
+        logger.info(
+            f"Downloading reference genome for taxon {taxon_id}: {accessions[0]}"
+        )
+        self.download_assemblies(accessions, output_dir)
+
+        zip_path = output_dir / "ncbi_dataset.zip"
+
+        fna_file = ""
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            for file in zip_ref.namelist():
+                if file.endswith(".fna"):
+                    extracted_path = zip_ref.extract(file, path=output_dir)
+                    fna_file = output_dir / f"{taxon_id}.fna"
+                    Path(extracted_path).rename(fna_file) # consistent file name (tax_id)
+                    logger.info(f"Extracted reference genome to {fna_file}")
+                    break
+
+        # clean up
+        zip_path.unlink()
+        shutil.rmtree(output_dir / "ncbi_dataset")
+
+        return fna_file

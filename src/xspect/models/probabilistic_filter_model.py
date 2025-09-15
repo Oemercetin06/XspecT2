@@ -1,6 +1,7 @@
 """Probabilistic filter model for sequence data"""
 
 import json
+import shutil
 from math import ceil
 from pathlib import Path
 from typing import Any
@@ -9,9 +10,19 @@ from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 from slugify import slugify
 import cobs_index as cobs
-from xspect.definitions import fasta_endings, fastq_endings
+from xspect.definitions import (
+    fasta_endings,
+    fastq_endings,
+    get_xspect_misclassification_path,
+)
 from xspect.file_io import get_record_iterator
+from xspect.misclassification_detection.mapping import MappingHandler
 from xspect.models.result import ModelResult
+from collections import defaultdict
+from xspect.ncbi import NCBIHandler
+from xspect.misclassification_detection.point_pattern_analysis import (
+    PointPatternAnalysis,
+)
 
 
 class ProbabilisticFilterModel:
@@ -231,6 +242,7 @@ class ProbabilisticFilterModel:
         filter_ids: list[str] = None,
         step: int = 1,
         display_name: bool = False,
+        short_read_mode: bool = False,
     ) -> ModelResult:
         """
         Returns a model result object for the sequence(s) based on the filters in the model
@@ -260,7 +272,7 @@ class ProbabilisticFilterModel:
         """
         if isinstance(sequence_input, (SeqRecord)):
             return ProbabilisticFilterModel.predict(
-                self, [sequence_input], filter_ids, step=step, display_name=display_name
+                self, [sequence_input], filter_ids, step, display_name, short_read_mode
             )
 
         if self._is_sequence_list(sequence_input) | self._is_sequence_iterator(
@@ -268,13 +280,17 @@ class ProbabilisticFilterModel:
         ):
             hits = {}
             num_kmers = {}
+            if short_read_mode and self._is_sequence_iterator(sequence_input):
+                sequence_input = list(sequence_input)
+
             for individual_sequence in sequence_input:
                 individual_hits = self.calculate_hits(
-                    individual_sequence.seq, filter_ids, step=step
+                    individual_sequence.seq, filter_ids, step
                 )
                 num_kmers[individual_sequence.id] = self._count_kmers(
-                    individual_sequence, step=step
+                    individual_sequence, step
                 )
+
                 if display_name:
                     individual_hits.update(
                         {
@@ -285,7 +301,12 @@ class ProbabilisticFilterModel:
                             for key in list(individual_hits.keys())
                         }
                     )
+
                 hits[individual_sequence.id] = individual_hits
+
+            if short_read_mode:
+                hits = self.detecting_misclassification(hits, sequence_input)
+
             return ModelResult(self.slug(), hits, num_kmers, sparse_sampling_step=step)
 
         if isinstance(sequence_input, Path):
@@ -294,6 +315,7 @@ class ProbabilisticFilterModel:
                 get_record_iterator(sequence_input),
                 step=step,
                 display_name=display_name,
+                short_read_mode=short_read_mode,
             )
 
         raise ValueError(
@@ -476,3 +498,90 @@ class ProbabilisticFilterModel:
             sequence_input,
             (SeqIO.FastaIO.FastaIterator, SeqIO.QualityIO.FastqPhredIterator),
         )
+
+    def detecting_misclassification(
+        self,
+        hits: dict[str, dict[str, int]],
+        seq_records: list[SeqRecord],
+        min_reads: int = 10,
+    ) -> dict[str, dict[str, int]]:
+        """
+        Notes:
+        Developed by Oemer Cetin as part of a Bsc thesis at Goethe University Frankfurt am Main (2025).
+        (An Integration of Alignment-Free and Alignment-Based Approaches for Bacterial Taxon Assignment)
+
+        Detects misclassification for short sequences.
+
+        This function is an alignment-based procedure that groups species by highest XspecT scores.
+        Each species group is mapped against the respective reference genome.
+        Start coordinates are extracted and scanned for local clustering.
+        When local clustering is detected, all sequences belonging to the species are sorted out.
+
+        Args:
+            hits (dict): The species annotations from the prediction step.
+            seq_records (list): The provided sequences.
+            min_reads (int): Minimum amount of reads, that species groups should have.
+
+        Returns:
+            dict: hits where misclassified sequences have been sorted out.
+        """
+        rec_by_id = {record.id: record for record in seq_records}
+        grouped: dict[int, list[SeqRecord]] = defaultdict(list)
+        misclassified = {}
+
+        # group by species annotation
+        for record, score_dict in hits.items():
+            if record == "misclassified":
+                continue
+            sorted_hits = sorted(score_dict.items(), key=lambda entry: entry[1], reverse=True)
+            if sorted_hits[0][1] > sorted_hits[1][1]:  # unique highest score
+                highest_tax_id = int(sorted_hits[0][0]) # tax_id
+                if record in rec_by_id:
+                    # groups all reads with the highest score by tax_id
+                    grouped[highest_tax_id].append(rec_by_id[record])
+        filtered_grouped = {tax_id: seq for tax_id, seq in grouped.items() if len(seq) > min_reads}
+        largest_group = max(filtered_grouped, key=lambda tax_id: len(filtered_grouped[tax_id]), default=None)
+
+        # mapping procedure
+        handler = NCBIHandler()
+        out_dir = get_xspect_misclassification_path()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for tax_id, reads in filtered_grouped.items():
+            if tax_id == largest_group:
+                continue
+
+            tax_dir = out_dir / str(tax_id)
+            tax_dir.mkdir(parents=True, exist_ok=True)
+            fasta_path = tax_dir / f"{tax_id}.fasta"
+            SeqIO.write(reads, fasta_path, "fasta")
+            reference_path = tax_dir / f"{tax_id}.fna"
+            # download reference once
+            if not (reference_path.exists() and reference_path.stat().st_size > 0):
+                handler.download_reference_genome(tax_id, tax_dir)
+            if not reference_path.exists():
+                shutil.rmtree(tax_dir)
+                continue
+
+            mapping_handler = MappingHandler(str(reference_path), str(fasta_path))
+            mapping_handler.map_reads_onto_reference()
+            mapping_handler.extract_starting_coordinates()
+            genome_length = mapping_handler.get_total_genome_length()
+            start_coordinates = mapping_handler.get_start_coordinates()
+
+            if len(start_coordinates) < min_reads:
+                continue
+
+            # cluster analysis
+            analysis = PointPatternAnalysis(start_coordinates, genome_length)
+            clustered = analysis.ripleys_k_edge_corrected()
+
+            if clustered[0]:  # True or False
+                bucket = misclassified.setdefault(tax_id, {})
+                for read in reads:
+                    data = hits.pop(read.id, None)  # remove false reads from main hits
+                    if data is not None:
+                        bucket[read.id] = data
+
+        if misclassified:
+            hits["misclassified"] = misclassified
+        return hits
