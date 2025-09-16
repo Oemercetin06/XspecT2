@@ -345,7 +345,9 @@ class NCBIHandler:
                 if file.endswith(".fna"):
                     extracted_path = zip_ref.extract(file, path=output_dir)
                     fna_file = output_dir / f"{taxon_id}.fna"
-                    Path(extracted_path).rename(fna_file) # consistent file name (tax_id)
+                    Path(extracted_path).rename(
+                        fna_file
+                    )  # consistent file name (tax_id)
                     logger.info(f"Extracted reference genome to {fna_file}")
                     break
 

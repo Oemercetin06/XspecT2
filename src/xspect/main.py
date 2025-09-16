@@ -288,8 +288,8 @@ def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     is_flag=True,
 )
 @click.option(
-    "-r",
-    "--short-read-mode",
+    "-v",
+    "--mapping-based-validation",
     help="Detects misclassification for small reads or contigs.",
     is_flag=True,
 )
@@ -299,7 +299,7 @@ def classify_species(
     output_path,
     sparse_sampling_step,
     display_names,
-    short_read_mode,
+    validation,
 ):
     """Classify samples using a species model."""
     click.echo("Classifying...")
@@ -311,7 +311,7 @@ def classify_species(
         Path(output_path),
         sparse_sampling_step,
         display_names,
-        short_read_mode,
+        validation,
     )
 
 

@@ -242,7 +242,7 @@ class ProbabilisticFilterModel:
         filter_ids: list[str] = None,
         step: int = 1,
         display_name: bool = False,
-        short_read_mode: bool = False,
+        validation: bool = False,
     ) -> ModelResult:
         """
         Returns a model result object for the sequence(s) based on the filters in the model
@@ -260,6 +260,7 @@ class ProbabilisticFilterModel:
                 all results are returned.
             step (int): The step size for the k-mer search. Default is 1.
             display_name (bool): Includes a display name for each tax_ID.
+            validation (bool): Sorts out misclassified reads.
 
         Returns:
             ModelResult: An object containing the hits for each sequence, the number of kmers,
@@ -272,7 +273,7 @@ class ProbabilisticFilterModel:
         """
         if isinstance(sequence_input, (SeqRecord)):
             return ProbabilisticFilterModel.predict(
-                self, [sequence_input], filter_ids, step, display_name, short_read_mode
+                self, [sequence_input], filter_ids, step, display_name, validation
             )
 
         if self._is_sequence_list(sequence_input) | self._is_sequence_iterator(
@@ -280,7 +281,7 @@ class ProbabilisticFilterModel:
         ):
             hits = {}
             num_kmers = {}
-            if short_read_mode and self._is_sequence_iterator(sequence_input):
+            if validation and self._is_sequence_iterator(sequence_input):
                 sequence_input = list(sequence_input)
 
             for individual_sequence in sequence_input:
@@ -304,7 +305,7 @@ class ProbabilisticFilterModel:
 
                 hits[individual_sequence.id] = individual_hits
 
-            if short_read_mode:
+            if validation:
                 hits = self.detecting_misclassification(hits, sequence_input)
 
             return ModelResult(self.slug(), hits, num_kmers, sparse_sampling_step=step)
@@ -315,7 +316,7 @@ class ProbabilisticFilterModel:
                 get_record_iterator(sequence_input),
                 step=step,
                 display_name=display_name,
-                short_read_mode=short_read_mode,
+                validation=validation,
             )
 
         raise ValueError(
@@ -533,14 +534,22 @@ class ProbabilisticFilterModel:
         for record, score_dict in hits.items():
             if record == "misclassified":
                 continue
-            sorted_hits = sorted(score_dict.items(), key=lambda entry: entry[1], reverse=True)
+            sorted_hits = sorted(
+                score_dict.items(), key=lambda entry: entry[1], reverse=True
+            )
             if sorted_hits[0][1] > sorted_hits[1][1]:  # unique highest score
-                highest_tax_id = int(sorted_hits[0][0]) # tax_id
+                highest_tax_id = int(sorted_hits[0][0])  # tax_id
                 if record in rec_by_id:
                     # groups all reads with the highest score by tax_id
                     grouped[highest_tax_id].append(rec_by_id[record])
-        filtered_grouped = {tax_id: seq for tax_id, seq in grouped.items() if len(seq) > min_reads}
-        largest_group = max(filtered_grouped, key=lambda tax_id: len(filtered_grouped[tax_id]), default=None)
+        filtered_grouped = {
+            tax_id: seq for tax_id, seq in grouped.items() if len(seq) > min_reads
+        }
+        largest_group = max(
+            filtered_grouped,
+            key=lambda tax_id: len(filtered_grouped[tax_id]),
+            default=None,
+        )
 
         # mapping procedure
         handler = NCBIHandler()

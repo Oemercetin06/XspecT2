@@ -184,7 +184,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         filter_ids: list[str] = None,
         step: int = 1,
         display_name: bool = False,
-        short_read_mode: bool = False,
+        validation: bool = False,
     ) -> ModelResult:
         """
         Predict the labels of the sequences.
@@ -199,7 +199,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             filter_ids (list[str], optional): A list of IDs to filter the predictions.
             step (int, optional): Step size for sparse sampling. Defaults to 1.
             display_name (bool): Includes a display name for each tax_ID.
-            short_read_mode (bool): Sorts out misclassified reads.
+            validation (bool): Sorts out misclassified reads .
 
         Returns:
             ModelResult: The result of the prediction containing hits, number of kmers, and the
@@ -207,7 +207,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         """
         # get scores and format them for the SVM
         res = super().predict(
-            sequence_input, filter_ids, step, display_name, short_read_mode
+            sequence_input, filter_ids, step, display_name, validation
         )
         svm_scores = dict(sorted(res.get_scores()["total"].items()))
         svm_scores = [list(svm_scores.values())]

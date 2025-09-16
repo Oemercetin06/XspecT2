@@ -46,7 +46,7 @@ def classify_species(
     output_path: Path,
     step: int = 1,
     display_name: bool = False,
-    short_read_mode: bool = False,
+    validation: bool = False,
 ):
     """
     Classify the species of sequences.
@@ -60,7 +60,7 @@ def classify_species(
         output_path (Path): The path to the output file where results will be saved.
         step (int): The amount of kmers to be skipped.
         display_name (bool): Includes a display name for each tax_ID.
-        short_read_mode (bool): Sorts out misclassified reads.
+        validation (bool): Sorts out misclassified reads.
     """
     ProbabilisticFilterSVMModel = import_module(
         "xspect.models.probabilistic_filter_svm_model"
@@ -75,7 +75,7 @@ def classify_species(
             current_path,
             step=step,
             display_name=display_name,
-            short_read_mode=short_read_mode,
+            validation=validation,
         )
         result.input_source = current_path.name
         cls_path = get_output_path(idx, output_path)
