@@ -289,7 +289,7 @@ def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
 )
 @click.option(
     "-v",
-    "--mapping-based-validation",
+    "--validation",
     help="Detects misclassification for small reads or contigs.",
     is_flag=True,
 )
