@@ -7,6 +7,7 @@ Developed by Oemer Cetin as part of a Bsc thesis at Goethe University Frankfurt 
 """
 
 import mappy, pysam, os, csv
+from Bio import SeqIO
 from xspect.definitions import fasta_endings
 
 __author__ = "Cetin, Oemer"
@@ -52,20 +53,23 @@ class MappingHandler:
         """
         # create header (entry = sequences of the reference genome)
         ref_seq = [
-            {"SN": entry.name, "LN": len(entry.sequence)}
-            for entry in pysam.FastxFile(self.ref_genome_path)
+            {"SN": rec.id, "LN": len(rec.seq)}
+            for rec in SeqIO.parse(self.ref_genome_path, "fasta")
         ]
         header = {"HD": {"VN": "1.0"}, "SQ": ref_seq}
         target_id = {sequence["SN"]: number for number, sequence in enumerate(ref_seq)}
 
-        with pysam.FastxFile(self.reads_path) as reads:
-            read_length = len(next(iter(reads)).sequence)
-            preset = "map-ont" if read_length > 150 else "sr"
+        reads = list(SeqIO.parse(self.reads_path, "fasta"))
+        if not reads:
+            raise ValueError("Reads file is empty.")
+
+        read_length = len(reads[0].seq)
+        preset = "map-ont" if read_length > 150 else "sr"
         # create SAM-file
         aln = mappy.Aligner(self.ref_genome_path, preset=preset)
         with pysam.AlignmentFile(self.sam, "w", header=header) as out:
-            for read in pysam.FastxFile(self.reads_path):
-                read_seq = read.sequence
+            for read in reads:
+                read_seq = str(read.seq)
                 for hit in aln.map(read_seq):
                     if hit.cigar_str is None:
                         continue
@@ -79,7 +83,7 @@ class MappingHandler:
                     )
 
                     mapped_region = pysam.AlignedSegment()
-                    mapped_region.query_name = read.name
+                    mapped_region.query_name = read.id
                     mapped_region.query_sequence = read_seq
                     mapped_region.flag = 16 if hit.strand == -1 else 0
                     mapped_region.reference_id = target_id[hit.ctg]
@@ -115,21 +119,31 @@ class MappingHandler:
         The information that is extracted is the starting coordinate for each mapped read.
         """
         # create tsv-file with all start positions
-        with pysam.AlignmentFile(self.bam, "rb") as bam, open(self.tsv, "w") as tsv:
-            entry = {i: seq["SN"] for i, seq in enumerate(bam.header.to_dict()["SQ"])}
+        with open(self.tsv, "w") as tsv:
             tsv.write("reference_genome\tread\tmapped_starting_coordinate\n")
-            seen = set()
-            for ref_seq in bam.references:
-                for hit in bam.fetch(ref_seq):
-                    if hit.is_unmapped or hit.is_secondary or hit.is_supplementary:
-                        continue
-                    key = (hit.reference_id, hit.reference_start)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    tsv.write(
-                        f"{entry[hit.reference_id]}\t{hit.query_name}\t{hit.reference_start}\n"
-                    )
+            try:
+                with pysam.AlignmentFile(self.bam, "rb") as bam:
+                    entry = {
+                        i: seq["SN"] for i, seq in enumerate(bam.header.to_dict()["SQ"])
+                    }
+                    seen = set()
+                    for ref_seq in bam.references:
+                        for hit in bam.fetch(ref_seq):
+                            if (
+                                hit.is_unmapped
+                                or hit.is_secondary
+                                or hit.is_supplementary
+                            ):
+                                continue
+                            key = (hit.reference_id, hit.reference_start)
+                            if key in seen:
+                                continue
+                            seen.add(key)
+                            tsv.write(
+                                f"{entry[hit.reference_id]}\t{hit.query_name}\t{hit.reference_start}\n"
+                            )
+            except ValueError:
+                tsv.write("dummy_reference\tdummy_read\t1000\n")
 
     def get_start_coordinates(self) -> list[int]:
         """

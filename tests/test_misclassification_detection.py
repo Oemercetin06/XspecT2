@@ -23,8 +23,7 @@ def reference(ncbi_handler, tmp_path):
     path = ncbi_handler.download_reference_genome(470, tmp_path)
     read_path = tmp_path / "reads.fasta"
     extract_random_reads(str(path), str(read_path), 150, 1000)
-    # read_path = tmp_path / "reads.fasta"
-    return path, read_path
+    return str(path), str(read_path)
 
 
 @pytest.fixture()
