@@ -287,8 +287,19 @@ def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     help="Includes the display names next to taxonomy-IDs.",
     is_flag=True,
 )
+@click.option(
+    "-v",
+    "--validation",
+    help="Detects misclassification for small reads or contigs.",
+    is_flag=True,
+)
 def classify_species(
-    model_genus, input_path, output_path, sparse_sampling_step, display_names
+    model_genus,
+    input_path,
+    output_path,
+    sparse_sampling_step,
+    display_names,
+    validation,
 ):
     """Classify samples using a species model."""
     click.echo("Classifying...")
@@ -300,6 +311,7 @@ def classify_species(
         Path(output_path),
         sparse_sampling_step,
         display_names,
+        validation,
     )
 
 

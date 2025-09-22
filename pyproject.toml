@@ -18,7 +18,10 @@ dependencies = [
   "xxhash",
   "fastapi",
   "uvicorn",
-  "python-multipart"
+  "python-multipart",
+  "mappy",
+  "pysam",
+  "numpy"
   ]
 classifiers = [
   "Intended Audience :: Developers",

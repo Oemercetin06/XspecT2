@@ -89,3 +89,22 @@ def get_xspect_mlst_path() -> Path:
     mlst_path = get_xspect_root_path() / "mlst"
     mlst_path.mkdir(exist_ok=True, parents=True)
     return mlst_path
+
+
+def get_xspect_misclassification_path() -> Path:
+    """
+    Notes:
+    Developed by Oemer Cetin as part of a Bsc thesis at Goethe University Frankfurt am Main (2025).
+    (An Integration of Alignment-Free and Alignment-Based Approaches for Bacterial Taxon Assignment)
+
+    Return the path to the XspecT Misclassification directory.
+
+    Returns the path to the XspecT Misclassification directory, which is located within the XspecT data
+    directory. If the directory does not exist, it creates the directory.
+
+    Returns:
+        Path: The path to the XspecT Misclassification directory.
+    """
+    misclassification_path = get_xspect_root_path() / "misclassification"
+    misclassification_path.mkdir(exist_ok=True, parents=True)
+    return misclassification_path

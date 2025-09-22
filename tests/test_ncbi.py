@@ -50,7 +50,7 @@ def test_get_species(ncbi_handler):
     species_ids = ncbi_handler.get_species(genus_id)
     assert isinstance(species_ids, list)
     assert len(species_ids) > 0
-    assert 470 in species_ids
+    assert 40216 in species_ids  # radioresistens
 
 
 def test_get_taxon_names(ncbi_handler):
@@ -96,3 +96,11 @@ def test_download_assemblies(ncbi_handler, tmp_path):
     downloaded_file = tmp_path / "ncbi_dataset.zip"
     assert downloaded_file.is_file()
     assert downloaded_file.stat().st_size > 0
+
+
+def test_download_reference_genome(ncbi_handler, tmp_path):
+    """Test the download_assemblies method of the NCBI class."""
+    tax_id = 470
+    file_path = ncbi_handler.download_reference_genome(tax_id, tmp_path)
+
+    assert file_path.is_file()

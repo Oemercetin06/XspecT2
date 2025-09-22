@@ -184,6 +184,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         filter_ids: list[str] = None,
         step: int = 1,
         display_name: bool = False,
+        validation: bool = False,
     ) -> ModelResult:
         """
         Predict the labels of the sequences.
@@ -198,28 +199,27 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             filter_ids (list[str], optional): A list of IDs to filter the predictions.
             step (int, optional): Step size for sparse sampling. Defaults to 1.
             display_name (bool): Includes a display name for each tax_ID.
+            validation (bool): Sorts out misclassified reads .
 
         Returns:
             ModelResult: The result of the prediction containing hits, number of kmers, and the
             predicted label.
         """
         # get scores and format them for the SVM
-        res = super().predict(sequence_input, filter_ids, step, display_name)
+        res = super().predict(
+            sequence_input, filter_ids, step, display_name, validation
+        )
         svm_scores = dict(sorted(res.get_scores()["total"].items()))
         svm_scores = [list(svm_scores.values())]
 
         svm = self._get_svm(filter_ids)
-        svm_prediction = str(svm.predict(svm_scores)[0])
-        if display_name:
-            svm_prediction = f"{svm_prediction} -{self.display_names.get(svm_prediction, 'Unknown')}".replace(
-                self.model_display_name, "", 1
-            )
+        res.hits["misclassified"] = res.misclassified
         return ModelResult(
             self.slug(),
             res.hits,
             res.num_kmers,
             sparse_sampling_step=step,
-            prediction=svm_prediction,
+            prediction=str(svm.predict(svm_scores)[0]),
         )
 
     def _get_svm(self, id_keys) -> SVC:
