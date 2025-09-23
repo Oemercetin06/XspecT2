@@ -69,19 +69,61 @@ def test_get_accessions(
     """Test the get_accessions method of the NCBI class."""
     taxon_id = 470
     accessions = ncbi_handler.get_accessions(
-        taxon_id, AssemblyLevel.REFERENCE, AssemblySource.REFSEQ, 1
+        taxon_id, AssemblyLevel.REFERENCE, AssemblySource.REFSEQ, 1, 10000, True, False
     )
     assert isinstance(accessions, list)
     assert len(accessions) > 0
     assert "GCF_009035845.1" in accessions
 
 
+def test_get_accessions_inconclusive(ncbi_handler):
+    """Test the get_accessions method with a genus with an inconclusive taxonomy check status."""
+    taxon_id = 955
+    min_n50 = 10000
+    exclude_atypical = True
+    allow_inconclusive = False
+
+    accessions = ncbi_handler.get_accessions(
+        taxon_id,
+        AssemblyLevel.CHROMOSOME,
+        AssemblySource.REFSEQ,
+        1,
+        min_n50,
+        exclude_atypical,
+        allow_inconclusive,
+    )
+    assert isinstance(accessions, list)
+    assert len(accessions) == 0
+
+    allow_inconclusive = True
+
+    accessions_inconclusive = ncbi_handler.get_accessions(
+        taxon_id,
+        AssemblyLevel.REFERENCE,
+        AssemblySource.REFSEQ,
+        1,
+        min_n50,
+        exclude_atypical,
+        allow_inconclusive,
+    )
+    assert isinstance(accessions_inconclusive, list)
+    assert len(accessions_inconclusive) > 0
+
+
 def test_get_highest_quality_accessions(ncbi_handler):
     """Test the get_highest_quality_accessions method of the NCBI class."""
     taxon_id = 470
     num_accessions = 2
+    min_n50 = 10000
+    exclude_atypical = True
+    allow_inconclusive = False
     accessions = ncbi_handler.get_highest_quality_accessions(
-        taxon_id, AssemblySource.REFSEQ, num_accessions
+        taxon_id,
+        AssemblySource.REFSEQ,
+        num_accessions,
+        min_n50,
+        exclude_atypical,
+        allow_inconclusive,
     )
     assert isinstance(accessions, list)
     assert len(accessions) == num_accessions

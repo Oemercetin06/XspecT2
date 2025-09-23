@@ -186,6 +186,11 @@ def train_from_ncbi(
     author: str | None = None,
     author_email: str | None = None,
     ncbi_api_key: str | None = None,
+    min_n50: int = 10000,
+    exclude_atypical: bool = True,
+    allow_inconclusive: bool = False,
+    allow_candidatus: bool = False,
+    allow_sp: bool = False,
 ):
     """
     Train a model using NCBI assembly data for a given genus.
@@ -200,6 +205,11 @@ def train_from_ncbi(
         author (str, optional): Author of the model. Defaults to None.
         author_email (str, optional): Author's email. Defaults to None.
         ncbi_api_key (str, optional): NCBI API key for accessing NCBI resources. Defaults to None.
+        min_n50 (int, optional): Minimum N50 value for assemblies. Defaults to 10000.
+        exclude_atypical (bool, optional): Exclude atypical assemblies. Defaults to True.
+        allow_inconclusive (bool, optional): Allow use of accessions with inconclusive taxonomy check status. Defaults to False.
+        allow_candidatus (bool, optional): Allow use of Candidatus species for training. Defaults to False.
+        allow_sp (bool, optional): Allow use of species with "sp." in their names. Defaults to False.
 
     Raises:
         TypeError: If `genus` is not a string.
@@ -221,8 +231,8 @@ def train_from_ncbi(
     filtered_species_ids = [
         tax_id
         for tax_id in species_ids
-        if "candidatus" not in species_names[tax_id].lower()
-        and " sp." not in species_names[tax_id].lower()
+        if (allow_candidatus or "candidatus" not in species_names[tax_id].lower())
+        and (allow_sp or " sp." not in species_names[tax_id].lower())
     ]
     filtered_species_names = {
         str(tax_id): species_names[tax_id] for tax_id in filtered_species_ids
@@ -231,7 +241,12 @@ def train_from_ncbi(
     accessions = {}
     for tax_id in filtered_species_ids:
         taxon_accessions = ncbi_handler.get_highest_quality_accessions(
-            tax_id, AssemblySource.REFSEQ, 8
+            tax_id,
+            AssemblySource.REFSEQ,
+            8,
+            min_n50,
+            exclude_atypical,
+            allow_inconclusive,
         )
         if not taxon_accessions:
             logger.warning(f"No assemblies found for tax_id {tax_id}. Skipping.")
@@ -241,7 +256,9 @@ def train_from_ncbi(
 
     if not accessions:
         raise ValueError(
-            "No species with accessions found. Please check the genus name."
+            "No species with accessions found. "
+            "Please check if the genus name is correct or if there are any data quality issues "
+            "(e. g. inconclusive taxonomy check status, atypical assemblies, low N50 values)."
         )
 
     with TemporaryDirectory() as tmp_dir:

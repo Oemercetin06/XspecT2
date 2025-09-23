@@ -196,8 +196,9 @@ class NCBIHandler:
         assembly_level: AssemblyLevel,
         assembly_source: AssemblySource,
         count: int,
-        min_n50: int = 10000,
-        exclude_atypical: bool = True,
+        min_n50: int,
+        exclude_atypical: bool,
+        allow_inconclusive: bool,
         exclude_paired_reports: bool = True,
         current_version_only: bool = True,
     ) -> list[str]:
@@ -213,10 +214,12 @@ class NCBIHandler:
             assembly_level (AssemblyLevel): The assembly level to get the accessions for.
             assembly_source (AssemblySource): The assembly source to get the accessions for.
             count (int): The number of accessions to get.
-            min_n50 (int, optional): The minimum contig n50 to filter the accessions. Defaults to 10000.
-            exclude_atypical (bool, optional): Whether to exclude atypical accessions. Defaults to True.
+            min_n50 (int): The minimum contig n50 to filter the accessions.
+            exclude_atypical (bool): Whether to exclude atypical accessions.
+            allow_inconclusive (bool): Whether to allow accessions with an inconclusive taxonomy check status.
             exclude_paired_reports (bool, optional): Whether to exclude paired reports. Defaults to True.
             current_version_only (bool, optional): Whether to get only the current version of the accessions. Defaults to True.
+
 
         Returns:
             list[str]: A list containing the accessions.
@@ -242,8 +245,11 @@ class NCBIHandler:
                 report["accession"]
                 for report in response["reports"]
                 if report["assembly_stats"]["contig_n50"] >= min_n50
-                and report["average_nucleotide_identity"]["taxonomy_check_status"]
-                == "OK"
+                and (
+                    allow_inconclusive
+                    or report["average_nucleotide_identity"]["taxonomy_check_status"]
+                    == "OK"
+                )
             ]
         except (IndexError, KeyError, TypeError):
             logger.debug(
@@ -253,7 +259,13 @@ class NCBIHandler:
         return accessions[:count]  # Limit to count
 
     def get_highest_quality_accessions(
-        self, taxon_id: int, assembly_source: AssemblySource, count: int
+        self,
+        taxon_id: int,
+        assembly_source: AssemblySource,
+        count: int,
+        min_n50: int,
+        exclude_atypical: bool,
+        allow_inconclusive: bool,
     ) -> list[str]:
         """
         Get the highest quality accessions for a given taxon id (based on the assembly level).
@@ -265,6 +277,9 @@ class NCBIHandler:
             taxon_id (int): The taxon id to get the accessions for.
             assembly_source (AssemblySource): The assembly source to get the accessions for.
             count (int): The number of accessions to get.
+            min_n50 (int): The minimum contig n50 to filter the accessions.
+            exclude_atypical (bool): Whether to exclude atypical accessions.
+            allow_inconclusive (bool): Whether to allow accessions with an inconclusive taxonomy check status.
 
         Returns:
             list[str]: A list containing the highest quality accessions.
@@ -276,6 +291,9 @@ class NCBIHandler:
                 assembly_level,
                 assembly_source,
                 count,
+                min_n50=min_n50,
+                exclude_atypical=exclude_atypical,
+                allow_inconclusive=allow_inconclusive,
             )
             if len(set(accessions)) >= count:
                 break
@@ -327,6 +345,9 @@ class NCBIHandler:
             assembly_level=AssemblyLevel.REFERENCE,
             assembly_source=AssemblySource.REFSEQ,
             count=1,  # only one reference exists
+            min_n50=0,
+            exclude_atypical=True,
+            allow_inconclusive=False,
         )
 
         if not accessions:

@@ -43,6 +43,8 @@ To train a model with NCBI data, run the following command:
 xspect models train ncbi
 ```
 
+By default, XspecT filters out NCBI accessions that do not meed minimum N50 thresholds, have an inconclusive taxonomy check status, or are deemed atypical by NCBI. Furthermore, species with "Candidatus" and "sp." in their species names are filtered out. To disable filtering behavior, use the respective flag (see `xspect models train ncbi --help`).
+
 If you would like to train models with manually curated data from a directory, you can use:
 
 ```bash

@@ -87,13 +87,62 @@ def train():
     help="Email of the author.",
     default=None,
 )
-def train_ncbi(model_genus, svm_steps, author, author_email):
+@click.option(
+    "--min-n50",
+    type=int,
+    help="Minimum contig N50 to filter the accessions (default: 10000).",
+    default=10000,
+)
+@click.option(
+    "--include-atypical/--exclude-atypical",
+    help="Include or exclude atypical accessions (default: exclude).",
+    default=False,
+)
+@click.option(
+    "--allow-inconclusive",
+    is_flag=True,
+    help="Allow the use of accessions with inconclusive taxonomy check status for training.",
+    default=False,
+)
+@click.option(
+    "--allow-candidatus",
+    is_flag=True,
+    help="Allow the use of Candidatus species for training.",
+    default=False,
+)
+@click.option(
+    "--allow-sp",
+    is_flag=True,
+    help="Allow the use of species with 'sp.' in their names for training.",
+    default=False,
+)
+def train_ncbi(
+    model_genus,
+    svm_steps,
+    author,
+    author_email,
+    min_n50,
+    include_atypical,
+    allow_inconclusive,
+    allow_candidatus,
+    allow_sp,
+):
     """Train a species and a genus model based on NCBI data."""
     click.echo(f"Training {model_genus} species and genus metagenome model.")
     try:
         train_from_ncbi = import_module("xspect.train").train_from_ncbi
 
-        train_from_ncbi(model_genus, svm_steps, author, author_email)
+        train_from_ncbi(
+            model_genus,
+            svm_steps,
+            author,
+            author_email,
+            min_n50=min_n50,
+            exclude_atypical=not include_atypical,
+            allow_inconclusive=allow_inconclusive,
+            allow_candidatus=allow_candidatus,
+            allow_sp=allow_sp,
+        )
     except ValueError as e:
         click.echo(f"Error: {e}")
         return
