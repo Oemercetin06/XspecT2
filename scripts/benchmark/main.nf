@@ -127,8 +127,8 @@ process createAssemblyTable {
 }
 
 process summarizeClassifications {
-  conda "jq"
-  cpus 2
+  conda "conda-forge::pandas"
+  cpus 4
   memory '16 GB'
   publishDir "results"
 
@@ -141,24 +141,38 @@ process summarizeClassifications {
 
   script:
   """
-  cp ${assemblies} classifications.tsv
+  #!/usr/bin/env python
+  import pandas as pd
+  import json
+  import os
 
-  awk 'BEGIN {FS=OFS="\t"} 
-    NR==1 {print \$0, "Prediction"} 
-    NR>1 {print \$0, "unknown"}' classifications.tsv > temp_classifications.tsv
-  mv temp_classifications.tsv classifications.tsv
+  df = pd.read_csv('${assemblies}', sep='\\t')
+  df['Prediction'] = 'unknown'
 
-  for json_file in ${classifications}; do
-    basename=\$(basename \$json_file .json)
-    accession=\$(echo \$basename | cut -d'_' -f1-2)
-    prediction=\$(jq '.["prediction"]' \$json_file | tr -d '"')
+  classifications = '${classifications}'.split()
+
+  with open(classifications[0]) as f:
+    data = json.load(f)
+    keys = data["scores"]["total"]
+    for key in keys:
+      df[str(key)] = pd.NA
+
+  for json_file in classifications:
+    basename = os.path.basename(json_file).replace('.json', '')
+    accession = '_'.join(basename.split('_')[:2])
     
-    awk -v acc="\$accession" -v pred="\$prediction" 'BEGIN {FS=OFS="\t"} 
-      NR==1 {print} 
-      NR>1 && \$1 ~ acc {\$NF=pred; print} 
-      NR>1 && \$1 !~ acc {print}' classifications.tsv > temp_classifications.tsv
-    mv temp_classifications.tsv classifications.tsv
-  done
+    with open(json_file, 'r') as f:
+      data = json.load(f)
+      prediction = data.get('prediction', 'unknown')
+    
+    mask = df['Assembly Accession'].str.contains(accession, na=False)
+    df.loc[mask, 'Prediction'] = prediction
+    
+    scores = data.get('scores', {}).get('total', {})
+    for species_id, score in scores.items():
+      df.loc[mask, str(species_id)] = score
+
+  df.to_csv('classifications.tsv', sep='\\t', index=False)
   """
 }
 
@@ -188,7 +202,10 @@ process selectForReadGen {
     for id, accession in species_model["training_accessions"].items():
       training_accessions.extend(accession)
   
-  assemblies = assemblies[assemblies['Assembly Level'] == 'Complete Genome']
+  assemblies = assemblies[
+    (assemblies['Assembly Level'] == 'Complete Genome') |
+    (assemblies['Assembly Level'] == 'Chromosome')
+  ]
   assemblies = assemblies[~assemblies['Assembly Accession'].isin(training_accessions)]
 
   # use up to three assemblies for each species
@@ -238,8 +255,8 @@ process generateReads {
 }
 
 process summarizeReadClassifications {
-  conda "conda-forge::jq"
-  cpus 2
+  conda "conda-forge::pandas"
+  cpus 4
   memory '16 GB'
   publishDir "results"
 
@@ -252,29 +269,55 @@ process summarizeReadClassifications {
 
   script:
   """
-  echo -e "Assembly Accession\tRead\tPrediction\tSpecies ID" > read_classifications.tsv
+  #!/usr/bin/env python
+  import pandas as pd
+  import json
+  import os
 
-  for json_file in ${read_classifications}; do
-    basename=\$(basename \$json_file .json)
-    accession=\$(echo \$basename | cut -d'_' -f1-2)
+  df_assemblies = pd.read_csv('${read_assemblies}', sep='\\t')
+  
+  # Create a mapping of accession to species ID
+  accession_to_species = dict(zip(df_assemblies['Assembly Accession'], df_assemblies['Species ID']))
+
+  results = []
+  
+  classifications = '${read_classifications}'.split()
+  for json_file in classifications:
+    basename = os.path.basename(json_file).replace('.json', '')
+    accession = '_'.join(basename.split('_')[:2])
     
-    # Get species ID from assemblies table
-    species_id=\$(awk -F'\t' -v acc="\$accession" '\$1 == acc {print \$6}' ${read_assemblies})
+    species_id = accession_to_species.get(accession, 'unknown')
     
-    # Extract predictions from JSON and append to TSV
-    jq -r --arg acc "\$accession" --arg species "\$species_id" '
-      .scores 
-      | to_entries[] 
-      | select(.key != "total")
-      | "\\(.key)\\t\\(.value | to_entries | max_by(.value) | .key)"
-      | "\\(\$acc)\\t" + . + "\\t\\(\$species)"
-    ' "\$json_file" >> read_classifications.tsv
-  done
+    with open(json_file, 'r') as f:
+      data = json.load(f)
+      scores = data.get('scores', {})
+      
+      for read_name, read_scores in scores.items():
+        if read_name != 'total':
+          if read_scores:
+            max_score = max(read_scores.values())
+            max_species = [species for species, score in read_scores.items() if score == max_score]
+            prediction = max_species[0] if len(max_species) == 1 else "ambiguous"
+
+            result = {
+              'Assembly Accession': accession,
+              'Read': read_name,
+              'Prediction': prediction,
+              'Species ID': species_id
+            }
+            
+            for species, score in read_scores.items():
+              result[species] = score
+
+            results.append(result)
+
+  df_results = pd.DataFrame(results)
+  df_results.to_csv('read_classifications.tsv', sep='\\t', index=False)
   """
 }
 
 process calculateStats {
-  conda "conda-forge::pandas"
+  conda "conda-forge::pandas conda-forge::scikit-learn"
   cpus 2
   memory '16 GB'
   publishDir "results"
@@ -290,33 +333,65 @@ process calculateStats {
   """
   #!/usr/bin/env python
   import pandas as pd
+  from sklearn.metrics import classification_report
 
+  # --- Assembly ---
   df_assembly = pd.read_csv('${assembly_classifications}', sep='\\t')
   df_assembly['Species ID'] = df_assembly['Species ID'].astype(str)
   df_assembly['Prediction'] = df_assembly['Prediction'].astype(str)
-  assembly_matches = df_assembly.loc[df_assembly['Species ID'] == df_assembly['Prediction']]
-  assembly_mismatches = df_assembly.loc[df_assembly['Species ID'] != df_assembly['Prediction']]
 
+  y_true_asm = df_assembly['Species ID']
+  y_pred_asm = df_assembly['Prediction']
+
+  asm_matches = (y_true_asm == y_pred_asm).sum()
+  asm_total = len(df_assembly)
+
+  asm_labels = sorted(set(y_true_asm.unique()).union(set(y_pred_asm.unique())))
+  asm_report = classification_report(
+      y_true_asm,
+      y_pred_asm,
+      labels=asm_labels,
+      zero_division=0
+  )
+
+  # --- Reads ---
   df_read = pd.read_csv('${read_classifications}', sep='\\t')
   df_read['Species ID'] = df_read['Species ID'].astype(str)
   df_read['Prediction'] = df_read['Prediction'].astype(str)
-  read_matches = df_read.loc[df_read['Species ID'] == df_read['Prediction']]
-  read_mismatches = df_read.loc[df_read['Species ID'] != df_read['Prediction']]
 
+  y_true_read = df_read['Species ID']
+  y_pred_read = df_read['Prediction']
+
+  read_matches = (y_true_read == y_pred_read).sum()
+  read_total = len(df_read)
+
+  read_labels = sorted(set(y_true_read.unique()).union(set(y_pred_read.unique())))
+  read_report = classification_report(
+      y_true_read,
+      y_pred_read,
+      labels=read_labels,
+      zero_division=0
+  )
+
+  # --- Output ---
   with open('stats.txt', 'w') as f:
-      f.write(f"Assembly Total: {len(df_assembly)}\\n")
-      f.write(f"Assembly Matches: {len(assembly_matches)}\\n")
-      f.write(f"Assembly Mismatches: {len(assembly_mismatches)}\\n")
-      f.write(f"Assembly Match Rate: {len(assembly_matches) / len(df_assembly) * 100:.2f}%\\n")
-      f.write(f"Assembly Mismatch Rate: {len(assembly_mismatches) / len(df_assembly) * 100:.2f}%\\n")
+      f.write("=== Assembly ===\\n")
+      f.write(f"Total: {asm_total}\\n")
+      f.write(f"Matches: {asm_matches}\\n")
+      f.write(f"Mismatches: {asm_total - asm_matches}\\n")
+      f.write(f"Match Rate: {asm_matches / asm_total * 100:.2f}%\\n")
+      f.write(f"Mismatch Rate: {(asm_total - asm_matches) / asm_total * 100:.2f}%\\n\\n")
+      f.write("Classification report (per class):\\n")
+      f.write(asm_report + "\\n")
 
-      f.write("\\n")
-
-      f.write(f"Read Total: {len(df_read)}\\n")
-      f.write(f"Read Matches: {len(read_matches)}\\n")
-      f.write(f"Read Mismatches: {len(read_mismatches)}\\n")
-      f.write(f"Read Match Rate: {len(read_matches) / len(df_read) * 100:.2f}%\\n")
-      f.write(f"Read Mismatch Rate: {len(read_mismatches) / len(df_read) * 100:.2f}%\\n")
+      f.write("=== Reads ===\\n")
+      f.write(f"Total: {read_total}\\n")
+      f.write(f"Matches: {read_matches}\\n")
+      f.write(f"Mismatches: {read_total - read_matches}\\n")
+      f.write(f"Match Rate: {read_matches / read_total * 100:.2f}%\\n")
+      f.write(f"Mismatch Rate: {(read_total - read_matches) / read_total * 100:.2f}%\\n\\n")
+      f.write("Classification report (per class):\\n")
+      f.write(read_report + "\\n")
   """
 }
 

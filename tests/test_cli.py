@@ -119,7 +119,9 @@ def test_classify_species_with_names(
 
     with open(str(tmpdir) + "/classify_species_with_names.json", encoding="utf-8") as f:
         result_content = json.load(f)
-        assert result_content["prediction"] == species_display_name
+        assert (
+            result_content["prediction"] == species_display_name.split("-")[0].strip()
+        )
         for subseq_scores in result_content["scores"].values():
             assert species_display_name in subseq_scores
         for subseq_hits in result_content["hits"].values():

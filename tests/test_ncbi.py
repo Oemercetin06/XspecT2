@@ -50,7 +50,7 @@ def test_get_species(ncbi_handler):
     species_ids = ncbi_handler.get_species(genus_id)
     assert isinstance(species_ids, list)
     assert len(species_ids) > 0
-    assert 470 in species_ids
+    assert 40216 in species_ids  # radioresistens
 
 
 def test_get_taxon_names(ncbi_handler):
@@ -69,19 +69,61 @@ def test_get_accessions(
     """Test the get_accessions method of the NCBI class."""
     taxon_id = 470
     accessions = ncbi_handler.get_accessions(
-        taxon_id, AssemblyLevel.REFERENCE, AssemblySource.REFSEQ, 1
+        taxon_id, AssemblyLevel.REFERENCE, AssemblySource.REFSEQ, 1, 10000, True, False
     )
     assert isinstance(accessions, list)
     assert len(accessions) > 0
     assert "GCF_009035845.1" in accessions
 
 
+def test_get_accessions_inconclusive(ncbi_handler):
+    """Test the get_accessions method with a genus with an inconclusive taxonomy check status."""
+    taxon_id = 955
+    min_n50 = 10000
+    exclude_atypical = True
+    allow_inconclusive = False
+
+    accessions = ncbi_handler.get_accessions(
+        taxon_id,
+        AssemblyLevel.CHROMOSOME,
+        AssemblySource.REFSEQ,
+        1,
+        min_n50,
+        exclude_atypical,
+        allow_inconclusive,
+    )
+    assert isinstance(accessions, list)
+    assert len(accessions) == 0
+
+    allow_inconclusive = True
+
+    accessions_inconclusive = ncbi_handler.get_accessions(
+        taxon_id,
+        AssemblyLevel.REFERENCE,
+        AssemblySource.REFSEQ,
+        1,
+        min_n50,
+        exclude_atypical,
+        allow_inconclusive,
+    )
+    assert isinstance(accessions_inconclusive, list)
+    assert len(accessions_inconclusive) > 0
+
+
 def test_get_highest_quality_accessions(ncbi_handler):
     """Test the get_highest_quality_accessions method of the NCBI class."""
     taxon_id = 470
     num_accessions = 2
+    min_n50 = 10000
+    exclude_atypical = True
+    allow_inconclusive = False
     accessions = ncbi_handler.get_highest_quality_accessions(
-        taxon_id, AssemblySource.REFSEQ, num_accessions
+        taxon_id,
+        AssemblySource.REFSEQ,
+        num_accessions,
+        min_n50,
+        exclude_atypical,
+        allow_inconclusive,
     )
     assert isinstance(accessions, list)
     assert len(accessions) == num_accessions
@@ -96,3 +138,11 @@ def test_download_assemblies(ncbi_handler, tmp_path):
     downloaded_file = tmp_path / "ncbi_dataset.zip"
     assert downloaded_file.is_file()
     assert downloaded_file.stat().st_size > 0
+
+
+def test_download_reference_genome(ncbi_handler, tmp_path):
+    """Test the download_assemblies method of the NCBI class."""
+    tax_id = 470
+    file_path = ncbi_handler.download_reference_genome(tax_id, tmp_path)
+
+    assert file_path.is_file()
