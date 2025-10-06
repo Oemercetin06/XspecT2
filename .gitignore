@@ -188,3 +188,7 @@ results/
 
 # Slurm
 slurm-*
+delete.slurm
+
+
+playground.ipynb
