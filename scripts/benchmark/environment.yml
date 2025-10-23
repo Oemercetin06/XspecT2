@@ -2,6 +2,7 @@ name: xspect-benchmark
 channels:
   - conda-forge
 dependencies:
+  - python=3.12
   - pip
   - pip:
-      - XspecT
+      - XspecT==0.5.4
