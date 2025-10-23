@@ -216,7 +216,7 @@ process selectForReadGen {
 }
 
 process generateReads {
-  conda "conda-forge::pandas conda-forge::biopython"
+  conda "bioconda::art"
   cpus 2
   memory '16 GB'
 
@@ -228,29 +228,16 @@ process generateReads {
 
   script:
   """
-  #!/usr/bin/env python
-  import random
-  from Bio import SeqIO
-  
-  read_length = 100
-  num_reads = 100000
-  seed = 42
-  
-  random.seed(seed)
-  sequences = list(SeqIO.parse("${sample}", "fasta"))
-  chromosome_sequence = max(sequences, key=len)  # we assume the longest sequence is the chromosome
-  
-  ch_rec_id = chromosome_sequence.id
-  ch_seq = chromosome_sequence.seq
-  ch_seqlen = len(chromosome_sequence.seq)
-  with open("${sample.baseName}_simulated.fq", "w") as f:
-    for i in range(num_reads):
-      start = random.randint(0, ch_seqlen - read_length)
-      read_seq = ch_seq[start:start + read_length]
-      f.write(f"@read_{i}_{ch_rec_id}_{start}-{start+read_length}\\n")
-      f.write(f"{read_seq}\\n")
-      f.write("+\\n")
-      f.write(f"{len(read_seq)*'~'}\\n")
+  set -euo pipefail
+
+  art_illumina \
+    -ss HS25 \
+    -i "${sample}" \
+    -l 125 \
+    -c 100000 \
+    -na \
+    -rs 42 \
+    -o "${sample.baseName}_simulated"
   """
 }
 
