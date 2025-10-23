@@ -290,13 +290,13 @@ process summarizeReadClassifications {
     
     with open(json_file, 'r') as f:
       data = json.load(f)
-      scores = data.get('scores', {})
+      hits = data.get('hits', {})
       
-      for read_name, read_scores in scores.items():
+      for read_name, read_hits in hits.items():
         if read_name != 'total':
-          if read_scores:
-            max_score = max(read_scores.values())
-            max_species = [species for species, score in read_scores.items() if score == max_score]
+          if read_hits:
+            max_hits = max(read_hits.values())
+            max_species = [species for species, hit in read_hits.items() if hit == max_hits]
             prediction = max_species[0] if len(max_species) == 1 else "ambiguous"
 
             result = {
@@ -306,6 +306,7 @@ process summarizeReadClassifications {
               'Species ID': species_id
             }
             
+            read_scores = data.get('scores', {}).get(read_name, {})
             for species, score in read_scores.items():
               result[species] = score
 
