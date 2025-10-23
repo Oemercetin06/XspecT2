@@ -4,14 +4,14 @@
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or MLST level using [kmer indices] and a [Support Vector Machine].
+XspecT is a Python-based tool to taxonomically classify sequence-reads (or assembled genomes) on the species and/or MLST level using [kmer indices] and a [support vector machine].
 
-XspecT utilizes the uniqueness of kmers and compares extracted kmers from the input-data to a kmer index. Probablistic data structures ensure a fast lookup in this process. For a final prediction, the results are classified using a Support Vector Machine.
+XspecT utilizes the uniqueness of kmers and compares extracted kmers from the input-data to a kmer index. Probablistic data structures ensure a fast lookup in this process. For a final prediction, the results are classified using a support vector machine.
 
 The tool is available as a web-based application and as a command line interface.
 
 [kmer indices]: https://arxiv.org/abs/1905.09624
-[Support Vector Machine]: https://en.wikipedia.org/wiki/Support-vector_machine
+[support vector machine]: https://en.wikipedia.org/wiki/Support-vector_machine
 <!-- end intro -->
 
 <!-- start quickstart -->
@@ -54,5 +54,5 @@ For further instructions on how to use the command line interface, please refer 
 ```
 xspect --help
 ```
-[documentation]: https://bionf.github.io/XspecT2/cli/index.html
+[documentation]: https://bionf.github.io/XspecT/cli/index.html
 <!-- end quickstart -->
