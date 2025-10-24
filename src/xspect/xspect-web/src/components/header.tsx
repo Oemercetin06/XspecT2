@@ -12,7 +12,7 @@ export default function Header() {
         { name: "Classify", href: "classify", external: false },
         { name: "Filter", href: "filter", external: false },
         { name: "Models", href: "models", external: false },
-        { name: "Documentation", href: "https://bionf.github.io/XspecT2/index.html", external: true },
+        { name: "Documentation", href: "https://bionf.github.io/XspecT/index.html", external: true },
     ]
 
     return (

@@ -5,7 +5,7 @@ Thank you for your interest in contributing to XspecT! This page provides guidel
 
 When contributing to XspecT, please follow the following steps to ensure a smooth process:
 
-- **Read the documentation**: Familiarize yourself with the project by reading the [documentation](https://bionf.github.io/XspecT2/), including the [Understanding XspecT](understanding.md) page and the [architecture overview](#architecture-overview).
+- **Read the documentation**: Familiarize yourself with the project by reading the [documentation](https://bionf.github.io/XspecT/), including the [Understanding XspecT](understanding.md) page and the [architecture overview](#architecture-overview).
 - **Follow the coding standards**: Adhere to the project's coding standards and best practices. This includes using consistent naming conventions, writing clear and concise code, and documentation. Furthermore, please make sure your changes are algined with the project's [architecture](#architecture-overview).
 - **Write tests**: Ensure that your changes are covered by tests. We use [pytest](https://docs.pytest.org/en/stable/) for testing. If you add new features or fix bugs, please include tests to verify your changes.
 - **Document your changes**: Update the documentation to reflect any new features or changes you make. This includes updating the README, Google-style docstrings, and the [Mkdocs](https://www.mkdocs.org)-based documentation.
@@ -17,12 +17,12 @@ To set up XspecT for development, first make sure you have [Python](https://www.
 
 Get started by cloning the repository:
 ```bash
-git clone https://github.com/BIONF/XspecT2.git
+git clone https://github.com/BIONF/XspecT.git
 ```
 
 You then need to build the web application using Vite. Navigate to the `xspect-web` directory, install dependencies, and run the build command, which will also watch for changes:
 ```bash
-cd XspecT2/src/xspect/xspect-web
+cd XspecT/src/xspect/xspect-web
 ```
 ```bash
 npm i
@@ -86,7 +86,7 @@ We use GitHub Actions to run checks on commits and pull requests. These checks i
 
 Additionally, Github Actions are also used for deployment:
 
-- **Documentation**: The Mkdocs-based documentation is built and deployed to GitHub Pages on changes to the `main` branch. You can view the documentation at [https://bionf.github.io/XspecT2/](https://bionf.github.io/XspecT2/).
+- **Documentation**: The Mkdocs-based documentation is built and deployed to GitHub Pages on changes to the `main` branch. You can view the documentation at [https://bionf.github.io/XspecT/](https://bionf.github.io/XspecT/).
 - **Python package**: The Python package is built and uploaded to PyPI when a new release is created. This allows users to easily install the latest version of XspecT using `pip install xspect`. Pre-releases are uploaded to TestPyPI and can be installed using `pip install --index-url https://test.pypi.org/simple/ xspect`.
 
 ## Pull Request Process
