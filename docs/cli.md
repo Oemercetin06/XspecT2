@@ -27,7 +27,7 @@ This will show a list of all available models, separated by their type (species,
 
 ### Downloading Models
 
-To download a basic set of pre-trained models (Acinetobacter and Salonella), run:
+To download a basic set of pre-trained models (Acinetobacter, including Oxford MLST scheme, and Salonella), run:
 
 ```bash
 xspect models download

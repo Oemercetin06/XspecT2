@@ -40,10 +40,7 @@ def download():
     """Download models."""
     click.echo("Downloading models, this may take a while...")
     download_test_models = import_module("xspect.download_models").download_test_models
-
-    download_test_models(
-        "https://assets.adrianromberg.com/science/xspect-models-07-08-2025.zip"
-    )
+    download_test_models()
 
 
 @models.command(
