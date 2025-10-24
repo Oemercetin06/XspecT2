@@ -2,6 +2,7 @@
 
 include { classifySample as classifyAssembly } from './classify'
 include { classifySample as classifyRead } from './classify'
+include { strain_species_mapping } from '../nextflow-utils'
 
 process downloadModels {
   conda "./scripts/benchmark/environment.yml"
@@ -50,7 +51,7 @@ process createAssemblyTable {
 
   input:
   path genomes
-  path tax_report
+  path tax_mapping_json
   path species_model
 
   output:
@@ -70,28 +71,11 @@ process createAssemblyTable {
   awk -F'\t' 'NR==1 || \$5 == "OK"' assemblies.tsv > assemblies_filtered.tsv
   mv assemblies_filtered.tsv assemblies.tsv
 
-  # map taxonmic IDs to species IDs (taxonomic IDs might be strain IDs)
-  jq '
-    .reports
-    | map(select(.taxonomy.children != null))
-    | map({
-        species_id: .taxonomy.tax_id,
-        children: .taxonomy.children
-      })
-    | map(
-        . as \$entry
-        | \$entry.children
-        | map({ (tostring): \$entry.species_id })
-        | add
-      )
-    | add
-  ' ${tax_report} > tax_mapping.json
-
   # add species IDs to assemblies.tsv
   declare -A species_map
   while IFS="=" read -r key val; do
     species_map["\$key"]="\$val"
-  done < <(jq -r 'to_entries[] | "\\(.key)=\\(.value)"' tax_mapping.json)
+  done < <(jq -r 'to_entries[] | "\\(.key)=\\(.value)"' ${tax_mapping_json})
 
   {
     IFS='\t' read -r -a header < assemblies.tsv
@@ -502,7 +486,8 @@ workflow {
   name_mapping = getNameMapping(species_model)
   genomes = file("data/genomes")
   tax_report = file("data/aci_species.json")
-  assemblies = createAssemblyTable(genomes, tax_report, species_model)
+  tax_mapping_json = strain_species_mapping(tax_report)
+  assemblies = createAssemblyTable(genomes, tax_mapping_json, species_model)
 
   // Whole genome assemblies
   samples = Channel.fromPath("${genomes}/**/*.fna")
