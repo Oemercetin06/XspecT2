@@ -62,12 +62,18 @@ def classify_species(
         display_name (bool): Includes a display name for each tax_ID.
         validation (bool): Sorts out misclassified reads.
     """
-    ProbabilisticFilterSVMModel = import_module(
-        "xspect.models.probabilistic_filter_svm_model"
-    ).ProbabilisticFilterSVMModel
+    ModelClass = None
+    if mm.is_svm_model(f"{model_genus}-species"):
+        ModelClass = import_module(
+            "xspect.models.probabilistic_filter_svm_model"
+        ).ProbabilisticFilterSVMModel
+    else:
+        ModelClass = import_module(
+            "xspect.models.probabilistic_filter_model"
+        ).ProbabilisticFilterModel
 
     model_path = mm.get_species_model_path(model_genus)
-    model = ProbabilisticFilterSVMModel.load(model_path)
+    model = ModelClass.load(model_path)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
 
     for idx, current_path in enumerate(input_paths):

@@ -39,6 +39,22 @@ def get_species_model_path(genus) -> Path:
     return species_model_path
 
 
+def is_svm_model(model_slug: str) -> bool:
+    """
+    Check if a model is an SVM model.
+
+    This function determines whether the specified model is a Support Vector Machine (SVM) model
+    based on its metadata.
+
+    Args:
+        model_slug (str): The slug of the model to check.
+    Returns:
+        bool: True if the model is an SVM model, False otherwise.
+    """
+    model_metadata = get_model_metadata(model_slug)
+    return model_metadata.get("model_class") == "ProbabilisticFilterSVMModel"
+
+
 def get_model_metadata(model: str | Path) -> dict:
     """
     Get metadata of a specified model.
