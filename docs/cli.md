@@ -113,7 +113,7 @@ XspecT uses a kmer-based approach to classify samples. This means that the entir
 
 **Example**:
 ```bash
-xspect classify species --sparse-sampling-step 10 Acinetobacter path
+xspect classify species --sparse-sampling-step 10
 ```
 
 This will only consider every 10th kmer in the sample.
@@ -122,7 +122,7 @@ This will only consider every 10th kmer in the sample.
 By default, the classification results show only the taxonomy ID of each species along with its corresponding score for better readability. To display the full names associated with each taxonomy ID, you can use the `--display-names` (or `-n`) option:
 
 ```bash
-xspect classify species --display-names Acinetobacter path
+xspect classify species --display-names
 ```
 The output will then be formatted as: `Taxonomy_ID - Display_Name: Score` for each species.
 
