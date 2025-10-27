@@ -13,12 +13,16 @@ from xspect.file_io import (
     extract_zip,
     get_ncbi_dataset_accession_paths,
 )
+from xspect.handlers.pubmlst import PubMLSTHandler
 from xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
 from xspect.models.probabilistic_filter_svm_model import ProbabilisticFilterSVMModel
 from xspect.models.probabilistic_single_filter_model import (
     ProbabilisticSingleFilterModel,
 )
-from xspect.ncbi import AssemblySource, NCBIHandler
+from xspect.models.probabilistic_filter_mlst_model import (
+    ProbabilisticFilterMlstSchemeModel,
+)
+from xspect.handlers.ncbi import AssemblySource, NCBIHandler
 
 
 def train_from_directory(
@@ -314,3 +318,46 @@ def train_from_ncbi(
             author=author,
             author_email=author_email,
         )
+
+
+def train_mlst(
+    organism: str,
+    scheme: str,
+    author: str | None = None,
+    author_email: str | None = None,
+):
+    """
+    Train an MLST model for a given organism and scheme.
+
+    This function trains a probabilistic filter MLST model using the specified organism and scheme.
+    The training data is downloaded and processed, and the model is saved to the
+    xspect_data directory.
+
+    Args:
+        organism (str): Organism name for which the MLST model will be trained.
+        scheme (str): Scheme name for the MLST model.
+        author (str, optional): Author of the model. Defaults to None.
+        author_email (str, optional): Author's email. Defaults to None.
+    Raises:
+        ValueError: If `organism` is not a valid organism.
+        ValueError: If `scheme` is not a valid scheme for the given organism.
+    """
+    with TemporaryDirectory(delete=False) as tmp_dir:
+        allele_path = Path(tmp_dir)
+        print(f"Downloading alleles for {organism} - {scheme}")
+        handler = PubMLSTHandler()
+        handler.download_alleles(organism, scheme, allele_path)
+        scheme_url = handler.get_scheme_url(organism, scheme)
+
+        print("Training MLST model...")
+        model = ProbabilisticFilterMlstSchemeModel(
+            31,
+            scheme,
+            get_xspect_model_path(),
+            scheme_url,
+            organism,
+            author=author,
+            author_email=author_email,
+        )
+        model.fit(allele_path)
+        model.save()

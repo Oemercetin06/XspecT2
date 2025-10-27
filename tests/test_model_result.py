@@ -1,3 +1,5 @@
+"""Tests for the ModelResult class."""
+
 from xspect.models.result import ModelResult
 
 

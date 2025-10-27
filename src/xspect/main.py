@@ -4,7 +4,11 @@ from pathlib import Path
 from uuid import uuid4
 from importlib import import_module
 import click
-from xspect.model_management import get_models
+from xspect.handlers.pubmlst import PubMLSTHandler
+from xspect.model_management import (
+    get_available_mlst_schemes,
+    get_models,
+)
 
 # inline imports lead to "invalid name" issues
 # pylint: disable=invalid-name
@@ -199,45 +203,46 @@ def train_directory(model_genus, input_path, svm_steps, meta, author, author_ema
     help="Train a MLST model based on PubMLST data.",
 )
 @click.option(
-    "-c",
-    "--choose_schemes",
-    is_flag=True,
-    help="Choose your own schemes."
-    "Default setting is Oxford and Pasteur scheme of A.baumannii.",
+    "--organism",
+    "organism",
+    help="Underlying organism for the MLST model.",
+    type=click.Choice(PubMLSTHandler().get_available_species()),
+    prompt=True,
 )
-def train_mlst(choose_schemes):
-    """Download alleles and train bloom filters."""
-    click.echo("Updating alleles")
-    mlst_helper = import_module("xspect.mlst_feature.mlst_helper")
-    pick_scheme = mlst_helper.pick_scheme
-
-    pub_mlst_handler = import_module("xspect.mlst_feature.pub_mlst_handler")
-    PubMLSTHandler = pub_mlst_handler.PubMLSTHandler
-
-    probabilistic_filter_mlst_model = import_module(
-        "xspect.models.probabilistic_filter_mlst_model"
-    )
-    ProbabilisticFilterMlstSchemeModel = (
-        probabilistic_filter_mlst_model.ProbabilisticFilterMlstSchemeModel
-    )
-
-    definitions = import_module("xspect.definitions")
-    get_xspect_model_path = definitions.get_xspect_model_path
-
+@click.option(
+    "--mlst-scheme",
+    "scheme",
+    help="MLST scheme to use for the model.",
+    type=str,
+)
+@click.option(
+    "--author",
+    help="Author of the model.",
+    default=None,
+)
+@click.option(
+    "--author-email",
+    help="Email of the author.",
+    default=None,
+)
+def train_mlst(organism, scheme, author, author_email):
+    """Download alleles and train MLST models."""
     handler = PubMLSTHandler()
-    handler.download_alleles(choose_schemes)
-    click.echo("Download finished")
-    scheme_path = pick_scheme(handler.get_scheme_paths())
-    species_name = str(scheme_path).split("/")[-2]
-    scheme_name = str(scheme_path).rsplit("/", maxsplit=1)[-1]
-    scheme_url = handler.scheme_mapping[str(scheme_path)]
-    model = ProbabilisticFilterMlstSchemeModel(
-        31, f"{species_name}:{scheme_name}", get_xspect_model_path(), scheme_url
-    )
-    click.echo("Creating mlst model")
-    model.fit(scheme_path)
-    model.save()
-    click.echo(f"Saved at {model.cobs_path}")
+    available_schemas = handler.get_available_schemes(organism)
+    if scheme:
+        if scheme not in available_schemas:
+            raise click.BadParameter(
+                f"Scheme '{scheme}' not found for organism '{organism}'. "
+                f"Available schemes: {', '.join(available_schemas)}"
+            )
+    else:
+        scheme = click.prompt(
+            "Please enter the scheme you want to train the MLST model for:",
+            type=click.Choice(available_schemas),
+        )
+
+    train_mlst_model = import_module("xspect.train").train_mlst
+    train_mlst_model(organism, scheme, author, author_email)
 
 
 # # # # # # # # # # # # # # #
@@ -374,6 +379,19 @@ def classify_species(
     default=Path("."),
 )
 @click.option(
+    "--organism",
+    "organism",
+    help="Underlying organism for the MLST model.",
+    type=click.Choice(get_available_mlst_schemes().keys()),
+    prompt=True,
+)
+@click.option(
+    "--mlst-scheme",
+    "mlst_scheme",
+    help="MLST scheme to use.",
+    type=str,
+)
+@click.option(
     "-o",
     "--output-path",
     help="Path to the output file.",
@@ -383,12 +401,25 @@ def classify_species(
 @click.option(
     "-l", "--limit", is_flag=True, help="Limit the output to 5 results for each locus."
 )
-def classify_mlst(input_path, output_path, limit):
+def classify_mlst(input_path, organism, mlst_scheme, output_path, limit):
     """MLST classify a sample."""
+    mlst_schemes = get_available_mlst_schemes()
+    if not mlst_scheme:
+        mlst_scheme = click.prompt(
+            "Please enter the MLST scheme you want to use:",
+            type=click.Choice(mlst_schemes[organism]),
+        )
+    elif mlst_scheme not in mlst_schemes.get(organism, []):
+        raise click.BadParameter(
+            f"Scheme '{mlst_scheme}' not found for organism '{organism}'. "
+            f"Available schemes: {', '.join(mlst_schemes.get(organism, []))}"
+        )
+
     click.echo("Classifying...")
     classify = import_module("xspect.classify")
-
-    classify.classify_mlst(Path(input_path), Path(output_path), limit)
+    classify.classify_mlst(
+        Path(input_path), organism, mlst_scheme, Path(output_path), limit
+    )
 
 
 # # # # # # # # # # # # # # #

@@ -1,5 +1,7 @@
 """Probabilistic filter MLST model for sequence data"""
 
+# pylint: disable=arguments-differ
+
 __author__ = "Cetin, Oemer"
 
 import json
@@ -10,60 +12,77 @@ from cobs_index import DocumentList
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from slugify import slugify
 from xspect.file_io import get_record_iterator
-from xspect.mlst_feature.mlst_helper import MlstResult
-from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
+from xspect.models.mlst_result import MlstResult
+from xspect.handlers.pubmlst import PubMLSTHandler
+from xspect.models.probabilistic_filter_model import ProbabilisticFilterModel
 
 
-class ProbabilisticFilterMlstSchemeModel:
+class ProbabilisticFilterMlstSchemeModel(ProbabilisticFilterModel):
     """Probabilistic filter MLST scheme model for sequence data"""
 
     def __init__(
         self,
-        k_value: int,
-        model_name: str,
+        k: int,
+        model_display_name: str,
         base_path: Path,
         scheme_url: str,
+        organism: str,
         fpr: float = 0.001,
+        num_hashes: int = 1,
+        author: str | None = None,
+        author_email: str | None = None,
+        model_type: str = "MLST",
     ) -> None:
-        """Initialise a ProbabilisticFilterMlstSchemeModel object."""
-        if k_value < 1:
-            raise ValueError("Invalid k value, must be greater than 0")
-        if not isinstance(base_path, Path):
-            raise ValueError("Invalid base path, must be a pathlib.Path object")
-
-        self.k_value = k_value
-        self.model_name = model_name
-        self.base_path = base_path / "MLST"
+        """Initialize a ProbabilisticFilterMlstSchemeModel object."""
+        super().__init__(
+            k,
+            model_display_name,
+            author,
+            author_email,
+            model_type,
+            base_path,
+            fpr,
+            num_hashes,
+            None,
+        )
+        self.organism = organism
         self.scheme_url = scheme_url
-        self.fpr = fpr
-        self.model_type = "Strain"
+
         self.loci = {}
-        self.scheme_path = ""
-        self.cobs_path = ""
         self.avg_locus_bp_size = []
         self.indices = []
 
     def to_dict(self) -> dict:
         """
-        Returns a dictionary representation of the model.
+        Convert the model to a dictionary representation
 
         Returns:
-            dict: The dictionary containing all metadata of an object.
+            dict: A dictionary containing the model's parameters and state.
         """
-        return {
-            "k_value": self.k_value,
-            "model_name": self.model_name,
-            "model_type": self.model_type,
-            "scheme_url": str(self.scheme_url),
-            "fpr": self.fpr,
-            "scheme_path": str(self.scheme_path),
-            "cobs_path": str(self.cobs_path),
-            "average_locus_base_pair_size": self.avg_locus_bp_size,
+        return super().to_dict() | {
+            "organism": self.organism,
+            "scheme_url": self.scheme_url,
             "loci": self.loci,
+            "average_locus_base_pair_size": self.avg_locus_bp_size,
         }
 
-    def get_cobs_index_path(self, scheme: str, locus: str) -> Path:
+    def slug(self) -> str:
+        """
+        Returns a slug representation of the model
+
+        This method generates a slug based on the model's display name and type,
+        which can be used for file naming or identification purposes.
+
+        Returns:
+            str: A slug representation of the model.
+        """
+        return slugify(
+            self.organism + "-" + self.model_display_name + "-" + self.model_type
+        )
+
+    def get_cobs_index_path(self, locus: str) -> Path:
         """
         Get the path to the cobs indices.
 
@@ -71,20 +90,17 @@ class ProbabilisticFilterMlstSchemeModel:
         A COBS-Index file is created for every locus in a scheme.
 
         Args:
-            scheme (str): The name of the scheme.
             locus (str): The name of the locus.
 
         Returns:
             Path: The path to the COBS indices.
         """
-        # To differentiate from genus and species models
-        cobs_path = self.base_path / f"{scheme}"
-        cobs_path.mkdir(exist_ok=True, parents=True)
+        cobs_path = self.base_path / self.slug()
         return cobs_path / f"{locus}.cobs_compact"
 
     def fit(self, scheme_path: Path) -> None:
         """
-        Trains a COBS structure for every locus with all its alleles.
+        Trains a COBS index for every locus with all its alleles.
 
         This function creates COBS-indices.
         Many attributes of an object are set in this function.
@@ -100,87 +116,81 @@ class ProbabilisticFilterMlstSchemeModel:
                 "Scheme not found. Please make sure to download the schemes prior!"
             )
 
-        scheme = str(scheme_path).rsplit("/", maxsplit=1)[-1]
-        cobs_path = ""
-        # COBS structure for every locus (default = 7 for Oxford or Pasteur scheme)
         for locus_path in sorted(scheme_path.iterdir()):
-            locus = str(locus_path).rsplit("/", maxsplit=1)[-1]
+            locus = locus_path.name
             # counts all fasta files that belong to a locus
             self.loci[locus] = sum(
-                (1 for _ in locus_path.iterdir() if not str(_).endswith("cache"))
+                (1 for p in locus_path.iterdir() if p.suffix == ".fasta")
             )
 
             # determine the avg base pair size of alleles
-            fasta_file = next(locus_path.glob("*.fasta"), None)
-            with open(fasta_file, "r", encoding="utf-8") as handle:
-                record = next(SeqIO.parse(handle, "fasta"))
+            fasta_file_path = next(locus_path.glob("*.fasta"), None)
+            with open(fasta_file_path, "r", encoding="utf-8") as fasta_file:
+                record = next(SeqIO.parse(fasta_file, "fasta"))
             self.avg_locus_bp_size.append(len(record.seq))
 
-            # COBS only accepts strings as paths
             doclist = DocumentList(str(locus_path))
             index_params = cobs_index.CompactIndexParameters()
-            index_params.term_size = self.k_value  # k-mer size
+            index_params.term_size = self.k  # k-mer size
             index_params.clobber = True  # overwrite output and temporary files
             index_params.false_positive_rate = self.fpr
+            index_params.num_hashes = self.num_hashes
 
-            # Creates COBS data structure for each locus
-            cobs_path = self.get_cobs_index_path(scheme, locus)
+            cobs_path = self.get_cobs_index_path(locus)
+            cobs_path.mkdir(exist_ok=True, parents=True)
             cobs_index.compact_construct_list(doclist, str(cobs_path), index_params)
-            # Saves COBS-file inside the "indices" attribute
             self.indices.append(cobs_index.Search(str(cobs_path)))
-
-        self.scheme_path = scheme_path
-        self.cobs_path = cobs_path.parent
 
     def save(self) -> None:
         """Saves the model to disk"""
-        # [-1] contains the scheme name
-        scheme = str(self.scheme_path).rsplit("/", maxsplit=1)[-1]
-        json_path = self.base_path / scheme / f"{scheme}.json"
+        json_path = self.base_path / f"{self.slug()}.json"
         json_object = json.dumps(self.to_dict(), indent=4)
 
         with open(json_path, "w", encoding="utf-8") as file:
             file.write(json_object)
 
     @staticmethod
-    def load(scheme_path: Path) -> "ProbabilisticFilterMlstSchemeModel":
+    def load(path: Path) -> "ProbabilisticFilterMlstSchemeModel":
         """
         Loads the model from a JSON-file.
 
         Args:
-            scheme_path (Path): The path of the scheme model.
+            path (Path): The path of the MLST model.
 
         Returns:
-            ProbabilisticFilterMlstSchemeModel: A trained model from the disk in JSON format.
+            ProbabilisticFilterMlstSchemeModel: A model from the disk in JSON format.
         """
-        scheme_name = str(scheme_path).rsplit("/", maxsplit=1)[-1]
-        json_path = scheme_path / f"{scheme_name}.json"
-        with open(json_path, "r", encoding="utf-8") as file:
-            json_object = file.read()
-            model_json = json.loads(json_object)
-            model = ProbabilisticFilterMlstSchemeModel(
-                model_json["k_value"],
-                model_json["model_name"],
-                json_path.parent,
-                model_json["scheme_url"],
-                model_json["fpr"],
-            )
-            model.scheme_path = model_json["scheme_path"]
-            model.cobs_path = model_json["cobs_path"]
-            model.avg_locus_bp_size = model_json["average_locus_base_pair_size"]
-            model.loci = model_json["loci"]
+        if not path.exists():
+            raise FileNotFoundError(f"Model JSON not found at {path}")
 
-            for entry in sorted(json_path.parent.iterdir()):
-                if not entry.exists():
-                    raise FileNotFoundError(f"Index file not found at {entry}")
-                if str(entry).endswith(".json"):  # only COBS-files
-                    continue
-                model.indices.append(cobs_index.Search(str(entry), False))
+        with open(path, "r", encoding="utf-8") as file:
+            model_json = json.loads(file.read())
+
+            model = ProbabilisticFilterMlstSchemeModel(
+                model_json["k"],
+                model_json["model_display_name"],
+                path.parent,
+                model_json["scheme_url"],
+                model_json["organism"],
+                model_json["fpr"],
+                model_json["num_hashes"],
+                model_json.get("author"),
+                model_json.get("author_email"),
+                model_json.get("model_type"),
+            )
+            model.avg_locus_bp_size = model_json.get("average_locus_base_pair_size", [])
+            model.loci = model_json.get("loci", {})
+
+            for locus in model.loci.keys():
+                index_path = model.get_cobs_index_path(locus)
+                if not index_path.exists():
+                    raise FileNotFoundError(f"Index file not found at {index_path}")
+                model.indices.append(cobs_index.Search(str(index_path), False))
+
             return model
 
     def calculate_hits(
         self,
-        cobs_path: Path,
         sequence: Seq,
         step: int = 1,
         limit: bool = False,
@@ -195,7 +205,6 @@ class ProbabilisticFilterMlstSchemeModel:
         The results of each substring are added up to find the strain type.
 
         Args:
-            cobs_path (Path): The path of the COBS-structure directory.
             sequence (Seq): The input sequence for classification.
             step (int, optional): The amount of kmers that are passed; defaults to one.
             limit (bool): Applying a filter that limits the best result.
@@ -212,18 +221,13 @@ class ProbabilisticFilterMlstSchemeModel:
         if not isinstance(sequence, Seq):
             raise ValueError("Invalid sequence, must be a Bio.Seq object")
 
-        if not len(sequence) > self.k_value:
+        if not len(sequence) > self.k:
             raise ValueError("Invalid sequence, must be longer than k")
 
         if not self.indices:
-            raise ValueError("The Model has not been trained yet")
+            raise ValueError("The model has not been trained yet")
 
-        scheme_path_list = []
-        for entry in sorted(cobs_path.iterdir()):
-            if str(entry).endswith(".json"):
-                continue
-            file_name = str(entry).rsplit("/", maxsplit=1)[-1]  # file_name = locus
-            scheme_path_list.append(file_name.split(".")[0])  # without the file ending
+        scheme_path_list = list(self.loci.keys())
 
         result_dict = {}
         highest_results = {}
@@ -300,7 +304,6 @@ class ProbabilisticFilterMlstSchemeModel:
 
     def predict(
         self,
-        cobs_path: Path,
         sequence_input: (
             SeqRecord
             | list[SeqRecord]
@@ -315,7 +318,6 @@ class ProbabilisticFilterMlstSchemeModel:
         Get scores for the sequence(s) based on the filters in the model.
 
         Args:
-            cobs_path (Path): The path of the COBS-structure directory.
             sequence_input (Seq): The input sequence for classification
             step (int, optional): The amount of kmers that are passed; defaults to one
             limit (bool, optional): Applying a filter that limits the best result.
@@ -330,16 +332,13 @@ class ProbabilisticFilterMlstSchemeModel:
             if sequence_input.id == "<unknown id>":
                 sequence_input.id = "test"
             hits = {
-                sequence_input.id: self.calculate_hits(
-                    cobs_path, sequence_input.seq, step, limit
-                )
+                sequence_input.id: self.calculate_hits(sequence_input.seq, step, limit)
             }
-            return MlstResult(self.model_name, step, hits, None)
+            return MlstResult(self.model_display_name, step, hits, None)
 
         if isinstance(sequence_input, Path):
             return ProbabilisticFilterMlstSchemeModel.predict(
                 self,
-                cobs_path,
                 get_record_iterator(sequence_input),
                 step=step,
                 limit=limit,
@@ -352,11 +351,9 @@ class ProbabilisticFilterMlstSchemeModel:
             hits = {}
             # individual_seq is a SeqRecord-Object
             for individual_seq in sequence_input:
-                individual_hits = self.calculate_hits(
-                    cobs_path, individual_seq.seq, step, limit
-                )
+                individual_hits = self.calculate_hits(individual_seq.seq, step, limit)
                 hits[individual_seq.id] = individual_hits
-            return MlstResult(self.model_name, step, hits, None)
+            return MlstResult(self.model_display_name, step, hits, None)
         raise ValueError(
             "Invalid sequence input, must be a Seq object, a list of Seq objects, a"
             " SeqIO FastaIterator, or a SeqIO FastqPhredIterator"
@@ -416,15 +413,13 @@ class ProbabilisticFilterMlstSchemeModel:
 
         while start + substring_length <= sequence_len:
             substring_list.append(input_sequence[start : start + substring_length])
-            start += (
-                substring_length - self.k_value + 1
-            )  # To not lose kmers when dividing
+            start += substring_length - self.k + 1  # To not lose kmers when dividing
 
         # The remaining string is either appended to the list or added to the last entry.
         if start < len(input_sequence):
             remaining_substring = input_sequence[start:]
             # A substring needs to be at least of size k for COBS.
-            if len(remaining_substring) < self.k_value:
+            if len(remaining_substring) < self.k:
                 substring_list[-1] += remaining_substring
             else:
                 substring_list.append(remaining_substring)

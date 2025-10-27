@@ -2,7 +2,7 @@
 
 from xspect.misclassification_detection.mapping import MappingHandler
 from xspect.misclassification_detection.simulate_reads import extract_random_reads
-from xspect.ncbi import NCBIHandler
+from xspect.handlers.ncbi import NCBIHandler
 import pytest, os
 
 from xspect.misclassification_detection.point_pattern_analysis import (

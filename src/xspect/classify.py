@@ -89,27 +89,29 @@ def classify_species(
         print(f"Saved result as {cls_path.name}")
 
 
-def classify_mlst(input_path: Path, output_path: Path, limit: bool):
+def classify_mlst(
+    input_path: Path, organism, mlst_scheme, output_path: Path, limit: bool
+):
     """
     Classify the strain type using the specific MLST model.
 
     Args:
         input_path (Path): The path to the input file/directory containing sequences.
+        organism (str): The underlying organism for the MLST model.
+        mlst_scheme (str): The MLST scheme to use for classification.
         output_path (Path): The path to the output file where results will be saved.
         limit (bool): A limit for the highest allele_id results that are shown.
     """
-    pick_scheme_from_models_dir = import_module(
-        "xspect.mlst_feature.mlst_helper"
-    ).pick_scheme_from_models_dir
     ProbabilisticFilterMlstSchemeModel = import_module(
         "xspect.models.probabilistic_filter_mlst_model"
     ).ProbabilisticFilterMlstSchemeModel
 
-    scheme_path = pick_scheme_from_models_dir()
+    scheme_path = mm.get_mlst_model_path(organism, mlst_scheme)
+
     model = ProbabilisticFilterMlstSchemeModel.load(scheme_path)
     input_paths, get_output_path = prepare_input_output_paths(input_path)
     for idx, current_path in enumerate(input_paths):
-        result = model.predict(scheme_path, current_path, step=1, limit=limit)
+        result = model.predict(current_path, step=1, limit=limit)
         result.input_source = current_path.name
         cls_path = get_output_path(idx, output_path)
         result.save(cls_path)
