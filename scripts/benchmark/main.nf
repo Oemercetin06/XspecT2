@@ -199,6 +199,26 @@ process selectForReadGen {
   """
 }
 
+process filterForChromosome {
+  conda "bioconda::seqkit"
+  cpus 2
+  memory '16 GB'
+
+  input:
+  path sample
+
+  output:
+  path "${sample.baseName}_chromosome.fna"
+
+  script:
+  """
+  set -euo pipefail
+
+  seqkit sort -l -r ${sample} > sorted.tmp
+  seqkit head -n 1 sorted.tmp | seqkit seq -t dna -o "${sample.baseName}_chromosome.fna"
+  """
+}
+
 process generateReads {
   conda "bioconda::art"
   cpus 2
@@ -228,7 +248,7 @@ process generateReads {
 process summarizeReadClassifications {
   conda "conda-forge::pandas"
   cpus 4
-  memory '16 GB'
+  memory '64 GB'
   publishDir "results"
 
   input:
@@ -249,8 +269,6 @@ process summarizeReadClassifications {
   
   # Create a mapping of accession to species ID
   accession_to_species = dict(zip(df_assemblies['Assembly Accession'], df_assemblies['Species ID']))
-
-  results = []
   
   classifications = '${read_classifications}'.split()
   for json_file in classifications:
@@ -261,13 +279,14 @@ process summarizeReadClassifications {
     
     with open(json_file, 'r') as f:
       data = json.load(f)
-      hits = data.get('hits', {})
+      scores = data.get('scores', {})
+      results = []
       
-      for read_name, read_hits in hits.items():
+      for read_name, read_scores in scores.items():
         if read_name != 'total':
-          if read_hits:
-            max_hits = max(read_hits.values())
-            max_species = [species for species, hit in read_hits.items() if hit == max_hits]
+          if read_scores:
+            max_score = max(read_scores.values())
+            max_species = [species for species, score in read_scores.items() if score == max_score]
             prediction = max_species[0] if len(max_species) == 1 else "ambiguous"
 
             result = {
@@ -277,21 +296,23 @@ process summarizeReadClassifications {
               'Species ID': species_id
             }
             
-            read_scores = data.get('scores', {}).get(read_name, {})
             for species, score in read_scores.items():
               result[species] = score
 
             results.append(result)
+      
 
-  df_results = pd.DataFrame(results)
-  df_results.to_csv('read_classifications.tsv', sep='\\t', index=False)
+
+      df_results = pd.DataFrame(results)
+      # append to file
+      df_results.to_csv('read_classifications.tsv', sep='\\t', index=False, mode='a')
   """
 }
 
 process calculateStats {
   conda "conda-forge::pandas conda-forge::scikit-learn"
-  cpus 2
-  memory '16 GB'
+  cpus 4
+  memory '32 GB'
   publishDir "results"
 
   input:
@@ -513,7 +534,8 @@ workflow {
       [sample.baseName.split('_')[0..1].join('_'), sample]
     })
     .map { it[1][1] }
-  generateReads(read_assemblies)
+  filterForChromosome(read_assemblies)
+  generateReads(filterForChromosome.out)
   read_classifications = classifyRead(generateReads.out)
   summarizeReadClassifications(selectForReadGen.out, read_classifications.collect())
 
