@@ -16,7 +16,7 @@ The tool is available as a web-based application and as a command line interface
 
 <!-- start quickstart -->
 ## Installation
-To install XspecT, please download the lastest 64 bit Python version and install the package using pip:
+To install XspecT, please download Python 3.10 - 3.13 and install the package using pip:
 ```
 pip install xspect
 ```
