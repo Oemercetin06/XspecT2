@@ -4,7 +4,54 @@ include { classifySample as classifyAssembly } from './classify'
 include { classifySample as classifyRead } from './classify'
 include { strain_species_mapping } from '../nextflow-utils'
 
-process downloadModels {
+// --------------------- PARAMETERS ---------------------
+params.publishDir       = "results/benchmark"
+params.xspectModel     = "Acinetobacter"
+
+// --------------------- WORKFLOW -----------------------
+workflow {
+  species_model = getModelJSON()
+  name_mapping = getNameMapping(species_model)
+  genomes = file("data/genomes")
+  tax_report = file("data/aci_species.json")
+  tax_mapping_json = strain_species_mapping(tax_report)
+  assemblies = createAssemblyTable(genomes, tax_mapping_json, species_model)
+
+  // Whole genome assemblies
+  samples = Channel.fromPath("${genomes}/**/*.fna")
+    .flatten()
+  filtered_samples = assemblies
+    .splitCsv(header: true, sep: '\t')
+    .map { row -> row['Assembly Accession'] }
+    .cross(samples.map { sample -> 
+      [sample.baseName.split('_')[0..1].join('_'), sample]
+    })
+    .map { it[1][1] }
+  classifications = classifyAssembly(filtered_samples, params.xspectModel)
+  summarizeClassifications(assemblies, classifications.collect())
+  confusionMatrix(summarizeClassifications.out, name_mapping)
+  mismatchConfusionMatrix(summarizeClassifications.out, name_mapping)
+
+  // Simulated reads
+  selectForReadGen(assemblies, species_model)
+  read_assemblies = selectForReadGen.out
+    .splitCsv(header: true, sep: '\t')
+    .map { row -> row['Assembly Accession'] }
+    .cross(samples.map { sample -> 
+      [sample.baseName.split('_')[0..1].join('_'), sample]
+    })
+    .map { it[1][1] }
+  filterForChromosome(read_assemblies)
+  generateReads(filterForChromosome.out)
+  read_classifications = classifyRead(generateReads.out, params.xspectModel)
+  summarizeReadClassifications(selectForReadGen.out, read_classifications.collect())
+
+  calculateStats(summarizeClassifications.out, summarizeReadClassifications.out)
+  }
+
+// --------------------- PROCESSES ---------------------
+
+process getModelJSON {
   conda "./scripts/benchmark/environment.yml"
   cpus 2
   memory '16 GB'
@@ -14,10 +61,10 @@ process downloadModels {
 
   script:
   """
-  if [ ! "$HOME/xspect-data/models/acinetobacter-species.json" ]; then
-    xspect models download
+  if [ ! "$HOME/xspect-data/models/${params.xspectModel.toLowerCase()}-species.json" ]; then
+    echo "Model `${params.xspectModel}` not found in xspect-data/models"
   fi
-  cp "$HOME/xspect-data/models/acinetobacter-species.json" species_model.json
+  cp "$HOME/xspect-data/models/${params.xspectModel.toLowerCase()}-species.json" species_model.json
   """
 }
 
@@ -102,6 +149,21 @@ process createAssemblyTable {
   ' assemblies.tsv > temp_assemblies.tsv
   mv temp_assemblies.tsv assemblies.tsv
   rm valid_species.txt
+
+  # filter out assemblies that are part of the training set
+  jq -r '.training_accessions | to_entries[] | .value[]' ${species_model} > training_accessions.txt
+  awk -F'\t' '
+    BEGIN {
+      while ((getline acc < "training_accessions.txt") > 0) {
+        training[acc] = 1;
+      }
+      close("training_accessions.txt");
+    }
+    NR==1 { print; next }
+    !(\$1 in training) { print }
+  ' assemblies.tsv > temp_assemblies.tsv
+  mv temp_assemblies.tsv assemblies.tsv
+  rm training_accessions.txt
   """
 
   stub:
@@ -114,7 +176,7 @@ process summarizeClassifications {
   conda "conda-forge::pandas"
   cpus 4
   memory '16 GB'
-  publishDir "results"
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path assemblies
@@ -192,9 +254,6 @@ process selectForReadGen {
   ]
   assemblies = assemblies[~assemblies['Assembly Accession'].isin(training_accessions)]
 
-  # use up to three assemblies for each species
-  assemblies = assemblies.groupby('Species ID').head(3)
-
   assemblies.to_csv('selected_samples.tsv', sep='\\t', index=False)
   """
 }
@@ -249,7 +308,7 @@ process summarizeReadClassifications {
   conda "conda-forge::pandas"
   cpus 4
   memory '64 GB'
-  publishDir "results"
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path read_assemblies
@@ -271,6 +330,7 @@ process summarizeReadClassifications {
   accession_to_species = dict(zip(df_assemblies['Assembly Accession'], df_assemblies['Species ID']))
   
   classifications = '${read_classifications}'.split()
+  include_header = True
   for json_file in classifications:
     basename = os.path.basename(json_file).replace('.json', '')
     accession = '_'.join(basename.split('_')[:2])
@@ -304,16 +364,16 @@ process summarizeReadClassifications {
 
 
       df_results = pd.DataFrame(results)
-      # append to file
-      df_results.to_csv('read_classifications.tsv', sep='\\t', index=False, mode='a')
+      df_results.to_csv('read_classifications.tsv', sep='\\t', index=False, mode='a', header=include_header)
+      include_header = False
   """
 }
 
 process calculateStats {
   conda "conda-forge::pandas conda-forge::scikit-learn"
-  cpus 4
-  memory '32 GB'
-  publishDir "results"
+  cpus 8
+  memory '256 GB'
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path assembly_classifications
@@ -392,7 +452,7 @@ process confusionMatrix {
   conda "conda-forge::pandas conda-forge::scikit-learn conda-forge::numpy conda-forge::matplotlib"
   cpus 2
   memory '16 GB'
-  publishDir "results"
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path classifications
@@ -442,7 +502,7 @@ process mismatchConfusionMatrix {
   conda "conda-forge::pandas conda-forge::scikit-learn conda-forge::numpy conda-forge::matplotlib"
   cpus 2
   memory '16 GB'
-  publishDir "results"
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path classifications
@@ -500,44 +560,3 @@ process mismatchConfusionMatrix {
   plt.savefig('mismatches_confusion_matrix.png', dpi=300, bbox_inches='tight')
   """
 }
-
-
-workflow {
-  species_model = downloadModels()
-  name_mapping = getNameMapping(species_model)
-  genomes = file("data/genomes")
-  tax_report = file("data/aci_species.json")
-  tax_mapping_json = strain_species_mapping(tax_report)
-  assemblies = createAssemblyTable(genomes, tax_mapping_json, species_model)
-
-  // Whole genome assemblies
-  samples = Channel.fromPath("${genomes}/**/*.fna")
-    .flatten()
-  filtered_samples = assemblies
-    .splitCsv(header: true, sep: '\t')
-    .map { row -> row['Assembly Accession'] }
-    .cross(samples.map { sample -> 
-      [sample.baseName.split('_')[0..1].join('_'), sample]
-    })
-    .map { it[1][1] }
-  classifications = classifyAssembly(filtered_samples)
-  summarizeClassifications(assemblies, classifications.collect())
-  confusionMatrix(summarizeClassifications.out, name_mapping)
-  mismatchConfusionMatrix(summarizeClassifications.out, name_mapping)
-
-  // Simulated reads
-  selectForReadGen(assemblies, species_model)
-  read_assemblies = selectForReadGen.out
-    .splitCsv(header: true, sep: '\t')
-    .map { row -> row['Assembly Accession'] }
-    .cross(samples.map { sample -> 
-      [sample.baseName.split('_')[0..1].join('_'), sample]
-    })
-    .map { it[1][1] }
-  filterForChromosome(read_assemblies)
-  generateReads(filterForChromosome.out)
-  read_classifications = classifyRead(generateReads.out)
-  summarizeReadClassifications(selectForReadGen.out, read_classifications.collect())
-
-  calculateStats(summarizeClassifications.out, summarizeReadClassifications.out)
-  }
