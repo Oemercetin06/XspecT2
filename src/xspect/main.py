@@ -203,11 +203,7 @@ def train_directory(model_genus, input_path, svm_steps, meta, author, author_ema
     help="Train a MLST model based on PubMLST data.",
 )
 @click.option(
-    "--organism",
-    "organism",
-    help="Underlying organism for the MLST model.",
-    type=click.Choice(PubMLSTHandler().get_available_species()),
-    prompt=True,
+    "--organism", "organism", help="Underlying organism for the MLST model.", type=str
 )
 @click.option(
     "--mlst-scheme",
@@ -228,6 +224,17 @@ def train_directory(model_genus, input_path, svm_steps, meta, author, author_ema
 def train_mlst(organism, scheme, author, author_email):
     """Download alleles and train MLST models."""
     handler = PubMLSTHandler()
+    available_organisms = handler.get_available_organisms()
+    if not organism:
+        organism = click.prompt(
+            "Please enter the organism you want to train the MLST model for:",
+            type=click.Choice(available_organisms),
+        )
+    elif organism not in available_organisms:
+        raise click.BadParameter(
+            f"Organism '{organism}' not found. Available organisms: {', '.join(available_organisms)}"
+        )
+
     available_schemas = handler.get_available_schemes(organism)
     if scheme:
         if scheme not in available_schemas:

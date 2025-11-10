@@ -15,7 +15,7 @@ class PubMLSTHandler:
 
         self.base_url = base_url
 
-    def get_available_species(self) -> list:
+    def get_available_organisms(self) -> list:
         """
         Get a list of available species from PubMLST.
 
