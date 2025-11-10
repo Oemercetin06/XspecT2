@@ -203,10 +203,7 @@ def train_directory(model_genus, input_path, svm_steps, meta, author, author_ema
     help="Train a MLST model based on PubMLST data.",
 )
 @click.option(
-    "--organism",
-    "organism",
-    help="Underlying organism for the MLST model.",
-    type=str
+    "--organism", "organism", help="Underlying organism for the MLST model.", type=str
 )
 @click.option(
     "--mlst-scheme",
