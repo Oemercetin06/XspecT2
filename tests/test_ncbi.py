@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from xspect.ncbi import NCBIHandler, AssemblyLevel, AssemblySource
+from xspect.handlers.ncbi import NCBIHandler, AssemblyLevel, AssemblySource
 
 # pylint: disable=redefined-outer-name
 

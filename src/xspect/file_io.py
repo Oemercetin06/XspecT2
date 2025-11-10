@@ -2,6 +2,7 @@
 File IO module.
 """
 
+from io import StringIO
 from json import loads
 import os
 from pathlib import Path
@@ -231,3 +232,26 @@ def prepare_input_output_paths(
         )
 
     return input_paths, get_output_path
+
+
+def create_fasta_files(locus_path: Path, fasta_batch: str) -> None:
+    """
+    Create Fasta-Files for every allele of a locus.
+
+    This function creates a fasta file for each record in the batch-string of a locus.
+    The batch originates from an API-GET-request to PubMLST.
+    The files are named after the record ID.
+    If a fasta file already exists, it will be skipped.
+
+    Args:
+        locus_path (Path): The directory where the fasta-files will be saved.
+        fasta_batch (str): A string containing every record of a locus from PubMLST.
+    """
+    # fasta_batch = full string of a fasta file containing every allele sequence of a locus
+    for record in SeqIO.parse(StringIO(fasta_batch), "fasta"):
+        number = record.id.split("_")[-1]  # example id = Oxf_cpn60_263
+        output_fasta_file = locus_path / f"Allele_ID_{number}.fasta"
+        if output_fasta_file.exists():
+            continue  # Ignore existing ones
+        with open(output_fasta_file, "w", encoding="utf-8") as allele:
+            SeqIO.write(record, allele, "fasta")

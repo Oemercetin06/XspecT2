@@ -8,7 +8,9 @@ import requests
 from xspect.definitions import get_xspect_model_path
 
 
-def download_test_models(url: str) -> None:
+def download_test_models(
+    url: str = "https://assets.adrianromberg.com/science/xspect-models-10-27-2025.zip",
+) -> None:
     """
     Download models from the specified URL.
 

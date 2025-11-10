@@ -5,13 +5,14 @@ process classifySample {
 
   input:
   path sample
+  val model
 
   output:
   path "${sample.baseName}.json"
 
   script:
   """
-  xspect classify species -g Acinetobacter -i ${sample} -o ${sample.baseName}.json
+  xspect classify species -g ${model} -i ${sample} -o ${sample.baseName}.json
   """
 
   stub:

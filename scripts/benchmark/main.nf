@@ -2,9 +2,56 @@
 
 include { classifySample as classifyAssembly } from './classify'
 include { classifySample as classifyRead } from './classify'
+include { strain_species_mapping } from '../nextflow-utils'
 
-process downloadModels {
-  conda "./scripts/benchmark/environment.yml"
+// --------------------- PARAMETERS ---------------------
+params.publishDir       = "results/benchmark"
+params.xspectModel     = "Acinetobacter"
+
+// --------------------- WORKFLOW -----------------------
+workflow {
+  species_model = getModelJSON()
+  name_mapping = getNameMapping(species_model)
+  genomes = file("data/genomes")
+  tax_report = file("data/aci_species.json")
+  tax_mapping_json = strain_species_mapping(tax_report)
+  assemblies = createAssemblyTable(genomes, tax_mapping_json, species_model)
+
+  // Whole genome assemblies
+  samples = Channel.fromPath("${genomes}/**/*.fna")
+    .flatten()
+  filtered_samples = assemblies
+    .splitCsv(header: true, sep: '\t')
+    .map { row -> row['Assembly Accession'] }
+    .cross(samples.map { sample -> 
+      [sample.baseName.split('_')[0..1].join('_'), sample]
+    })
+    .map { it[1][1] }
+  classifications = classifyAssembly(filtered_samples, params.xspectModel)
+  summarizeClassifications(assemblies, classifications.collect())
+  confusionMatrix(summarizeClassifications.out, name_mapping)
+  mismatchConfusionMatrix(summarizeClassifications.out, name_mapping)
+
+  // Simulated reads
+  selectForReadGen(assemblies, species_model)
+  read_assemblies = selectForReadGen.out
+    .splitCsv(header: true, sep: '\t')
+    .map { row -> row['Assembly Accession'] }
+    .cross(samples.map { sample -> 
+      [sample.baseName.split('_')[0..1].join('_'), sample]
+    })
+    .map { it[1][1] }
+  filterForChromosome(read_assemblies)
+  generateReads(filterForChromosome.out)
+  read_classifications = classifyRead(generateReads.out, params.xspectModel)
+  summarizeReadClassifications(selectForReadGen.out, read_classifications.collect())
+
+  calculateStats(summarizeClassifications.out, summarizeReadClassifications.out)
+  }
+
+// --------------------- PROCESSES ---------------------
+
+process getModelJSON {
   cpus 2
   memory '16 GB'
 
@@ -13,10 +60,8 @@ process downloadModels {
 
   script:
   """
-  if [ ! "$HOME/xspect-data/models/acinetobacter-species.json" ]; then
-    xspect models download
-  fi
-  cp "$HOME/xspect-data/models/acinetobacter-species.json" species_model.json
+  model_name="${params.xspectModel.toLowerCase().replaceAll('_','-')}-species.json"
+  cp "$HOME/xspect-data/models/\$model_name" species_model.json
   """
 }
 
@@ -50,7 +95,7 @@ process createAssemblyTable {
 
   input:
   path genomes
-  path tax_report
+  path tax_mapping_json
   path species_model
 
   output:
@@ -70,28 +115,11 @@ process createAssemblyTable {
   awk -F'\t' 'NR==1 || \$5 == "OK"' assemblies.tsv > assemblies_filtered.tsv
   mv assemblies_filtered.tsv assemblies.tsv
 
-  # map taxonmic IDs to species IDs (taxonomic IDs might be strain IDs)
-  jq '
-    .reports
-    | map(select(.taxonomy.children != null))
-    | map({
-        species_id: .taxonomy.tax_id,
-        children: .taxonomy.children
-      })
-    | map(
-        . as \$entry
-        | \$entry.children
-        | map({ (tostring): \$entry.species_id })
-        | add
-      )
-    | add
-  ' ${tax_report} > tax_mapping.json
-
   # add species IDs to assemblies.tsv
   declare -A species_map
   while IFS="=" read -r key val; do
     species_map["\$key"]="\$val"
-  done < <(jq -r 'to_entries[] | "\\(.key)=\\(.value)"' tax_mapping.json)
+  done < <(jq -r 'to_entries[] | "\\(.key)=\\(.value)"' ${tax_mapping_json})
 
   {
     IFS='\t' read -r -a header < assemblies.tsv
@@ -118,6 +146,21 @@ process createAssemblyTable {
   ' assemblies.tsv > temp_assemblies.tsv
   mv temp_assemblies.tsv assemblies.tsv
   rm valid_species.txt
+
+  # filter out assemblies that are part of the training set
+  jq -r '.training_accessions | to_entries[] | .value[]' ${species_model} > training_accessions.txt
+  awk -F'\t' '
+    BEGIN {
+      while ((getline acc < "training_accessions.txt") > 0) {
+        training[acc] = 1;
+      }
+      close("training_accessions.txt");
+    }
+    NR==1 { print; next }
+    !(\$1 in training) { print }
+  ' assemblies.tsv > temp_assemblies.tsv
+  mv temp_assemblies.tsv assemblies.tsv
+  rm training_accessions.txt
   """
 
   stub:
@@ -130,7 +173,7 @@ process summarizeClassifications {
   conda "conda-forge::pandas"
   cpus 4
   memory '16 GB'
-  publishDir "results"
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path assemblies
@@ -208,15 +251,32 @@ process selectForReadGen {
   ]
   assemblies = assemblies[~assemblies['Assembly Accession'].isin(training_accessions)]
 
-  # use up to three assemblies for each species
-  assemblies = assemblies.groupby('Species ID').head(3)
-
   assemblies.to_csv('selected_samples.tsv', sep='\\t', index=False)
   """
 }
 
+process filterForChromosome {
+  conda "bioconda::seqkit"
+  cpus 2
+  memory '16 GB'
+
+  input:
+  path sample
+
+  output:
+  path "${sample.baseName}_chromosome.fna"
+
+  script:
+  """
+  set -euo pipefail
+
+  seqkit sort -l -r ${sample} > sorted.tmp
+  seqkit head -n 1 sorted.tmp | seqkit seq -t dna -o "${sample.baseName}_chromosome.fna"
+  """
+}
+
 process generateReads {
-  conda "conda-forge::pandas conda-forge::biopython"
+  conda "bioconda::art"
   cpus 2
   memory '16 GB'
 
@@ -228,37 +288,24 @@ process generateReads {
 
   script:
   """
-  #!/usr/bin/env python
-  import random
-  from Bio import SeqIO
-  
-  read_length = 100
-  num_reads = 100000
-  seed = 42
-  
-  random.seed(seed)
-  sequences = list(SeqIO.parse("${sample}", "fasta"))
-  chromosome_sequence = max(sequences, key=len)  # we assume the longest sequence is the chromosome
-  
-  ch_rec_id = chromosome_sequence.id
-  ch_seq = chromosome_sequence.seq
-  ch_seqlen = len(chromosome_sequence.seq)
-  with open("${sample.baseName}_simulated.fq", "w") as f:
-    for i in range(num_reads):
-      start = random.randint(0, ch_seqlen - read_length)
-      read_seq = ch_seq[start:start + read_length]
-      f.write(f"@read_{i}_{ch_rec_id}_{start}-{start+read_length}\\n")
-      f.write(f"{read_seq}\\n")
-      f.write("+\\n")
-      f.write(f"{len(read_seq)*'~'}\\n")
+  set -euo pipefail
+
+  art_illumina \
+    -ss HS25 \
+    -i "${sample}" \
+    -l 125 \
+    -c 100000 \
+    -na \
+    -rs 42 \
+    -o "${sample.baseName}_simulated"
   """
 }
 
 process summarizeReadClassifications {
   conda "conda-forge::pandas"
   cpus 4
-  memory '16 GB'
-  publishDir "results"
+  memory '64 GB'
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path read_assemblies
@@ -278,10 +325,9 @@ process summarizeReadClassifications {
   
   # Create a mapping of accession to species ID
   accession_to_species = dict(zip(df_assemblies['Assembly Accession'], df_assemblies['Species ID']))
-
-  results = []
   
   classifications = '${read_classifications}'.split()
+  include_header = True
   for json_file in classifications:
     basename = os.path.basename(json_file).replace('.json', '')
     accession = '_'.join(basename.split('_')[:2])
@@ -291,6 +337,7 @@ process summarizeReadClassifications {
     with open(json_file, 'r') as f:
       data = json.load(f)
       scores = data.get('scores', {})
+      results = []
       
       for read_name, read_scores in scores.items():
         if read_name != 'total':
@@ -310,17 +357,20 @@ process summarizeReadClassifications {
               result[species] = score
 
             results.append(result)
+      
 
-  df_results = pd.DataFrame(results)
-  df_results.to_csv('read_classifications.tsv', sep='\\t', index=False)
+
+      df_results = pd.DataFrame(results)
+      df_results.to_csv('read_classifications.tsv', sep='\\t', index=False, mode='a', header=include_header)
+      include_header = False
   """
 }
 
 process calculateStats {
   conda "conda-forge::pandas conda-forge::scikit-learn"
-  cpus 2
-  memory '16 GB'
-  publishDir "results"
+  cpus 8
+  memory '256 GB'
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path assembly_classifications
@@ -399,7 +449,7 @@ process confusionMatrix {
   conda "conda-forge::pandas conda-forge::scikit-learn conda-forge::numpy conda-forge::matplotlib"
   cpus 2
   memory '16 GB'
-  publishDir "results"
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path classifications
@@ -449,7 +499,7 @@ process mismatchConfusionMatrix {
   conda "conda-forge::pandas conda-forge::scikit-learn conda-forge::numpy conda-forge::matplotlib"
   cpus 2
   memory '16 GB'
-  publishDir "results"
+  publishDir { params.publishDir }, mode: 'copy'
 
   input:
   path classifications
@@ -507,42 +557,3 @@ process mismatchConfusionMatrix {
   plt.savefig('mismatches_confusion_matrix.png', dpi=300, bbox_inches='tight')
   """
 }
-
-
-workflow {
-  species_model = downloadModels()
-  name_mapping = getNameMapping(species_model)
-  genomes = file("data/genomes")
-  tax_report = file("data/aci_species.json")
-  assemblies = createAssemblyTable(genomes, tax_report, species_model)
-
-  // Whole genome assemblies
-  samples = Channel.fromPath("${genomes}/**/*.fna")
-    .flatten()
-  filtered_samples = assemblies
-    .splitCsv(header: true, sep: '\t')
-    .map { row -> row['Assembly Accession'] }
-    .cross(samples.map { sample -> 
-      [sample.baseName.split('_')[0..1].join('_'), sample]
-    })
-    .map { it[1][1] }
-  classifications = classifyAssembly(filtered_samples)
-  summarizeClassifications(assemblies, classifications.collect())
-  confusionMatrix(summarizeClassifications.out, name_mapping)
-  mismatchConfusionMatrix(summarizeClassifications.out, name_mapping)
-
-  // Simulated reads
-  selectForReadGen(assemblies, species_model)
-  read_assemblies = selectForReadGen.out
-    .splitCsv(header: true, sep: '\t')
-    .map { row -> row['Assembly Accession'] }
-    .cross(samples.map { sample -> 
-      [sample.baseName.split('_')[0..1].join('_'), sample]
-    })
-    .map { it[1][1] }
-  generateReads(read_assemblies)
-  read_classifications = classifyRead(generateReads.out)
-  summarizeReadClassifications(selectForReadGen.out, read_classifications.collect())
-
-  calculateStats(summarizeClassifications.out, summarizeReadClassifications.out)
-  }

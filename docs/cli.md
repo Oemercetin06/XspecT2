@@ -27,7 +27,7 @@ This will show a list of all available models, separated by their type (species,
 
 ### Downloading Models
 
-To download a basic set of pre-trained models (Acinetobacter and Salonella), run:
+To download a basic set of pre-trained models (Acinetobacter, including Oxford MLST scheme, and Salonella), run:
 
 ```bash
 xspect models download
@@ -43,7 +43,7 @@ To train a model with NCBI data, run the following command:
 xspect models train ncbi
 ```
 
-By default, XspecT filters out NCBI accessions that do not meed minimum N50 thresholds, have an inconclusive taxonomy check status, or are deemed atypical by NCBI. Furthermore, species with "Candidatus" and "sp." in their species names are filtered out. To disable filtering behavior, use the respective flag (see `xspect models train ncbi --help`).
+By default, XspecT filters out NCBI accessions that do not meet minimum N50 thresholds, have an inconclusive taxonomy check status, or are deemed atypical by NCBI. Furthermore, species with "Candidatus" and "sp." in their species names are filtered out. To disable filtering behavior, use the respective flag (see `xspect models train ncbi --help`).
 
 If you would like to train models with manually curated data from a directory, you can use:
 
@@ -82,6 +82,8 @@ To train models for MLST classifications, run:
 xspect models train mlst
 ```
 
+XspecT will prompt your for the organism name and the MLST scheme you would like to train a model for.
+
 ## Classification
 
 To classify samples, the command `xspect classify` can be used. This command will classify the sample based on the models available in your XspecT installation.
@@ -111,7 +113,7 @@ XspecT uses a kmer-based approach to classify samples. This means that the entir
 
 **Example**:
 ```bash
-xspect classify species --sparse-sampling-step 10 Acinetobacter path
+xspect classify species --sparse-sampling-step 10
 ```
 
 This will only consider every 10th kmer in the sample.
@@ -120,7 +122,7 @@ This will only consider every 10th kmer in the sample.
 By default, the classification results show only the taxonomy ID of each species along with its corresponding score for better readability. To display the full names associated with each taxonomy ID, you can use the `--display-names` (or `-n`) option:
 
 ```bash
-xspect classify species --display-names Acinetobacter path
+xspect classify species --display-names
 ```
 The output will then be formatted as: `Taxonomy_ID - Display_Name: Score` for each species.
 
@@ -131,6 +133,8 @@ Samples can also be classified based on Multi-locus sequence type schemas. To ML
 ```bash
 xspect classify mlst
 ```
+
+XspecT will prompt you for the organism, MLST scheme, and path to your sample directory.
 
 ## Filtering
 XspecT can also be used to filter samples based on their classification results. This is useful when analyzing metagenomic samples, for example when looking at genomic bycatch.

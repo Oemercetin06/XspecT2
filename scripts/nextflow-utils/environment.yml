@@ -1,4 +1,4 @@
-name: xspect-benchmark
+name: xspect
 channels:
   - conda-forge
 dependencies:

@@ -1,34 +1,45 @@
+"""Tests for the ProbabilisticFilterMlstSchemeModel class."""
+
+# pylint: disable=redefined-outer-name
+
+from pathlib import Path
 import pytest
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from xspect.mlst_feature.mlst_helper import pick_scheme, pick_scheme_from_models_dir
-from xspect.mlst_feature.pub_mlst_handler import PubMLSTHandler
+from xspect.handlers.pubmlst import PubMLSTHandler
 from xspect.models.probabilistic_filter_mlst_model import (
     ProbabilisticFilterMlstSchemeModel,
 )
 from xspect.definitions import get_xspect_model_path
 
 handler = PubMLSTHandler()
-PubMLSTHandler.download_alleles(handler, False)
+ORGANISM = "abaumannii"
+SCHEME = "MLST (Oxford)"
+SCHEME_ID = "1"
 
 
 @pytest.fixture
-def filter_model():
+def filter_model(tmpdir):
     """Fixture for the ProbabilisticFilterMlstSchemeModel class."""
+    base_path = tmpdir.mkdir("xspect_data")
     return ProbabilisticFilterMlstSchemeModel(
-        k_value=21,
-        model_name="Test Filter",
-        base_path=get_xspect_model_path() / "test",
-        scheme_url="https://rest.pubmlst.org/db/pubmlst_abaumannii_seqdef/schemes/1",
+        k=21,
+        model_display_name=SCHEME,
+        base_path=Path(base_path),
+        scheme_url=f"https://rest.pubmlst.org/db/pubmlst_{ORGANISM}_seqdef/schemes/{SCHEME_ID}",
+        organism=ORGANISM,
     )
 
 
 @pytest.fixture
-def trained_filter_model(filter_model, monkeypatch):
+def trained_filter_model(filter_model, tmpdir):
     """Fixture for the ProbabilisticFilterModel class with trained model."""
-    monkeypatch.setattr("builtins.input", lambda _: "1")
-    scheme = pick_scheme(handler.get_scheme_paths())
-    filter_model.fit(scheme)
+    allele_path = Path(tmpdir) / "alleles"
+    allele_path.mkdir()
+
+    handler.download_alleles(ORGANISM, SCHEME, allele_path)
+
+    filter_model.fit(allele_path)
     return filter_model
 
 
@@ -36,9 +47,10 @@ def test_model_initialization(
     filter_model,
 ):
     """Test the initialization of the ProbabilisticFilterMlstSchemeModel class."""
-    assert filter_model.k_value == 21
-    assert filter_model.model_name == "Test Filter"
-    assert filter_model.model_type == "Strain"
+    assert filter_model.k == 21
+    assert filter_model.model_display_name == SCHEME
+    assert filter_model.organism == ORGANISM
+    assert filter_model.model_type == "MLST"
     assert filter_model.fpr == 0.001
 
 
@@ -46,7 +58,7 @@ def test_model_save(trained_filter_model):
     """Test the save method of the ProbabilisticFilterMlstSchemeModel class."""
     trained_filter_model.save()
     assert (
-        trained_filter_model.base_path / "MLST (Oxford)" / "MLST (Oxford).json"
+        trained_filter_model.base_path / "abaumannii-mlst-oxford-mlst.json"
     ).exists()
 
 
@@ -67,7 +79,7 @@ def test_fit(trained_filter_model):
         assert trained_filter_model.loci.get(locus) >= size
 
 
-def test_predict(trained_filter_model, monkeypatch):
+def test_predict(trained_filter_model):
     """Test the predict method of the ProbabilisticFilterMlstSchemeModel class."""
     # Allele_ID_4 of Oxf_cpn60 with 401 kmers of length 21 each
     seq = Seq(
@@ -81,10 +93,7 @@ def test_predict(trained_filter_model, monkeypatch):
         "G"
     )
     seq_record = SeqRecord(seq)
-    monkeypatch.setattr("builtins.input", lambda _: "1")  # 1 = Oxford, 2 = Pasteur
-    scheme = pick_scheme_from_models_dir()
-    # [0] = Dict with the highest hits ([1] has all results which are not needed)
-    res = trained_filter_model.predict(scheme, seq_record).hits.get("test")[0]
+    res = trained_filter_model.predict(seq_record).hits.get("test")[0]
     allele_id = res.get("Strain type").get("Oxf_cpn60")
 
     assert allele_id.get("Allele_ID_4") == 401
@@ -92,12 +101,14 @@ def test_predict(trained_filter_model, monkeypatch):
 
 def test_model_load(trained_filter_model):
     """Test the load method of the ProbabilisticFilterMlstSchemeModel class."""
+    trained_filter_model.save()
     loaded_model = ProbabilisticFilterMlstSchemeModel.load(
-        get_xspect_model_path() / "test" / "MLST" / "MLST (Oxford)"
+        trained_filter_model.base_path / "abaumannii-mlst-oxford-mlst.json"
     )
-    assert loaded_model.k_value == 21
-    assert loaded_model.model_name == "Test Filter"
-    assert loaded_model.model_type == "Strain"
+    assert loaded_model.k == 21
+    assert loaded_model.model_display_name == SCHEME
+    assert loaded_model.organism == ORGANISM
+    assert loaded_model.model_type == "MLST"
     assert len(loaded_model.indices) == 7
     expected_values = {
         "Oxf_cpn60": 265,
@@ -116,8 +127,9 @@ def test_model_load(trained_filter_model):
 def test_sequence_splitter():
     """Test the sequence split method on an arbitrary short sequence."""
     model = ProbabilisticFilterMlstSchemeModel(
-        k_value=4,
-        model_name="Test Filter",
+        k=4,
+        model_display_name="Test Filter",
+        organism="Test Organism",
         base_path=get_xspect_model_path(),
         scheme_url="",
     )
@@ -125,7 +137,8 @@ def test_sequence_splitter():
     # k = 4 means each substring (except the first one) starts 3 (k - 1) base pairs earlier
     seq = "AGCTATTTCGCTGATGTCGACTGATCAAAAAGCCGGCGCGCTTTCGTATAGGCTAGCTACGACATACGATCGATCACTGA"
     res = model.sequence_splitter(seq, 20)
-    # Does not assert 4 because of 3 additional base pairs when sliced (Last slice has 12 base pairs)
+    # Does not assert to 4 because of 3 additional base pairs when sliced
+    # (Last slice has 12 base pairs)
     assert len(res) == 5
 
 

@@ -2,6 +2,8 @@
 
 from json import loads, dumps
 from pathlib import Path
+
+from slugify import slugify
 from xspect.definitions import get_xspect_model_path
 
 
@@ -18,7 +20,7 @@ def get_genus_model_path(genus) -> Path:
     Returns:
         Path: The file path of the genus classification model.
     """
-    genus_model_path = get_xspect_model_path() / (genus.lower() + "-genus.json")
+    genus_model_path = get_xspect_model_path() / (slugify(genus) + "-genus.json")
     return genus_model_path
 
 
@@ -35,8 +37,44 @@ def get_species_model_path(genus) -> Path:
     Returns:
         Path: The file path of the species classification model.
     """
-    species_model_path = get_xspect_model_path() / (genus.lower() + "-species.json")
+    species_model_path = get_xspect_model_path() / (slugify(genus) + "-species.json")
     return species_model_path
+
+
+def get_mlst_model_path(organism: str, scheme: str) -> Path:
+    """
+    Get an MLST model path for the specified organism and scheme.
+
+    This function retrieves the path of a pre-trained MLST classification model based on the
+    provided organism name and MLST scheme.
+
+    Args:
+        organism (str): The organism name for which the MLST model is to be retrieved.
+        scheme (str): The MLST scheme name.
+
+    Returns:
+        Path: The file path of the MLST classification model.
+    """
+    mlst_model_path = get_xspect_model_path() / (
+        slugify(organism + "-" + scheme + "-mlst") + ".json"
+    )
+    return mlst_model_path
+
+
+def is_svm_model(model_slug: str) -> bool:
+    """
+    Check if a model is an SVM model.
+
+    This function determines whether the specified model is a Support Vector Machine (SVM) model
+    based on its metadata.
+
+    Args:
+        model_slug (str): The slug of the model to check.
+    Returns:
+        bool: True if the model is an SVM model, False otherwise.
+    """
+    model_metadata = get_model_metadata(model_slug)
+    return model_metadata.get("model_class") == "ProbabilisticFilterSVMModel"
 
 
 def get_model_metadata(model: str | Path) -> dict:
@@ -55,7 +93,7 @@ def get_model_metadata(model: str | Path) -> dict:
         ValueError: If the model does not exist or is not a valid file.
     """
     if isinstance(model, str):
-        model_path = get_xspect_model_path() / (model.lower() + ".json")
+        model_path = get_xspect_model_path() / (slugify(model) + ".json")
     elif isinstance(model, Path):
         model_path = model
     else:
@@ -144,3 +182,23 @@ def get_model_display_names(model_slug: str) -> list[str]:
     """
     model_metadata = get_model_metadata(model_slug)
     return list(model_metadata["display_names"].values())
+
+
+def get_available_mlst_schemes() -> dict[str, list[str]]:
+    """
+    Get a dictionary of available MLST schemes by organism.
+
+    This function scans the model directory for MLST model JSON files and organizes them by organism.
+
+    Returns:
+        dict[str, list[str]]: A dictionary where keys are organism names and values are lists of
+        MLST scheme names.
+    """
+    mlst_schemes = {}
+    for model_file in get_xspect_model_path().glob("*-mlst.json"):
+        model_metadata = get_model_metadata(model_file)
+        organism = model_metadata.get("organism")
+        scheme = model_metadata.get("model_display_name")
+        if organism and scheme:
+            mlst_schemes.setdefault(organism, []).append(scheme)
+    return mlst_schemes

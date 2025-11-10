@@ -7,7 +7,7 @@ theme:
 plugins:
   - include-markdown
   - search
-repo_url: https://github.com/BIONF/XspecT2
+repo_url: https://github.com/BIONF/XspecT
 markdown_extensions:
   - attr_list
 nav:

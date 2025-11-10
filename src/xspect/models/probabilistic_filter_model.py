@@ -19,7 +19,7 @@ from xspect.file_io import get_record_iterator
 from xspect.misclassification_detection.mapping import MappingHandler
 from xspect.models.result import ModelResult
 from collections import defaultdict
-from xspect.ncbi import NCBIHandler
+from xspect.handlers.ncbi import NCBIHandler
 from xspect.misclassification_detection.point_pattern_analysis import (
     PointPatternAnalysis,
 )
@@ -82,7 +82,7 @@ class ProbabilisticFilterModel:
 
     def get_cobs_index_path(self) -> str:
         """
-        Returns the path to the cobs inde
+        Returns the path to the cobs index
 
         This method constructs the path where the cobs index file will be stored,
         based on the model's slug and the base path.
@@ -295,7 +295,7 @@ class ProbabilisticFilterModel:
                 if display_name:
                     individual_hits.update(
                         {
-                            f"{key} -{self.display_names.get(key, 'Unknown').replace( 
+                            f"{key} -{self.display_names.get(key, 'Unknown').replace(
                                 self.model_display_name, '', 1)}": individual_hits.pop(
                                 key
                             )
@@ -378,10 +378,10 @@ class ProbabilisticFilterModel:
             )
             model.display_names = model_json["display_names"]
 
-            p = model.get_cobs_index_path()
-            if not Path(p).exists():
-                raise FileNotFoundError(f"Index file not found at {p}")
-            model.index = cobs.Search(p, True)
+            index_path = model.get_cobs_index_path()
+            if not Path(index_path).exists():
+                raise FileNotFoundError(f"Index file not found at {index_path}")
+            model.index = cobs.Search(index_path, True)
 
             return model
 
