@@ -52,7 +52,6 @@ workflow {
 // --------------------- PROCESSES ---------------------
 
 process getModelJSON {
-  conda "./scripts/benchmark/environment.yml"
   cpus 2
   memory '16 GB'
 
@@ -61,10 +60,8 @@ process getModelJSON {
 
   script:
   """
-  if [ ! "$HOME/xspect-data/models/${params.xspectModel.toLowerCase()}-species.json" ]; then
-    echo "Model `${params.xspectModel}` not found in xspect-data/models"
-  fi
-  cp "$HOME/xspect-data/models/${params.xspectModel.toLowerCase()}-species.json" species_model.json
+  model_name="${params.xspectModel.toLowerCase().replaceAll('_','-')}-species.json"
+  cp "$HOME/xspect-data/models/\$model_name" species_model.json
   """
 }
 
