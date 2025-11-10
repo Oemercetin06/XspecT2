@@ -20,7 +20,7 @@ def get_genus_model_path(genus) -> Path:
     Returns:
         Path: The file path of the genus classification model.
     """
-    genus_model_path = get_xspect_model_path() / (genus.lower() + "-genus.json")
+    genus_model_path = get_xspect_model_path() / (slugify(genus) + "-genus.json")
     return genus_model_path
 
 
@@ -37,7 +37,7 @@ def get_species_model_path(genus) -> Path:
     Returns:
         Path: The file path of the species classification model.
     """
-    species_model_path = get_xspect_model_path() / (genus.lower() + "-species.json")
+    species_model_path = get_xspect_model_path() / (slugify(genus) + "-species.json")
     return species_model_path
 
 
@@ -93,7 +93,7 @@ def get_model_metadata(model: str | Path) -> dict:
         ValueError: If the model does not exist or is not a valid file.
     """
     if isinstance(model, str):
-        model_path = get_xspect_model_path() / (model.lower() + ".json")
+        model_path = get_xspect_model_path() / (slugify(model) + ".json")
     elif isinstance(model, Path):
         model_path = model
     else:
