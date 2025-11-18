@@ -96,7 +96,7 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
         self.bf.save(str(bloom_path))
 
     def calculate_hits(
-        self, sequence: Seq | SeqRecord, filter_ids=None, step: int = 1
+        self, sequence: Seq | SeqRecord, exclude_ids=None, step: int = 1
     ) -> dict:
         """
         Calculate the hits for the sequence
@@ -105,7 +105,7 @@ class ProbabilisticSingleFilterModel(ProbabilisticFilterModel):
 
         Args:
             sequence (Seq | SeqRecord): Sequence to calculate hits for
-            filter_ids (list[str] | None): List of filter IDs to use, default is None
+            exclude_ids (list[str] | None): List of IDs to exclude, default is None
             step (int): Step size for generating k-mers, default is 1
         Returns:
             dict: Dictionary with the display name as key and the number of hits as value

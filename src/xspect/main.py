@@ -351,6 +351,12 @@ def classify_genus(model_genus, input_path, output_path, sparse_sampling_step):
     help="Detects misclassification for small reads or contigs.",
     is_flag=True,
 )
+@click.option(
+    "--exclude-species",
+    help="Comma-separated list of species IDs to exclude from classification.",
+    type=str,
+    default=None,
+)
 def classify_species(
     model_genus,
     input_path,
@@ -358,10 +364,15 @@ def classify_species(
     sparse_sampling_step,
     display_names,
     validation,
+    exclude_species,
 ):
     """Classify samples using a species model."""
     click.echo("Classifying...")
     classify = import_module("xspect.classify")
+
+    exclude_ids = None
+    if exclude_species:
+        exclude_ids = [species_id.strip() for species_id in exclude_species.split(",")]
 
     classify.classify_species(
         model_genus,
@@ -370,6 +381,7 @@ def classify_species(
         sparse_sampling_step,
         display_names,
         validation,
+        exclude_ids,
     )
 
 
