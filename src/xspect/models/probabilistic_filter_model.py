@@ -194,18 +194,18 @@ class ProbabilisticFilterModel:
         self.index = cobs.Search(self.get_cobs_index_path(), True)
 
     def calculate_hits(
-        self, sequence: Seq, filter_ids: list[str] | None = None, step: int = 1
+        self, sequence: Seq, exclude_ids: list[str] | None = None, step: int = 1
     ) -> dict:
         """
         Calculates the hits for a sequence
 
         This method searches the model's index for the given sequence and returns a dictionary
-        of filter IDs and their corresponding scores. If filter_ids is provided, it filters the
-        results to only include those IDs.
+        of filter IDs and their corresponding scores. If exclude_ids is provided, it filters the
+        results to exclude those IDs.
 
         Args:
             sequence (Seq): The sequence to search for in the model's index.
-            filter_ids (list[str] | None): A list of filter IDs to filter the results. If None,
+            exclude_ids (list[str] | None): A list of filter IDs to exclude from the results. If None,
                 all results are returned.
             step (int): The step size for the k-mer search. Default is 1.
 
@@ -226,8 +226,12 @@ class ProbabilisticFilterModel:
 
         r = self.index.search(str(sequence), step=step)
         result_dict = self._convert_cobs_result_to_dict(r)
-        if filter_ids:
-            return {doc: result_dict[doc] for doc in filter_ids}
+        if exclude_ids:
+            return {
+                doc: score
+                for doc, score in result_dict.items()
+                if doc not in exclude_ids
+            }
         return result_dict
 
     def predict(
@@ -239,7 +243,7 @@ class ProbabilisticFilterModel:
             | SeqIO.QualityIO.FastqPhredIterator
             | Path
         ),
-        filter_ids: list[str] = None,
+        exclude_ids: list[str] = None,
         step: int = 1,
         display_name: bool = False,
         validation: bool = False,
@@ -256,7 +260,7 @@ class ProbabilisticFilterModel:
                             SeqIO.QualityIO.FastqPhredIterator | Path):
                 The input sequence(s) to be processed. Can be a single SeqRecord, a list of
                 SeqRecords, a SeqIO iterator, or a Path to a fasta/fastq file.
-            filter_ids (list[str]): A list of filter IDs to filter the results. If None,
+            exclude_ids (list[str]): A list of filter IDs to exclude from the results. If None,
                 all results are returned.
             step (int): The step size for the k-mer search. Default is 1.
             display_name (bool): Includes a display name for each tax_ID.
@@ -273,7 +277,7 @@ class ProbabilisticFilterModel:
         """
         if isinstance(sequence_input, (SeqRecord)):
             return ProbabilisticFilterModel.predict(
-                self, [sequence_input], filter_ids, step, display_name, validation
+                self, [sequence_input], exclude_ids, step, display_name, validation
             )
 
         if self._is_sequence_list(sequence_input) | self._is_sequence_iterator(
@@ -286,7 +290,7 @@ class ProbabilisticFilterModel:
 
             for individual_sequence in sequence_input:
                 individual_hits = self.calculate_hits(
-                    individual_sequence.seq, filter_ids, step
+                    individual_sequence.seq, exclude_ids, step
                 )
                 num_kmers[individual_sequence.id] = self._count_kmers(
                     individual_sequence, step
@@ -314,6 +318,7 @@ class ProbabilisticFilterModel:
             return ProbabilisticFilterModel.predict(
                 self,
                 get_record_iterator(sequence_input),
+                exclude_ids=exclude_ids,
                 step=step,
                 display_name=display_name,
                 validation=validation,

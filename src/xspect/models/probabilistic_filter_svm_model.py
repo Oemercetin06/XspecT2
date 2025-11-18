@@ -181,7 +181,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             | SeqIO.QualityIO.FastqPhredIterator
             | Path
         ),
-        filter_ids: list[str] = None,
+        exclude_ids: list[str] = None,
         step: int = 1,
         display_name: bool = False,
         validation: bool = False,
@@ -196,7 +196,7 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         Args:
             sequence_input (SeqRecord | list[SeqRecord] | SeqIO.FastaIO.FastaIterator |
             SeqIO.QualityIO.FastqPhredIterator | Path): The input sequences to predict.
-            filter_ids (list[str], optional): A list of IDs to filter the predictions.
+            exclude_ids (list[str], optional): A list of IDs to exclude from the predictions.
             step (int, optional): Step size for sparse sampling. Defaults to 1.
             display_name (bool): Includes a display name for each tax_ID.
             validation (bool): Sorts out misclassified reads .
@@ -207,12 +207,12 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
         """
         # get scores and format them for the SVM
         res = super().predict(
-            sequence_input, filter_ids, step, display_name, validation
+            sequence_input, exclude_ids, step, display_name, validation
         )
         svm_scores = dict(sorted(res.get_scores()["total"].items()))
         svm_scores = [list(svm_scores.values())]
 
-        svm = self._get_svm(filter_ids)
+        svm = self._get_svm(exclude_ids)
         res.hits["misclassified"] = res.misclassified
         return ModelResult(
             self.slug(),
@@ -222,16 +222,16 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             prediction=str(svm.predict(svm_scores)[0]),
         )
 
-    def _get_svm(self, id_keys) -> SVC:
+    def _get_svm(self, exclude_ids) -> SVC:
         """
         Get the SVM for the given id keys.
 
         This method loads the SVM model from the scores CSV file and trains it
-        using the scores from the CSV. If `id_keys` is provided, it filters the
-        training data to only include those keys.
+        using the scores from the CSV. If `exclude_ids` is provided, it filters the
+        training data to exclude those keys.
 
         Args:
-            id_keys (list[str] | None): A list of IDs to filter the training data.
+            exclude_ids (list[str] | None): A list of IDs to exclude from the training data.
                 If None, all data is used.
 
         Returns:
@@ -245,10 +245,29 @@ class ProbabilisticFilterSVMModel(ProbabilisticFilterModel):
             file.readline()
             x_train = []
             y_train = []
+            keys = list(self.display_names.keys())
+            remove_indices = {
+                i
+                for i, k in enumerate(keys)
+                if exclude_ids is not None and k in exclude_ids
+            }
+
             for row in csv.reader(file):
-                if id_keys is None or row[-1] in id_keys:
-                    x_train.append(row[1:-1])
-                    y_train.append(row[-1])
+                label = row[-1]
+                if exclude_ids is not None and label in exclude_ids:
+                    continue
+                features = row[1:-1]
+                if remove_indices:
+                    filtered = [
+                        float(v)
+                        for i, v in enumerate(features)
+                        if i not in remove_indices
+                    ]
+                else:
+                    filtered = [float(v) for v in features]
+
+                x_train.append(filtered)
+                y_train.append(label)
 
         # train svm
         svm.fit(x_train, y_train)

@@ -129,6 +129,45 @@ def test_classify_species_with_names(
 
 
 @pytest.mark.parametrize(
+    "assembly_file_path",
+    [
+        "GCF_000069245.1_ASM6924v1_genomic.fna",
+    ],
+    indirect=["assembly_file_path"],
+)
+def test_classify_species_with_exclusion(assembly_file_path, tmpdir):
+    """Test the species assignment with species exclusion"""
+    runner = CliRunner()
+    excluded_species_id = "48296"
+    result = runner.invoke(
+        cli,
+        [
+            "classify",
+            "species",
+            "-g",
+            "Acinetobacter",
+            "-i",
+            assembly_file_path,
+            "-o",
+            str(tmpdir) + "/classify_species_with_exclusion.json",
+            "--exclude-species",
+            excluded_species_id,
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
+
+    with open(
+        str(tmpdir) + "/classify_species_with_exclusion.json", encoding="utf-8"
+    ) as f:
+        result_content = json.load(f)
+        assert result_content["prediction"] != excluded_species_id
+        for subseq_scores in result_content["scores"].values():
+            assert excluded_species_id not in subseq_scores
+        for subseq_hits in result_content["hits"].values():
+            assert excluded_species_id not in subseq_hits
+
+
+@pytest.mark.parametrize(
     ["assembly_file_path", "genus", "species"],
     [
         (

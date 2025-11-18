@@ -47,6 +47,7 @@ def classify_species(
     step: int = 1,
     display_name: bool = False,
     validation: bool = False,
+    exclude_ids: list[str] | None = None,
 ):
     """
     Classify the species of sequences.
@@ -61,6 +62,7 @@ def classify_species(
         step (int): The amount of kmers to be skipped.
         display_name (bool): Includes a display name for each tax_ID.
         validation (bool): Sorts out misclassified reads.
+        exclude_ids (list[str] | None): A list of species IDs to exclude from classification.
     """
     ModelClass = None
     if mm.is_svm_model(f"{model_genus}-species"):
@@ -79,6 +81,7 @@ def classify_species(
     for idx, current_path in enumerate(input_paths):
         result = model.predict(
             current_path,
+            exclude_ids=exclude_ids,
             step=step,
             display_name=display_name,
             validation=validation,
