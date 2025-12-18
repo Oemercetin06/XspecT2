@@ -29,6 +29,165 @@ def web():
     run(app, host="0.0.0.0", port=8000)
 
 
+@cli.command(
+    name="all",
+    help="Run full classification pipeline: genus filtering, species classification, and MLST (if applicable).",
+)
+@click.option(
+    "-g",
+    "--genus",
+    "model_genus",
+    help="Genus of the model to use.",
+    type=click.Choice(get_models().get("Species", [])),
+    prompt=True,
+)
+@click.option(
+    "-i",
+    "--input-path",
+    help="Path to FASTA or FASTQ file for classification.",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True),
+    prompt=True,
+    default=Path("."),
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    help="Directory for output files (default: auto-generated 'xspect_results_<uuid>' directory).",
+    type=click.Path(dir_okay=True, file_okay=False),
+    default=None,
+)
+@click.option(
+    "-t",
+    "--threshold",
+    type=click.FloatRange(0, 1),
+    help="Threshold for genus filtering (default: 0.7).",
+    default=0.7,
+)
+@click.option(
+    "--sparse-sampling-step",
+    type=int,
+    help="Sparse sampling step (e. g. only every 500th kmer for '--sparse-sampling-step 500').",
+    default=1,
+)
+@click.option(
+    "-n",
+    "--display-names",
+    help="Includes the display names next to taxonomy-IDs.",
+    is_flag=True,
+)
+@click.option(
+    "-v",
+    "--validation",
+    help="Detects misclassification for small reads or contigs.",
+    is_flag=True,
+)
+def all_pipeline(
+    model_genus,
+    input_path,
+    output_dir,
+    threshold,
+    sparse_sampling_step,
+    display_names,
+    validation,
+):
+    """Run full classification pipeline."""
+    import json
+    from xspect import filter_sequences, classify
+    from xspect.file_io import fasta_endings, fastq_endings
+
+    run_id = uuid4()
+
+    if output_dir is None:
+        output_dir = Path(f"xspect_results_{run_id}")
+    else:
+        output_dir = Path(output_dir)
+
+    output_dir.mkdir(exist_ok=True, parents=True)
+    input_path = Path(input_path)
+
+    filtered_dir = output_dir / "filtered_sequences"
+    filtered_dir.mkdir(exist_ok=True, parents=True)
+
+    genus_filtered_path = filtered_dir / f"genus_filtered_{run_id}.fasta"
+    genus_classification_path = output_dir / f"genus_classification_{run_id}.json"
+    species_classification_path = output_dir / f"species_classification_{run_id}.json"
+
+    # Step 1: Genus filtering
+    click.echo(f"Step 1/3: Filtering for genus {model_genus}...")
+    filter_sequences.filter_genus(
+        model_genus,
+        input_path,
+        genus_filtered_path,
+        threshold,
+        genus_classification_path,
+        sparse_sampling_step=sparse_sampling_step,
+    )
+
+    ending_wildcards = [f"*.{ending}" for ending in fasta_endings + fastq_endings]
+    filtered_files = [p for e in ending_wildcards for p in filtered_dir.glob(e)]
+
+    if not filtered_files:
+        click.echo("No sequences passed the genus filter. Pipeline aborted.")
+        return
+
+    # Step 2: Species classification on filtered sequences
+    click.echo(
+        f"Step 2/3: Classifying species for {len(filtered_files)} filtered file(s)..."
+    )
+    classify.classify_species(
+        model_genus,
+        filtered_dir,
+        species_classification_path,
+        sparse_sampling_step,
+        display_names,
+        validation,
+        None,
+    )
+
+    species_results = list(output_dir.glob(f"species_classification_{run_id}*.json"))
+
+    # Step 3: Check if we need to run MLST (if any prediction is "470" for abaumannii)
+    mlst_needed = False
+    for species_result_path in species_results:
+        with open(species_result_path, "r", encoding="utf-8") as f:
+            species_result = json.load(f)
+
+        prediction = species_result.get("prediction")
+        if prediction == "470":
+            mlst_needed = True
+            click.echo(
+                f"Species prediction is 470 (abaumannii) in {species_result_path.name}."
+            )
+
+    if mlst_needed:
+        click.echo("Step 3/3: Running MLST classification for abaumannii...")
+
+        mlst_schemes = get_available_mlst_schemes()
+        if "abaumannii" in mlst_schemes and mlst_schemes["abaumannii"]:
+            scheme = mlst_schemes["abaumannii"][0]
+            mlst_output_path = output_dir / f"mlst_classification_{run_id}.json"
+
+            classify.classify_mlst(
+                filtered_dir,
+                "abaumannii",
+                scheme,
+                mlst_output_path,
+                False,
+            )
+            click.echo(f"MLST classification completed: {mlst_output_path.name}")
+        else:
+            click.echo(
+                "Warning: No MLST schemes available for abaumannii. Skipping MLST classification."
+            )
+    else:
+        click.echo(
+            "Step 3/3: Not running MLST classification (organism is not Acinetobacter baumannii)."
+        )
+
+    click.echo("\nPipeline completed successfully!")
+    click.echo(f"Results saved in: {output_dir}")
+
+
 # # # # # # # # # # # # # # #
 # Model management commands #
 # # # # # # # # # # # # # # #

@@ -192,3 +192,7 @@ delete.slurm
 
 
 playground.ipynb
+old_results/
+svm.ipynb
+zip.slurm
+scripts/benchmarks.sh

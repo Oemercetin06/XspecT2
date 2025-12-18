@@ -3,10 +3,18 @@
 include { classifySample as classifyAssembly } from './classify'
 include { classifySample as classifyRead } from './classify'
 include { strain_species_mapping } from '../nextflow-utils'
+include { confusionMatrix as assemblyConfusionMatrix } from '../nextflow-utils'
+include { mismatchConfusionMatrix as assemblyMismatchConfusionMatrix } from '../nextflow-utils'
+include { confusionMatrix as readConfusionMatrix } from '../nextflow-utils'
+include { mismatchConfusionMatrix as readMismatchConfusionMatrix } from '../nextflow-utils'
 
 // --------------------- PARAMETERS ---------------------
-params.publishDir       = "results/benchmark"
-params.xspectModel     = "Acinetobacter"
+params.publishDir         = "results/benchmark"
+params.xspectModel        = "Acinetobacter"
+params.excludedSpeciesIDs = ""
+params.maxForks           = 50
+params.validate           = false
+params.seqPlatform        = "NovaSeq"
 
 // --------------------- WORKFLOW -----------------------
 workflow {
@@ -15,7 +23,7 @@ workflow {
   genomes = file("data/genomes")
   tax_report = file("data/aci_species.json")
   tax_mapping_json = strain_species_mapping(tax_report)
-  assemblies = createAssemblyTable(genomes, tax_mapping_json, species_model)
+  assemblies = createAssemblyTable(genomes, tax_mapping_json, species_model, params.excludedSpeciesIDs)
 
   // Whole genome assemblies
   samples = Channel.fromPath("${genomes}/**/*.fna")
@@ -27,10 +35,20 @@ workflow {
       [sample.baseName.split('_')[0..1].join('_'), sample]
     })
     .map { it[1][1] }
-  classifications = classifyAssembly(filtered_samples, params.xspectModel)
+  classifications = classifyAssembly(filtered_samples, params.xspectModel, params.excludedSpeciesIDs)
   summarizeClassifications(assemblies, classifications.collect())
-  confusionMatrix(summarizeClassifications.out, name_mapping)
-  mismatchConfusionMatrix(summarizeClassifications.out, name_mapping)
+  assemblyConfusionMatrix(
+    summarizeClassifications.out, 
+    name_mapping, 
+    'confusion_matrix.png', 
+    'Xspect Acinetobacter Confusion Matrix'
+  )
+  assemblyMismatchConfusionMatrix(
+    summarizeClassifications.out, 
+    name_mapping, 
+    'mismatches_confusion_matrix.png', 
+    'Mismatches Confusion Matrix'
+  )
 
   // Simulated reads
   selectForReadGen(assemblies, species_model)
@@ -43,8 +61,20 @@ workflow {
     .map { it[1][1] }
   filterForChromosome(read_assemblies)
   generateReads(filterForChromosome.out)
-  read_classifications = classifyRead(generateReads.out, params.xspectModel)
+  read_classifications = classifyRead(generateReads.out, params.xspectModel, params.excludedSpeciesIDs)
   summarizeReadClassifications(selectForReadGen.out, read_classifications.collect())
+  readConfusionMatrix(
+    summarizeReadClassifications.out, 
+    name_mapping, 
+    'read_confusion_matrix.png', 
+    'Xspect Acinetobacter Read Confusion Matrix'
+  )
+  readMismatchConfusionMatrix(
+    summarizeReadClassifications.out, 
+    name_mapping, 
+    'read_mismatches_confusion_matrix.png', 
+    'Read Mismatches Confusion Matrix'
+  )
 
   calculateStats(summarizeClassifications.out, summarizeReadClassifications.out)
   }
@@ -61,7 +91,7 @@ process getModelJSON {
   script:
   """
   model_name="${params.xspectModel.toLowerCase().replaceAll('_','-')}-species.json"
-  cp "$HOME/xspect-data/models/\$model_name" species_model.json
+  cp "\$HOME/xspect-data/models/\$model_name" species_model.json
   """
 }
 
@@ -78,6 +108,7 @@ process getNameMapping {
 
   script:
   """
+  # test
   jq '.display_names | to_entries | map({key: .key, value: (.value | sub("Acinetobacter"; "A."))}) | from_entries' ${species_model} > name_mapping.json
   """
 
@@ -97,13 +128,10 @@ process createAssemblyTable {
   path genomes
   path tax_mapping_json
   path species_model
+  val excludedSpeciesIDs
 
   output:
   path "assemblies.tsv"
-
-  when:
-  !file("assemblies.tsv").exists()
-
 
   script:
   """
@@ -161,6 +189,25 @@ process createAssemblyTable {
   ' assemblies.tsv > temp_assemblies.tsv
   mv temp_assemblies.tsv assemblies.tsv
   rm training_accessions.txt
+
+  # filter out assemblies with excluded species IDs
+  excluded_species="${excludedSpeciesIDs}"
+  if [ -n "\$excluded_species" ]; then
+    awk -F'\t' -v excluded="\$excluded_species" '
+      BEGIN {
+        # split on commas into array arr
+        n = split(excluded, arr, /,/);
+        for (i = 1; i <= n; i++) {
+          if (arr[i] != "") {
+            excluded_map[arr[i]] = 1;
+          }
+        }
+      }
+      NR==1 { print; next }
+      !(\$6 in excluded_map) { print }
+    ' assemblies.tsv > temp_assemblies.tsv
+    mv temp_assemblies.tsv assemblies.tsv
+  fi
   """
 
   stub:
@@ -173,7 +220,9 @@ process summarizeClassifications {
   conda "conda-forge::pandas"
   cpus 4
   memory '16 GB'
-  publishDir { params.publishDir }, mode: 'copy'
+  errorStrategy 'retry'
+  maxRetries 3
+  publishDir params.publishDir, mode: 'copy'
 
   input:
   path assemblies
@@ -206,7 +255,19 @@ process summarizeClassifications {
     
     with open(json_file, 'r') as f:
       data = json.load(f)
-      prediction = data.get('prediction', 'unknown')
+      prediction = data.get('prediction', None)
+
+      # based on max hits if no prediction field
+      if not prediction:
+        hits = data.get('hits', {})
+        # hits is structured as {subsequence : {species: hits}}
+        total_hits = {
+          species: sum(subseq.get(species, 0) for subseq in hits.values())
+          for species in {s for subseq in hits.values() for s in subseq}
+        }
+        max_hits = max(total_hits.values())
+        max_species = [species for species, species_hits in total_hits.items() if species_hits == max_hits]
+        prediction = max_species[0] if len(max_species) == 1 else "ambiguous"
     
     mask = df['Assembly Accession'].str.contains(accession, na=False)
     df.loc[mask, 'Prediction'] = prediction
@@ -259,6 +320,9 @@ process filterForChromosome {
   conda "bioconda::seqkit"
   cpus 2
   memory '16 GB'
+  errorStrategy 'retry'
+  maxRetries 3
+  
 
   input:
   path sample
@@ -276,9 +340,11 @@ process filterForChromosome {
 }
 
 process generateReads {
-  conda "bioconda::art"
-  cpus 2
-  memory '16 GB'
+  conda "bioconda::insilicoseq"
+  cpus 4
+  memory '32 GB'
+  errorStrategy 'retry'
+  maxRetries 3
 
   input:
   path sample
@@ -290,22 +356,31 @@ process generateReads {
   """
   set -euo pipefail
 
-  art_illumina \
-    -ss HS25 \
-    -i "${sample}" \
-    -l 125 \
-    -c 100000 \
-    -na \
-    -rs 42 \
-    -o "${sample.baseName}_simulated"
+  iss generate \
+    --model ${params.seqPlatform} \
+    --genomes "${sample}" \
+    --n_reads 100000 \
+    --seed 42 \
+    --cpus ${task.cpus} \
+    --output "${sample.baseName}_simulated"
+  
+  # InSilicoSeq creates paired-end files by default (_R1.fastq and _R2.fastq)
+  # Concatenate them into a single file if both exist
+  if [ -f "${sample.baseName}_simulated_R1.fastq" ] && [ -f "${sample.baseName}_simulated_R2.fastq" ]; then
+    cat "${sample.baseName}_simulated_R1.fastq" "${sample.baseName}_simulated_R2.fastq" > "${sample.baseName}_simulated.fq"
+  elif [ -f "${sample.baseName}_simulated_R1.fastq" ]; then
+    mv "${sample.baseName}_simulated_R1.fastq" "${sample.baseName}_simulated.fq"
+  fi
   """
 }
 
 process summarizeReadClassifications {
   conda "conda-forge::pandas"
   cpus 4
-  memory '64 GB'
-  publishDir { params.publishDir }, mode: 'copy'
+  memory '128 GB'
+  errorStrategy 'retry'
+  maxRetries 3
+  publishDir params.publishDir, mode: 'copy'
 
   input:
   path read_assemblies
@@ -342,15 +417,17 @@ process summarizeReadClassifications {
       for read_name, read_scores in scores.items():
         if read_name != 'total':
           if read_scores:
-            max_score = max(read_scores.values())
-            max_species = [species for species, score in read_scores.items() if score == max_score]
+            hits = data.get('hits', {}).get(read_name, {})
+            max_hits = max(hits.values())
+            max_species = [species for species, species_hits in hits.items() if species_hits == max_hits]
             prediction = max_species[0] if len(max_species) == 1 else "ambiguous"
 
             result = {
               'Assembly Accession': accession,
               'Read': read_name,
               'Prediction': prediction,
-              'Species ID': species_id
+              'Species ID': species_id,
+              'Rejected': True if prediction == "ambiguous" else False
             }
             
             for species, score in read_scores.items():
@@ -358,7 +435,29 @@ process summarizeReadClassifications {
 
             results.append(result)
       
+      # Reads marked as misclassified
+      misclassified = data.get('misclassified', {})
+      if misclassified:
+        for misclass_species_id, misclass_reads in misclassified.items():
+          for read_name, read_hits in misclass_reads.items():
+            if read_hits:
+              num_kmers = data['num_kmers'][read_name]
+              read_scores = {}
+              for species, hits_count in read_hits.items():
+                read_scores[species] = round(hits_count / num_kmers, 2)
+              
+              result = {
+                'Assembly Accession': accession,
+                'Read': read_name,
+                'Prediction': misclass_species_id,
+                'Species ID': species_id,
+                'Rejected': True
+              }
+              
+              for species, score in read_scores.items():
+                result[species] = score
 
+              results.append(result)
 
       df_results = pd.DataFrame(results)
       df_results.to_csv('read_classifications.tsv', sep='\\t', index=False, mode='a', header=include_header)
@@ -370,7 +469,7 @@ process calculateStats {
   conda "conda-forge::pandas conda-forge::scikit-learn"
   cpus 8
   memory '256 GB'
-  publishDir { params.publishDir }, mode: 'copy'
+  publishDir params.publishDir, mode: 'copy'
 
   input:
   path assembly_classifications
@@ -423,6 +522,38 @@ process calculateStats {
       zero_division=0
   )
 
+  # --- Abstaining Metrics (Reads only) ---
+  # Determine actual misclassification (prediction != ground truth)
+  df_read['Actually_Misclassified'] = df_read['Species ID'] != df_read['Prediction']
+  
+  # Get rejection status from Rejected column
+  rejected = df_read['Rejected']
+  not_rejected = ~rejected
+  
+  # Coverage: proportion of samples that are NOT rejected
+  coverage = not_rejected.sum() / read_total
+  
+  # Selective Accuracy: accuracy on non-rejected samples only
+  if not_rejected.sum() > 0:
+      selective_correct = ((df_read['Species ID'] == df_read['Prediction']) & not_rejected).sum()
+      selective_accuracy = selective_correct / not_rejected.sum()
+      selective_risk = 1 - selective_accuracy
+  else:
+      selective_accuracy = 0.0
+      selective_risk = 1.0
+  
+  # Rejection Precision: of all rejected samples, how many were actually misclassified
+  if rejected.sum() > 0:
+      rejection_precision = (rejected & df_read['Actually_Misclassified']).sum() / rejected.sum()
+  else:
+      rejection_precision = 0.0
+  
+  # Rejection Recall: of all misclassified samples, how many were rejected
+  if df_read['Actually_Misclassified'].sum() > 0:
+      rejection_recall = (rejected & df_read['Actually_Misclassified']).sum() / df_read['Actually_Misclassified'].sum()
+  else:
+      rejection_recall = 0.0
+
   # --- Output ---
   with open('stats.txt', 'w') as f:
       f.write("=== Assembly ===\\n")
@@ -442,118 +573,15 @@ process calculateStats {
       f.write(f"Mismatch Rate: {(read_total - read_matches) / read_total * 100:.2f}%\\n\\n")
       f.write("Classification report (per class):\\n")
       f.write(read_report + "\\n")
-  """
-}
-
-process confusionMatrix {
-  conda "conda-forge::pandas conda-forge::scikit-learn conda-forge::numpy conda-forge::matplotlib"
-  cpus 2
-  memory '16 GB'
-  publishDir { params.publishDir }, mode: 'copy'
-
-  input:
-  path classifications
-  path name_mapping
-
-  output:
-  path "confusion_matrix.png"
-
-  script:
-  """
-  #!/usr/bin/env python
-  import pandas as pd
-  from sklearn.metrics import confusion_matrix
-  import matplotlib.pyplot as plt
-  import numpy as np
-  import json
-  
-  df = pd.read_csv('${classifications}', sep='\\t')
-  y_true = df["Species ID"].astype(str)
-  y_pred = df["Prediction"].astype(str)
-
-  with open('${name_mapping}', 'r') as f:
-      name_mapping_dict = json.load(f)
-  labels = list(set(y_true) | set(y_pred))
-  labels = sorted(labels, key=lambda x: name_mapping_dict.get(x, x))
-  display_labels = [name_mapping_dict.get(label, label) for label in labels]
-
-  cm = confusion_matrix(y_true, y_pred, labels=labels)
-  cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-  
-  plt.figure(figsize=(30, 30))
-  plt.imshow(cm_normalized, interpolation='nearest', cmap=plt.cm.Blues)
-  plt.colorbar()
-  
-  plt.xticks(ticks=np.arange(len(labels)), labels=display_labels, rotation=90, fontsize=12)
-  plt.yticks(ticks=np.arange(len(labels)), labels=display_labels, fontsize=12)
-  
-  plt.title('Xspect Acinetobacter Confusion Matrix', fontsize=24)
-  plt.xlabel('Predicted Labels', fontsize=20)
-  plt.ylabel('True Labels', fontsize=20)
-  
-  plt.savefig('confusion_matrix.png', dpi=300, bbox_inches='tight')
-  """
-}
-
-process mismatchConfusionMatrix {
-  conda "conda-forge::pandas conda-forge::scikit-learn conda-forge::numpy conda-forge::matplotlib"
-  cpus 2
-  memory '16 GB'
-  publishDir { params.publishDir }, mode: 'copy'
-
-  input:
-  path classifications
-  path name_mapping
-
-  output:
-  path "mismatches_confusion_matrix.png"
-
-  script:
-  """
-  #!/usr/bin/env python
-  import pandas as pd
-  from sklearn.metrics import confusion_matrix
-  import matplotlib.pyplot as plt
-  import numpy as np
-  import json
-
-  
-  df = pd.read_csv('${classifications}', sep='\\t')
-  df["Species ID"] = df["Species ID"].astype(str)
-  df["Prediction"] = df["Prediction"].astype(str)
-  df_comparison_mismatch = df[df["Species ID"] != df["Prediction"]]
-
-  with open('${name_mapping}', 'r') as f:
-      name_mapping_dict = json.load(f)
-  y_true = df_comparison_mismatch["Species ID"]
-  y_pred = df_comparison_mismatch["Prediction"]
-  
-  labels = list(set(y_true) | set(y_pred))
-  labels = sorted(labels, key=lambda x: name_mapping_dict.get(x, x))
-  display_labels = [name_mapping_dict.get(label, label) for label in labels]
-  
-  cm = confusion_matrix(y_true, y_pred, labels=labels)
-  
-  plt.figure(figsize=(30, 30))
-  plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-  cbar = plt.colorbar()
-  cbar.ax.tick_params(labelsize=20)
-  
-  plt.xticks(ticks=np.arange(len(labels)), labels=display_labels, rotation=90, fontsize=16)
-  plt.yticks(ticks=np.arange(len(labels)), labels=display_labels, fontsize=16)
-  
-  thresh = cm.max() / 2.
-  for i in range(cm.shape[0]):
-      for j in range(cm.shape[1]):
-          plt.text(j, i, format(cm[i, j], 'd'),  # 'd' ensures integer formatting
-                  horizontalalignment="center",
-                  color="white" if cm[i, j] > thresh else "black",
-                  fontsize=14)
-  
-  plt.title('Mismatches Confusion Matrix', fontsize=30)
-  plt.xlabel('Predicted Labels', fontsize=24)
-  plt.ylabel('True Labels', fontsize=24)
-  
-  plt.savefig('mismatches_confusion_matrix.png', dpi=300, bbox_inches='tight')
+      
+      f.write("\\n=== Abstaining Metrics (Reads) ===\\n")
+      f.write(f"Total Reads: {read_total}\\n")
+      f.write(f"Rejected Reads: {rejected.sum()}\\n")
+      f.write(f"Accepted Reads: {not_rejected.sum()}\\n")
+      f.write(f"Coverage: {coverage * 100:.2f}% (proportion of non-rejected samples)\\n")
+      f.write(f"Selective Accuracy: {selective_accuracy * 100:.2f}% (accuracy on non-rejected samples)\\n")
+      f.write(f"Selective Risk: {selective_risk * 100:.2f}% (error rate on non-rejected samples)\\n")
+      f.write(f"Rejection Precision: {rejection_precision * 100:.2f}% (of rejected, how many were truly misclassified)\\n")
+      f.write(f"Rejection Recall: {rejection_recall * 100:.2f}% (of misclassified, how many were rejected)\\n")
   """
 }

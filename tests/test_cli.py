@@ -274,3 +274,168 @@ def test_filter_species_max_scoring(mixed_species_assembly_file_path, tmpdir):
         filtered_content = f.read()
         assert "Acinetobacter calcoaceticus" in filtered_content
         assert "Acinetobacter baumannii" not in filtered_content
+
+
+@pytest.mark.parametrize(
+    ["assembly_file_path", "genus", "species"],
+    [
+        (
+            "GCF_000069245.1_ASM6924v1_genomic.fna",
+            "Acinetobacter",
+            "470",
+        ),
+    ],
+    indirect=["assembly_file_path"],
+)
+def test_all_pipeline(assembly_file_path, genus, species, tmpdir):
+    """Test the complete 'xspect all' pipeline"""
+    runner = CliRunner()
+    output_dir = str(tmpdir) + "/all_results"
+
+    result = runner.invoke(
+        cli,
+        [
+            "all",
+            "-g",
+            genus,
+            "-i",
+            assembly_file_path,
+            "-o",
+            output_dir,
+            "-t",
+            "0.7",
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
+
+    output_path = Path(output_dir)
+    assert output_path.exists()
+
+    filtered_dir = output_path / "filtered_sequences"
+    assert filtered_dir.exists()
+
+    filtered_files = list(filtered_dir.glob("genus_filtered_*.fasta"))
+    assert len(filtered_files) > 0, "No genus filtered files found"
+
+    genus_classification_files = list(output_path.glob("genus_classification_*.json"))
+    assert len(genus_classification_files) > 0, "No genus classification files found"
+
+    species_classification_files = list(
+        output_path.glob("species_classification_*.json")
+    )
+    assert (
+        len(species_classification_files) > 0
+    ), "No species classification files found"
+
+    with open(species_classification_files[0], encoding="utf-8") as f:
+        result_content = json.load(f)
+        assert result_content["prediction"] == species
+
+    if species == "470":
+        mlst_classification_files = list(output_path.glob("mlst_classification_*.json"))
+        assert (
+            len(mlst_classification_files) > 0
+        ), "No MLST classification files found for abaumannii"
+
+
+@pytest.mark.parametrize(
+    ["assembly_file_path", "genus", "species"],
+    [
+        (
+            "GCF_000006945.2_ASM694v2_genomic.fna",
+            "Salmonella",
+            "28901",
+        ),
+    ],
+    indirect=["assembly_file_path"],
+)
+def test_all_pipeline_no_mlst(assembly_file_path, genus, species, tmpdir):
+    """Test 'xspect all' pipeline without MLST (non-abaumannii species)"""
+    runner = CliRunner()
+    output_dir = str(tmpdir) + "/all_results_no_mlst"
+
+    result = runner.invoke(
+        cli,
+        [
+            "all",
+            "-g",
+            genus,
+            "-i",
+            assembly_file_path,
+            "-o",
+            output_dir,
+            "-t",
+            "0.7",
+        ],
+    )
+    assert result.exit_code == 0, f"Error: {result.output}"
+
+    # Verify output directory structure
+    output_path = Path(output_dir)
+    assert output_path.exists()
+
+    # Check for species classification results
+    species_classification_files = list(
+        output_path.glob("species_classification_*.json")
+    )
+    assert len(species_classification_files) > 0
+
+    # Verify species classification content
+    with open(species_classification_files[0], encoding="utf-8") as f:
+        result_content = json.load(f)
+        assert result_content["prediction"] == species
+
+    # No MLST classification should exist for non-abaumannii species
+    mlst_classification_files = list(output_path.glob("mlst_classification_*.json"))
+    assert (
+        len(mlst_classification_files) == 0
+    ), "MLST classification should not exist for non-abaumannii"
+
+
+@pytest.mark.parametrize(
+    "assembly_file_path",
+    [
+        "GCF_000069245.1_ASM6924v1_genomic.fna",
+    ],
+    indirect=["assembly_file_path"],
+)
+def test_all_pipeline_auto_directory(assembly_file_path, tmpdir):
+    """Test 'xspect all' with auto-generated output directory"""
+    runner = CliRunner()
+
+    # Change to tmpdir to ensure auto-generated directory is created there
+    import os
+
+    original_dir = os.getcwd()
+    os.chdir(tmpdir)
+
+    try:
+        result = runner.invoke(
+            cli,
+            [
+                "all",
+                "-g",
+                "Acinetobacter",
+                "-i",
+                assembly_file_path,
+                "-t",
+                "0.7",
+            ],
+        )
+        assert result.exit_code == 0, f"Error: {result.output}"
+
+        # Check that an auto-generated directory was created
+        result_dirs = [
+            d
+            for d in Path(tmpdir).iterdir()
+            if d.is_dir() and d.name.startswith("xspect_results_")
+        ]
+        assert len(result_dirs) > 0, "No auto-generated output directory found"
+
+        # Verify the directory contains expected files
+        output_path = result_dirs[0]
+        assert (output_path / "filtered_sequences").exists()
+        assert len(list(output_path.glob("genus_classification_*.json"))) > 0
+        assert len(list(output_path.glob("species_classification_*.json"))) > 0
+    finally:
+        os.chdir(original_dir)
