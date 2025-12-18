@@ -5,9 +5,15 @@ include { strain_species_mapping } from '../nextflow-utils'
 // --------------------- PARAMETERS ---------------------
 params.dataset_dir = "data/genomes/ncbi_dataset"
 params.cpus = 32
+// Clustering method: either "98" or "GF"
+params.clusteringMethod = "98"
 
 // --------------------- WORKFLOW -----------------------
 workflow {
+  // Input validation
+  if (!['98', 'GF'].contains(params.clusteringMethod)) {
+    throw new IllegalArgumentException("Invalid params.clusteringMethod: '${params.clusteringMethod}'. Must be '98' for 98% similarity clustering or 'GF' for gene family clustering.")
+  }
 
   // Build maps
   taxon_map = EXTRACT_TAXON(file(params.dataset_dir) + "/data/assembly_data_report.jsonl")
@@ -30,7 +36,12 @@ workflow {
 
   pangenomes = PANGENOME(train_taxon_files, file(params.dataset_dir))
   pangenome_fastas = EXTRACT_FASTA(pangenomes)
-  organized_fasta_folders = ORGANIZE_PANGENOME_FASTAS(pangenome_fastas.collect())
+  if (params.clusteringMethod == '98') {
+    clustered_fastas = CLUSTER_FASTAS(pangenome_fastas)
+  } else {
+    clustered_fastas = pangenome_fastas
+  }
+  organized_fasta_folders = ORGANIZE_PANGENOME_FASTAS(clustered_fastas.collect())
 
   fasta_folder_ch = organized_fasta_folders.core.mix(
     organized_fasta_folders.softcore_95,
@@ -281,7 +292,7 @@ process PANGENOME {
 }
 
 process EXTRACT_FASTA {
-  publishDir "results/pangenome-train/fastas", mode: 'copy'
+  publishDir "results/pangenome-train/${params.clusteringMethod}-fastas", mode: 'copy'
   conda "bioconda::ppanggolin"
   cpus params.cpus
   memory params.cpus * 4 + " GB"
@@ -292,24 +303,66 @@ process EXTRACT_FASTA {
   output:
   path "${pangenome_h5.baseName}"
 
+
   script:
+  def geneOpt = params.clusteringMethod == '98' ? '--genes' : '--gene_families'
   """
     set -euo pipefail
 
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" --gene_families core -f
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" --gene_families softcore -f
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc90" --gene_families softcore -f --soft_core 0.9
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc85" --gene_families softcore -f --soft_core 0.85
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc80" --gene_families softcore -f --soft_core 0.8
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc75" --gene_families softcore -f --soft_core 0.75
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" --gene_families persistent -f
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" --gene_families shell -f
-    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" --gene_families cloud -f
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" ${geneOpt} core -f
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" ${geneOpt} softcore -f
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc90" ${geneOpt} softcore -f --soft_core 0.9
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc85" ${geneOpt} softcore -f --soft_core 0.85
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc80" ${geneOpt} softcore -f --soft_core 0.8
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}/sc75" ${geneOpt} softcore -f --soft_core 0.75
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" ${geneOpt} persistent -f
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" ${geneOpt} shell -f
+    ppanggolin fasta -p "${pangenome_h5}" --output "${pangenome_h5.baseName}" ${geneOpt} cloud -f
+    """
+}
+
+process CLUSTER_FASTAS {
+  publishDir "results/pangenome-train/clustered", mode: 'copy'
+  conda "bioconda::cd-hit bioconda::seqkit"
+  cpus params.cpus
+  memory params.cpus * 4 + " GB"
+
+  input:
+  path fasta_dir
+
+  output:
+  path "${fasta_dir.baseName}_clustered"
+
+  script:
+  """
+    set -euo pipefail
+    
+    mkdir -p "${fasta_dir.baseName}_clustered"
+    
+    find -L "${fasta_dir}" -type f -name "*.fna" | while read -r fasta_file; do
+      rel_path=\${fasta_file#${fasta_dir}/}
+      output_file="${fasta_dir.baseName}_clustered/\${rel_path}"
+      temp_file="\${output_file}.temp"
+      
+      mkdir -p "\$(dirname "\${output_file}")"
+      
+      seqkit rmdup -s "\${fasta_file}" -o "\${temp_file}"
+      
+      # Cluster using cd-hit-est
+      # -c 0.98: 98% sequence identity threshold
+      # -T 0: use all available threads
+      # -M 0: unlimited memory
+      # -d 0: keep full sequence descriptions
+      cd-hit-est -i "\${temp_file}" -o "\${output_file}" \\
+        -c 0.98 -T ${task.cpus} -M 0 -d 0
+      
+      rm -f "\${temp_file}" "\${output_file}.clstr"
+    done
     """
 }
 
 process ORGANIZE_PANGENOME_FASTAS {
-  publishDir "results/pangenome-train/organized", mode: 'copy'
+  publishDir "results/pangenome-train/${params.clusteringMethod}-organized", mode: 'copy'
 
   input:
   path pangenome_fastas
@@ -339,10 +392,13 @@ process ORGANIZE_PANGENOME_FASTAS {
         if not os.path.isdir(fasta_dir):
             continue
             
-        taxid = os.path.basename(fasta_dir)
+        taxid = os.path.basename(fasta_dir).split('_')[0]
         
         # Find all fasta files in the directory and subdirectories
-        for fasta in glob.glob(f"{fasta_dir}/**/*.fasta", recursive=True):
+        files = []
+        files.extend(glob.glob(f"{fasta_dir}/**/*.fna", recursive=True))
+        files.extend(glob.glob(f"{fasta_dir}/**/*.fasta", recursive=True))
+        for fasta in sorted(set(files)):
             base = os.path.basename(fasta)
             
             # Determine partition type from filename
@@ -398,8 +454,8 @@ process XSPECT_TRAIN {
   """
     set -euo pipefail
 
-    xspect models train directory -g "Acinetobacter_${organized_fasta_folder.baseName}" -i "${organized_fasta_folder}"
-    echo "Acinetobacter_${organized_fasta_folder.baseName}" > "model_${organized_fasta_folder.baseName}.txt"
+    xspect models train directory -g "Acinetobacter_${organized_fasta_folder.baseName}_${params.clusteringMethod}" -i "${organized_fasta_folder}"
+    echo "Acinetobacter_${organized_fasta_folder.baseName}_${params.clusteringMethod}" > "model_${organized_fasta_folder.baseName}.txt"
     """
 }
 
@@ -468,11 +524,11 @@ process UPDATE_MODEL_METADATA {
             model_name = f.read().strip()
         
         # Determine model path based on naming convention
-        # Extract the partition type from model name (e.g., "Acinetobacter_core" -> "core")
-        partition = model_name.split('_', maxsplit=1)[-1].replace('_', '-')
+        # Extract the model suffix from model name (e.g., "Acinetobacter_core_98" or "Acinetobacter_core_GF")
+        model_suffix = model_name.split('_', maxsplit=1)[-1].replace('_', '-').lower()
         
         # Construct model file path
-        model_file = Path.home() / "xspect-data" / "models" / f"acinetobacter-{partition}-species.json"
+        model_file = Path.home() / "xspect-data" / "models" / f"acinetobacter-{model_suffix}-species.json"
         
         if model_file.exists():
             # Read existing model metadata
